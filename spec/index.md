@@ -8,7 +8,7 @@
 * [06 函数](functions.md)
 * [07 流程控制](control-flow.md)
 * [08 模式](pattern-and-matching.md)
-* [09 类](class.md)
+* [09 特性](trait.md)
 * [10 接口和组件](interface-and-components.md)
 * [11 模块](modules.md)
 * [12 错误处理](error-handing.md)
