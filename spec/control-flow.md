@@ -116,7 +116,7 @@ end
 
 `条件分支` 语句的语法：
 
-```
+```js
 条件分支
     情况 条件表达式1: 语句1
     情况 条件表达式2: 语句2
@@ -125,8 +125,8 @@ end
 以上
 ```
 
-```
-cond
+```js
+condition
     case expr1: statement1
     case expr2: statement2
     ...
@@ -138,7 +138,7 @@ end
 
 跟 `如果` 语句一样，条件分支语句也能返回值。示例：
 
-```
+```js
 让 x = 70
 让 s = 条件分支
     情况 x>=90: "优"
@@ -148,9 +148,9 @@ end
 以上
 ```
 
-```
+```js
 let x = 70
-let s = cond
+let s = condition
     case x>=90: "Excellent"
     case x>=80: "Good"
     case x>=60: "Fair"
@@ -162,7 +162,7 @@ end
 
 有时需要在条件分支的 `情况`（`case`） 里使用某些计算后的值，但这些值对于条件分支语句之外没有用处，这时可以使用 `其中`（`where`）关键字在条件分支里定义及计算局部变量。示例：
 
-```
+```js
 让 x = 70
 让 s = 条件分支
     其中 isEven = x `余` 2 == 0,
@@ -173,9 +173,9 @@ end
 以上
 ```
 
-```
+```js
 let x = 70
-let s = cond
+let s = condition
     where isEven = x `rem` 2 == 0,
          isOdd = x `rem` 2 != 0
     case x >= 90 && isEven: "Excellent.Even"
@@ -188,7 +188,7 @@ end
 
 `其中` 关键字也可以写在 `情况` 的后面，表示其声明的变量仅仅在当前情况下使用，比如上例可以写成：
 
-```
+```js
 让 x = 70
 让 s = 条件分支
     情况 x >= 90 && isEven
@@ -201,9 +201,9 @@ end
 以上
 ```
 
-```
+```js
 let x = 70
-let s = cond
+let s = condition
     case x >= 90 && isEven
         where isEven = x `rem` 2 == 0
         : "Excellent.Even"
@@ -218,8 +218,8 @@ end
 
 函数加上条件分支语句与数学的函数定义非常接近，考虑如下一个函数：
 
-```
-function int check (Int x) cond
+```js
+function int check (Int x) condition
     case x >= 90: 1
     case x >= 80: 2
     case x >= 70: 3
@@ -230,7 +230,7 @@ end
 
 对应的数学函数
 
-```
+```js
             /  1: x >= 90
             |  2: x >= 80
 check(x) = <|  3: x >= 70
@@ -244,7 +244,7 @@ check(x) = <|  3: x >= 70
 
 `选择` 语句的语法：
 
-```
+```js
 选择 variable
     情况 value1: ...
     情况 value2: ...
@@ -253,7 +253,7 @@ check(x) = <|  3: x >= 70
 以上
 ```
 
-```
+```js
 switch variable
     case value1: ...
     case value2: ...
@@ -268,7 +268,7 @@ end
 
 示例：
 
-```
+```js
 让 d = 1
 选择 d
     情况 1,2,3,4,5:
@@ -278,7 +278,7 @@ end
 以上
 ```
 
-```
+```js
 let d = 1
 switch d
     case 1,2,3,4,5:
@@ -290,7 +290,7 @@ end
 
 跟 `如果`，`条件分支` 语句一样，`选择` 语句也是可以返回值的，示例：
 
-```
+```js
 让 d = 2
 让 s = 选择 d
     情况 1,2,3,4,5: "工作日"
@@ -299,7 +299,7 @@ end
 输出行(s)
 ```
 
-```
+```js
 let d = 2
 let s = switch d
     case 1,2,3,4,5: "Working days"
@@ -314,18 +314,18 @@ writeLine(s)
 
 ### `遍历` 语句
 
-遍历一个列表或者实现了 `序列` 类别的数据到一个指定的变量，相当于 Java 语言的 "for...each" 语句。
+`遍历`（`iterate`）语句用于遍历一个列表或者实现了 `序列` 类别的数据到一个指定的变量，相当于 Java 语言的 "for...each" 语句。
 
 示例：
 
-```
+```js
 遍历 [1..10] 到 i
     输出行 (i)
 以上
 ```
 
-```
-iter [1..10] to i
+```js
+iterate [1..10] to i
     writeLine (i)
 end
 ```
@@ -334,7 +334,7 @@ end
 
 上面的示例大致相当于：
 
-```
+```js
 function iter (Int[] [])
     // empty
 end
@@ -349,8 +349,8 @@ iter ([1..10])
 
 或者
 
-```
-function iter (Int[] list, f) cond
+```js
+function iter (Int[] list, f) condition
     case []:
         return
     case [i, ...remains]:
@@ -369,7 +369,7 @@ iter ([1..10], fn (i) writeLine (i))
 
 示例：
 
-```
+```js
 设有 让 i = 0 如果 i < 100 那么
     ...
     输出行 (i)
@@ -378,7 +378,7 @@ iter ([1..10], fn (i) writeLine (i))
 以上
 ```
 
-```
+```js
 for let i = 0 if i < 100 then
     ...
     writeLine(i)
@@ -403,7 +403,7 @@ for(let i=0; i<100; i=i+1) {
 
 条件循环语句实质上是一个带有标准的 `如果` 条件语句的递归的匿名函数，上面的示例将第一行换行之后得：
 
-```
+```js
 设有 让 i = 0
     如果 i < 100 那么
         ...
@@ -414,7 +414,7 @@ for(let i=0; i<100; i=i+1) {
 以上
 ```
 
-```
+```js
 for let i = a
     if i < 100 then
         ...
@@ -427,7 +427,7 @@ end
 
 现在比较明显地看出，语句的第一行的作用是声明一个匿名函数，接下来是一个普通的 `如果` 条件语句，而 `循环` 关键字只是调用当前匿名函数的语法糖。也就是说，条件循环语句可以使用标准的匿名函数重写：
 
-```
+```js
 01  让 f = 匿名函数 (整数 i)
 02      如果 i < 100 那么
 03          ...
@@ -444,7 +444,7 @@ end
 
 下面演示如果通过元组实现在循环体里使用多个变量：
 
-```
+```js
 for let (x,y) = (0, 0) if x > 10 && y < 100
     ...
     writeLine (y)
@@ -467,13 +467,13 @@ end
 
 示例：
 
-```
+```js
 重复次数 10
     输出行 ("你好")
 以上
 ```
 
-```
+```js
 repeat 10
     writeLine ("Hello")
 end
@@ -483,9 +483,8 @@ end
 
 `重复次数` 语句实际上是 `遍历` 语句的语法糖，上面的语句相当于：
 
-```
+```js
 遍历 [1..10] 到 %
     输出行 ("你好")
 以上
 ```
-

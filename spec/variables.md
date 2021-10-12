@@ -102,13 +102,13 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
 
   如果一个函数的参数的数据类型是函数，此时函数的定义语句会很长以至于影响阅读，比如：
 
-  ```
+  ```js
   函数 返回值的数据类型 函数名称 (整数 <= (整数 a, 整数 b) 参数1, ..., 字符串 <= (字符串 s, 字符 c) 参数N)
       ...
   以上
   ```
 
-  ```
+  ```js
   function DataType function_name (Int <= (Int a, Int b) param1, ..., String <= (String s, Char c) paramN)
       ...
   end
@@ -116,7 +116,7 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
 
   可以在函数的主体之前将函数的签名定义成一个单独的名称，语法如下：
 
-  ```
+  ```js
   函数 返回值的数据类型 函数名称 (签名名称1 参数1, ..., 签名名称N 参数N) 其中
       签名名称1 = 整数 <= (整数 a, 整数 b),
       签名名称N = 字符串 <= (字符串 s, 字符 c)
@@ -124,7 +124,7 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
   以上
   ```
 
-  ```
+  ```js
   function DataType function_name (type1 param1, ..., typeN paramN) where
       type1 = Int <= (Int a, Int b),
       typeN = String <= (String s, Char c)
@@ -143,7 +143,7 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
 
 示例：
 
-```
+```js
 类型 字符串 = 列表<字符>
 类型 空值 = 结果<单元>
 类型 排队令牌 = (整数, 字符串)
@@ -151,7 +151,7 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
 类型 过滤函数<T> = 逻辑 <= (T)
 ```
 
-```
+```js
 type String = List<Char>
 type Void = Result<Unit>
 type Token = (Int, String)
@@ -161,7 +161,7 @@ type FilterFunc<T> = Boolean <= (T)
 
 使用类型别名可以缩短函数的定义语句，比如下面几个函数的定义的结果是一样的。
 
-```
+```js
 // 直列式
 
 函数 列表<整数> 筛选合格者(列表<整数> items, 逻辑 <= (整数) f)
@@ -183,7 +183,7 @@ type FilterFunc<T> = Boolean <= (T)
 以上
 ```
 
-```
+```js
 // flat list
 
 function List<Int> passFilter(List<Int> items, Boolean <= (Int) f)
@@ -209,12 +209,12 @@ end
 
 变量定义并赋值之后，便无法再次赋值，也就是说，变量的值是不可变的。比如下面的语句会引起运行时异常：
 
-```
+```js
 让 a = 123
 a = 456  // 错误
 ```
 
-```
+```js
 let a = 123
 a = 456  // Error
 ```
@@ -236,7 +236,7 @@ while(true) {
 
 下面是 XiaoXuan 版本：
 
-```
+```js
 function Void add(Int sum)
   let s = readLine()?
   if s == "Q" then return Ok(void)
@@ -251,7 +251,7 @@ XiaoXuan 语言会对函数的尾调用进行优化，只要函数最后执行�
 
 下面是使用 `for` 语句的示例：
 
-```
+```js
 let sum =
     for let Int acc = 0
         let s = readLine()?
@@ -294,7 +294,7 @@ XiaoXuan 的值（包括各种集合、结构体、联合体等）也是不可�
 
 示例：
 
-```
+```js
 module apple
 
 define val n = 11 // 定义模块级的变量 n
@@ -328,7 +328,7 @@ end
 
 注意在同一层作用域里定义同名的变量是不允许的，比如下面的代码会引起运行时异常：
 
-```
+```js
 函数 空值 测试()
     让 n = 123
     如果 n > 100 那么
@@ -339,7 +339,7 @@ end
 以上
 ```
 
-```
+```js
 function Void test()
     let n = 123
     if n > 100 then
@@ -354,7 +354,7 @@ end
 
 全局变量其实就是作用域为模块级的普通变量，即在模块范围里定义的变量，跟定义普通变量一样，使用关键字 `让` 来定义。示例：
 
-```
+```js
 模块 foo.bar
 
 让 整数 n = 123
@@ -365,7 +365,7 @@ end
 以上
 ```
 
-```
+```js
 module foo.bar
 
 let Int n = 123
@@ -380,7 +380,7 @@ end
 
 示例：
 
-```
+```js
 模块 hello.world
 
 导入 foo.bar
@@ -391,7 +391,7 @@ end
 以上
 ```
 
-```
+```js
 module hello.world
 
 import foo.bar
@@ -414,7 +414,7 @@ end
 
 定义常量的语法是：
 
-```
+```js
 常量 数据类型 常量组名称
    成员名称1 = 值1
    成员名称2 = 值2
@@ -427,7 +427,7 @@ XiaoXuan 规定常量必须一组一组地定义，不能单独定义一个常�
 
 示例：
 
-```
+```js
 模块 http.client
 
 常量 整数 ResponseCode
@@ -448,7 +448,7 @@ XiaoXuan 规定常量必须一组一组地定义，不能单独定义一个常�
 以上
 ```
 
-```
+```js
 module http.client
 
 const Int ResponseCode
@@ -471,7 +471,7 @@ function Result<Unit> firstTest ()
 
 在模块里定义的常量可以在程序的任何地方所读取，所以也称为 "全局常量"，示例：
 
-```
+```js
 模块 main
 
 函数 结果<单元> 第二个测试 ()
@@ -482,7 +482,7 @@ function Result<Unit> firstTest ()
 以上
 ```
 
-```
+```js
 module main
 
 function Result<Unit> secondTest ()
@@ -500,7 +500,7 @@ end
 
 示例：
 
-```
+```js
 const SomeType.Good = 100
 
 match s
@@ -511,7 +511,7 @@ end
 
 注意在模式匹配中，不能使用变量来代替常量：
 
-```
+```js
 let Good = 100
 
 match s
