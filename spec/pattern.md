@@ -1,8 +1,34 @@
 # 模式匹配和模式解构
 
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+- [模式匹配和模式解构](#模式匹配和模式解构)
+  - [模式匹配](#模式匹配)
+    - [`匹配`（`match`）语句](#匹配match语句)
+      - [模式表达式](#模式表达式)
+        - [作用域内存在同名变量](#作用域内存在同名变量)
+        - [模式表达式存在同名变量](#模式表达式存在同名变量)
+      - [类型匹配](#类型匹配)
+      - [结构体匹配](#结构体匹配)
+      - [部分匹配](#部分匹配)
+      - [带条件的模式匹配](#带条件的模式匹配)
+      - [带解析的模式匹配](#带解析的模式匹配)
+      - [正则表达式模式匹配](#正则表达式模式匹配)
+      - [匹配复合结构数据时保留原始值](#匹配复合结构数据时保留原始值)
+    - [`如果 让` 语句](#如果-让-语句)
+  - [模式解构](#模式解构)
+    - [列表的解构](#列表的解构)
+  - [映射表的解构](#映射表的解构)
+  - [结构体的解构](#结构体的解构)
+  - [元组的解构](#元组的解构)
+
+<!-- /code_chunk_output -->
+
 ## 模式匹配
 
-模式匹配用于 `匹配`（`match`） 语句、函数的参数传值、以及 `如果 让...匹配...` 语句，这 3 种场合。
+模式匹配发生于 `匹配`（`match`） 语句、函数的参数传值、以及 `如果 让` 语句等 3 种场合。
 
 ### `匹配`（`match`）语句
 
@@ -74,53 +100,55 @@ end
 
 其中字面量和常量用于跟 "待检查的数据" 作相等比较，而变量则作为占位符，当匹配成功时（即字面量和常量相等、结构相同、元素或成员个数相同），变量则会捕获其所对应的数值。
 
-需注意，模式表达式当中的变量：
+##### 作用域内存在同名变量
 
-* 如果匹配语句所在的作用域当中已存在（且比匹配语句更早出现）同名的变量名，则模式表达式当中的变量会覆盖外面的变量，新变量的作用域包括该分支的代码。
+如果模式表达式当中存在其 `匹配` 语句所在的作用域同名的变量名，则模式表达式当中的变量会覆盖外面的变量，新变量的作用域包括该分支的代码。
 
 示例：
 
-  ```js
-  让 i = 123
-  让 v = (77,88)
-  匹配 v
-      情况 (i, j):
-          输出行 (i) // 输出 '77' 而不是 '123'
-  以上
-  ```
+```js
+让 i = 123
+让 v = (77,88)
+匹配 v
+    情况 (i, j):
+        输出行 (i) // 输出 '77' 而不是 '123'
+以上
+```
 
-  ```js
-  let i = 123
-  let v = (77,88)
-  match v
-      case (i, j):
-          writeLine (i) // output '77' instead of '123'
-  end
-  ```
+```js
+let i = 123
+let v = (77,88)
+match v
+    case (i, j):
+        writeLine (i) // output '77' instead of '123'
+end
+```
 
-* 如有匹配式中存在两个或以上同名变量，则第一个会被赋值，第二个及之后的会当成常量来比较。示例：
+##### 模式表达式存在同名变量
 
-  ```js
-  让 v = (11, 22, 22, 11)
-  匹配 v
-      情况 (a, a, b, b):
-          输出行 ("匹配失败")
-      情况 (a, b, b, a):
-          输出行 ("匹配成功，变量 a 的值将会是 11, b 是 22")
-  以上
-  ```
+如有匹配式中存在两个或以上同名变量，则第一个会被赋值，第二个及之后的会当成常量来比较。示例：
 
-  ```js
-  let v = (11, 22, 22, 11)
-  match v
-      case (a, a, b, b):
-          writeLine ("Failed")
-      case (a, b, b, a):
-          writeLine ("Ok, the value of 'a' will be 11, 'b' is 22")
-  end
-  ```
+```js
+让 v = (11, 22, 22, 11)
+匹配 v
+    情况 (a, a, b, b):
+        输出行 ("匹配失败")
+    情况 (a, b, b, a):
+        输出行 ("匹配成功，变量 a 的值将会是 11, b 是 22")
+以上
+```
 
-  上面例子中，当运行时检查第一个模式匹配表达式时，首先检查数据类型通过（都是元组），然后检查成员数量通过（都是 4），然后发现第一个成员是一个变量 `a`，则赋值 `11` 给它，然后发现表达式第二个成员还是变量，且名字是已经出现过的 `a`，这时就会取出 `a` 的值（也就是 `11`）跟实际数据（即 `22`）作相等比较，发现不通过，所以该表达式匹配失败。
+```js
+let v = (11, 22, 22, 11)
+match v
+    case (a, a, b, b):
+        writeLine ("Failed")
+    case (a, b, b, a):
+        writeLine ("Ok, the value of 'a' will be 11, 'b' is 22")
+end
+```
+
+上面例子中，当运行时检查第一个模式匹配表达式时，首先检查数据类型通过（都是元组），然后检查成员数量通过（都是 4），然后发现第一个成员是一个变量 `a`，则赋值 `11` 给它，然后发现表达式第二个成员还是变量，且名字是已经出现过的 `a`，这时就会取出 `a` 的值（也就是 `11`）跟实际数据（即 `22`）作相等比较，发现不通过，所以该表达式匹配失败。
 
 #### 类型匹配
 
@@ -129,7 +157,7 @@ end
 比如有一个联合体：
 
 ```js
-union Art
+union Work
     Book(String title, String isbn)
     Album(String title, String artist)
 end
@@ -148,9 +176,28 @@ end
 
 当变量 `v` 的值为 `Book` 的实例，02 行会被匹配中，如果值为 `Album` 的实例，则 04 行会被匹配中。
 
+#### 结构体匹配
+
+结构体的匹配表达式一般为：按照该结构体的默认构造函数的成员的出现顺序，列出字面量、常量或者变量的组合，比如上例中的 `case Book(title, isbn)` 就是将 `Book` 的两个成员按顺序列出。
+
+另外一种格式是，按照成员的名称列出字面量、常量或者变量，示例：
+
+```js
+match v
+    case Book(title="foo", isbn="123"):
+        ...
+    case Book(title="bar", isbn=x):
+        ...
+end
+```
+
+跟调用普通函数的情况类似，可以混合按参数顺序和按参数名称书写结构体的匹配表达式，但必须先写完所有按顺序的参数，才可以开始写按名称的参数。
+
+联合体的结构体类型成员的匹配表达式跟结构体匹配表达式的语法一样。
+
 #### 部分匹配
 
-对于一个复合结构的数据（比如列表、映射表、结构体、联合体的子类型、元组），模式表达式中的对结构的要求是不可反驳的，即 "实际数据的结构和组成" 跟 "模式匹配表达式要求的" 必须严格地一一对应。
+对于一个复合结构的数据（比如列表、映射表、结构体、联合体的成员），模式表达式中的对结构的要求是不可反驳的，即 "实际数据的结构和组成" 跟 "模式匹配表达式要求的" 必须严格地一一对应。
 
 也就是说匹配一个复合结构的数据时，表达式必须把全部成员和元素都列出才能匹配成功。如果不想全员列出（比如有时只需要当中的部分数据），可以使用 “...” 符号（三个点号）表示省略余下成员或元素的列举，比如：
 
@@ -161,7 +208,10 @@ end
   表示匹配具有 "id" 和 "name" 两个 key 的映射表，且把其他 key 及值存储在 `remains` 映射表中，这个映射表有可能是空的。
 
 * `case User(id, name, ...remains)`
-  表示匹配数据类型为 `User`，且具有 "id" 和 "name" 两个成员的结构体（或者联合体当中名称为 `User` 的子类型），结构体的其他成员的值会被存储到 `remains` 元组中，这个元组有可能是空元组。
+  表示匹配数据类型为 `User`，且具有 "id" 和 "name" 两个成员的结构体（或者联合体当中名称为 `User` 的结构体类型成员），结构体的其他成员的值会被存储到 `remains` 元组中，这个元组有可能是空元组。
+
+* `case User(id = x, name = y, ...remains)`
+  表示匹配数据类型为 `User`，且具有 "id" 和 "name" 两个成员的结构体，这两个成员的值分别存储在变量 `x` 和 `y`，结构体的其他成员的值会被存储到 `remains` 元组中，这个元组有可能是空元组。
 
 * `case (one, two, ...remains)`
   表示匹配具有两个及两个以上成员的元组，且从第三个开始的成员的值存储在 `remains` 元组中，这个元组有可能是空元组。
@@ -194,28 +244,28 @@ end
 
 示例：
 
-假设原始数据是 String 类型，既可以解析为 `Email(name, domain)` 类型，也能解析为 `Url(scheme, path)`，`Email` 和 `Url` 是联合体 `SocialId` 的两个子类型：
+假设原始数据是 String 类型，既可以解析为 `Email(name, domain)` 类型，也能解析为 `Phone(countryCode, number)`，`Email` 和 `Phone` 是联合体 `SocialId` 的两个成员：
 
 ```js
-联合体 SocialId
-    Email(String name, String domain)
-    Url(String scheme, String path)
+联合体 社交帐号
+    电子邮箱(字符串 name, 字符串 domain)
+    电话(字符串 countryCode, 字符串 number)
 end
 
-实现 解析器<Email, String> 到 Email
-    函数 Email 解析(String s)
-        匹配 s.分隔('@')
-            情况 有((name, domain)): 有(Email(name, domain))
+实现 解析器<电子邮箱, 字符串> 到 电子邮箱
+    函数 可选<电子邮箱> 解析(字符串 s)
+        匹配 正则("^(.+)@(.+)$").查找(s)
+            情况 有([_, name, domain]): 有(电子邮箱(name, domain))
             情况 无: 无
         以上
     以上
 以上
 
-实现 解析器<Url, String> 到 Url
-    函数 Url 解析(String s)
-        匹配 正则("^(\\w+)://(.+)$").查找(s)
-            情况 有([_, scheme, path]): 有(Url(scheme, path))
-            默认: 无
+实现 解析器<电话, 字符串> 到 电话
+    函数 可选<电话> 解析(字符串 s)
+        匹配 正则("^(\\+\\d+)-(\\d+)$").查找(s)
+            情况 有([_, countryCode, number]): 有(电话(countryCode, number))
+            情况 无: 无
         以上
     以上
 以上
@@ -224,23 +274,23 @@ end
 ```js
 Union SocialId
     Email(String name, String domain)
-    Url(String scheme, String path)
+    Phone(String countryCode, String number)
 end
 
-implement Parser<Email, String> for Email
-    function Email parse(String s)
-        match s.split('@')
-            case Some((name, domain)): Some(Email(name, domain))
+implement Parser<Email, String> to Email
+    function Option<Email> parse(String s)
+        match Regex("^(.+)@(.+)$").find(s)
+            case Some([_, name, domain]): Some(Email(name, domain))
             case None: None
         end
     end
 end
 
-implement Parser<Url, String> for Url
-    function Url parse(String s)
-        match Regex("^(\\w+)://(.+)$").find(s)
-            case Some([_, scheme, path]): Some(Url(scheme, path))
-            default: None
+implement Parser<Phone, String> to Phone
+    function Option<Phone> parse(String s)
+        match Regex("^(\\+\\d+)-(\\d+)$").find(s)
+            case Some([_, countryCode, number]): Some(Phone(countryCode, number))
+            case None: None
         end
     end
 end
@@ -256,10 +306,10 @@ let a = Parser<Email, String>.parse("foobar")
 let b = Parser<Email, String>.parse("foo@bar")
 
 // c == None
-let c = Parser<Url, String>.parse("foobar.domain/user/123")
+let c = Parser<Phone, String>.parse("123")
 
-// d == Some(Url("https", "foobar.domain/user/123"))
-let d = Parser<Url, String>.parse("https://foobar.domain/user/123")
+// d == Some(Phone("+86", "123456"))
+let d = Parser<Phone, String>.parse("+86-123456")
 ```
 
 如果需要在 `匹配` 语句当中先对数据进行解析再匹配，则需要模式匹配表达式之前（或者说，在 `情况` 关键字之后）加上 `解析` 关键字。
@@ -270,13 +320,13 @@ let d = Parser<Url, String>.parse("https://foobar.domain/user/123")
 让 s = "foo@bar"
 
 // 注意变量 's' 是字符串类型，而
-// 模式匹配表达式的分别是 Email 和 Url 类型
+// 模式匹配表达式的分别是 Email 和 Phone 类型
 
 匹配 s
     情况 解析 Email(name, domain):
-        输出行("一个 Email 地址")
-    情况 解析 Url(scheme, path):
-        输出行("一个 Url 地址")
+        输出行("一个电子邮箱")
+    情况 解析 Phone(countryCode, number):
+        输出行("一个电话号码")
     默认:
         输出行("未检测到")
 以上
@@ -286,13 +336,13 @@ let d = Parser<Url, String>.parse("https://foobar.domain/user/123")
 let s = "foo@bar"
 
 // Note that the variable 's' is a String, while
-// the data type in the matching pattern expression are Email and Url.
+// the data type in the matching pattern expression are Email and Phone.
 
 match s
     case parse Email(name, domain):
         writeLine("It's an Email address")
-    case parse Url:
-        writeLine("It's an Url")
+    case parse Phone(countryCode, number):
+        writeLine("It's a phone number")
     default:
         writeLine("Not detected")
 end
@@ -301,24 +351,20 @@ end
 如果模式匹配发生在函数的参数，则 `解析` 关键字加在模式表达式之前，比如：
 
 ```js
-函数 测试 (解析 Email(name, domain), 解析 Url(scheme, path))
-    输出格式行("Email 是: {}@{}", name, domain)
-    输出格式行("Url 是: {}://{}", scheme, path)
+函数 测试 (解析 电子邮箱(name, domain), 解析 电话(countryCode, number))
+    ...
 以上
 ```
 
 ```js
-function test (parse Email(name, domain), parse Url(scheme, path))
-    writeLineFormat("Email is: {}@{}", name, domain)
-    writeLineFormat("Url is: {}://{}", scheme, path)
+function test (parse Email(name, domain), parse Phone(countryCode, number))
+    ...
 end
 ```
 
 #### 正则表达式模式匹配
 
-正则函数 `正则(expression).查找(String)`（`Regex(expression).find(String)`） 成功时返回的是一个被 `可选`（`Option`）联合体的子类型 `有`(`Some`) 装箱的列表，列表的第一个元素是匹配中的内容（字符串），从第二个元素开始是各个匹配组的值。find 函数失败时返回的是 `无`（`None`）。
-
-所以正则函数的 `查找` 方法的返回值可以跟模式匹配结合使用。
+正则函数 `正则(expression).查找(String)`（`Regex(expression).find(String)`） 成功时返回的是一个被 `可选`（`Option`）联合体的成员 `有`(`Some`) 装箱的列表，列表的第一个元素是匹配中的内容（字符串），从第二个元素开始是各个匹配组的值。find 函数失败时返回的是 `无`（`None`）。
 
 示例：
 
@@ -329,14 +375,16 @@ end
 让 ss = 正则("^(.+)@(.+)$").查找(s)
 ```
 
-则 `ss` 的值为 `Some(["foo@domain", "foo", "domain"])`，可以把正则函数 `查找` 的结果结合模式匹配：
+则 `ss` 的值为 `Some(["foo@domain", "foo", "domain"])`。
+
+可以把正则函数 `查找` 的结果结合模式匹配：
 
 ```js
 匹配 ss
     情况 有([_, name, domain]):
         输出格式行("名称是: {}, 域名是: {}", name, domain)
     默认:
-        输出行("未侦测到 Email 地址")
+        输出行("未侦测到电子邮箱")
 以上
 ```
 
@@ -345,7 +393,7 @@ match ss
     case Some([_, name, domain]):
         writeLineFormat("Name is: {}, domain is: {}", name, domain)
     default:
-        writeLine("No Email detected")
+        writeLine("No Email address detected")
 end
 ```
 
@@ -358,11 +406,11 @@ end
 
 匹配 s
     情况 正则匹配 "^(.+)@(.+)$" [email, name, domain]:
-        输出格式行("是一个 Email: {}", email)
-    情况 正则匹配 "^(\\w+)://(.+)$" [url, scheme, path]:
-        输出格式行("是一个 Url: {}", url)
+        输出格式行("是一个电子邮箱: {}", email)
+    情况 正则匹配 "^(\\+\\d+)-(\\d+)$" [phone, countryCode, number]:
+        输出格式行("是一个电话号码: {}", phone)
     默认:
-        输出行("未侦测到 Email 或 Url")
+        输出行("未侦测到")
 以上
 ```
 
@@ -372,10 +420,10 @@ let s = "foo@domain"
 match s
     case regular "^(.+)@(.+)$" [email, name, domain]:
         writeLineFormat("It's Email: {}", email)
-    case regular "^(\\w+)://(.+)$" [url, scheme, path]:
-        writeLineFormat("It's Url: {}", url)
+    case regular "^(\\w+)://(.+)$" [phone, countryCode, number]:
+        writeLineFormat("It's phone number: {}", phone)
     default:
-        writeLine("Email or Url not detected")
+        writeLine("Not detected")
 end
 ```
 
@@ -456,9 +504,9 @@ function test (u expand parse User(id, name))
 end
 ```
 
-### `如果 让...匹配` 语句
+### `如果 让` 语句
 
-有时可能仅仅为了匹配一种模式，这时可以使用 `如果 让...匹配`（`if let...match`） 语句，而无必要使用 "完整" 的 `匹配` 语句。
+有时可能仅仅为了匹配一种模式，这时可以使用 `如果 让`（`if let`） 语句，而无必要使用 "完整" 的 `匹配` 语句。
 
 示例：
 
@@ -490,7 +538,7 @@ end
 
 模式解构即部分模式匹配，或者说非严格的模式匹配。模式解构的主要目的是为了获取复合结构数据的部分数据。
 
-模式解构发生在 `让`（`let`）赋值语句、`遍历`（`iter`）语句的 `到`（`to`）关键字之后、`现有 让`（`for let`）循环语句的值初始化以及 `重复`（`loop`） 关键字之后，等 3 种场合。
+模式解构发生在 `让`（`let`）赋值语句、`遍历`（`iterate`）语句的 `到`（`to`）关键字之后、`现有 让`（`for let`）循环语句的值初始化以及 `重复`（`loop`） 关键字之后等 4 种场合。
 
 示例，现有如下数据：
 
@@ -550,7 +598,7 @@ XiaoXuan 的赋值语句实质是模式解构。需要注意的是，虽然模�
 // 第一个 == 1, 第二个 == 2, 第三个 == 3
 让 [[第一个, 第二个], [第三个, _]] = [[1,2],[3,4],[5,6]]
 
-// 使用索引来解构（未支持）
+// 使用索引来解构（::不支持）
 // 注意索引从 1 开始，而不是从 0 开始
 // x == 1, y == 6
 让 [1:x, 6:y] = [1,2,3,4,5,6]
@@ -567,7 +615,7 @@ let [_, _, third] = [1,2,3,4,5]
 // first == 1, second ==2, third == 3
 let [[first, second], [third, _]] = [[1,2],[3,4],[5,6]]
 
-// Deconstructing using indexes (not supported)
+// Deconstructing using indexes (::not supported)
 // Note that indexes start at 1, not 0
 // x == 1, y == 6
 let [1:x, 6:y] = [1,2,3,4,5,6]
@@ -650,7 +698,15 @@ let User(_, _, score) = u
 
 在上例中，其中的 `_` 符号（下划线）表示仅匹配位置，丢弃其值。
 
-联合体的子类型的解构方法跟结构体的解构一样。
+联合体的结构体类型成员的解构方法跟结构体的解构一样。
+
+注意，结构体的解构也可以按成员的名称来解构（假如成员有名称的话），示例：
+
+```js
+让 User(id=a, name=b) = u
+```
+
+当一个结构体的成员数量比较多，且只需很少的部分成员的值时，按成员名称来解构（而不是按参数顺序来解构）能简便很多。
 
 ## 元组的解构
 
