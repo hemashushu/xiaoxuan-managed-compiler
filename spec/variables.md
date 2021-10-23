@@ -12,6 +12,7 @@
       - [映射表（Map）](#映射表map)
       - [元组](#元组)
       - [函数](#函数)
+        - [类型简写](#类型简写)
     - [定义数据类型别名](#定义数据类型别名)
   - [值的不可变性](#值的不可变性)
   - [变量的不可变性](#变量的不可变性)
@@ -20,6 +21,7 @@
     - [全局变量（::不支持）](#全局变量不支持)
   - [常量](#常量)
     - [局部常量](#局部常量)
+  - [枚举](#枚举)
 
 <!-- /code_chunk_output -->
 
@@ -114,7 +116,7 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
 
 当一个函数的返回值不止一个数据，但又不想单独创建一个结构体来存储这个返回值时，可以简单地使用元组 "封装" 这些值，然后一次返回给函数的调用者。
 
-有些函数可能没有任何具有意义返回值，所以专门有一个叫做 `单元`（`Unit`）的联合体（数据类型），其值有且只有一个 `空`（`void`）。XiaoXuan 规定空元组 "()" 的数据类型为 `单元`，其值等于 `空`。
+有些函数可能没有任何具有意义返回值，所以专门有一个叫做 `单元`（`Unit`）的联合体（数据类型），其值有且只有一个 `空值`（`void`）。XiaoXuan 规定空元组 "()" 的数据类型为 `单元`，其值等于 `空值`。
 
 #### 函数
 
@@ -164,6 +166,8 @@ function DataType function_name (Int <= (Int a, Int b) param1, ..., String <= (S
 end
 ```
 
+##### 类型简写
+
 XiaoXuan 语法支持 `其中`（`where`） 关键字，以允许在函数的主体之前将函数的签名定义成一个单独的名称，语法如下：
 
 ```js
@@ -195,7 +199,7 @@ end
 
 ```js
 类型 字符串 = 列表<字符>
-类型 空值 = 结果<单元>
+类型 空型 = 结果<单元, 错误>
 类型 排队令牌 = (整数, 字符串)
 类型 整数过滤函数 = 逻辑 <= (整数)
 类型 过滤函数<T> = 逻辑 <= (T)
@@ -203,7 +207,7 @@ end
 
 ```js
 type String = List<Char>
-type Void = Result<Unit>
+type Void = Result<Unit, Error>
 type Token = (Int, String)
 type IntFilterFunc = Boolean <= (Int)
 type FilterFunc<T> = Boolean <= (T)
@@ -358,7 +362,7 @@ module apple
 
 define val n = 11 // 定义模块级的变量 n
 
-define func Result<Unit> a ()
+define func Result<Unit, Error> a ()
     writeLine(n) // 输出模块级的 n = 11
     let n = 22   // 定义函数级的变量 n，覆盖了模块级的变量 n
     writeLine(n) // 输出函数级的 n = 22
@@ -380,7 +384,7 @@ define func Result<Unit> a ()
     writeLine(n) // 输出函数级的 n = 22
 end
 
-define func Result<Unit> b ()
+define func Result<Unit, Error> b ()
     writeLine(n) // 输出模块级的 n = 11
 end
 ```
@@ -388,7 +392,7 @@ end
 注意在同一层作用域里定义同名的变量是不允许的，比如下面的代码会引起运行时异常：
 
 ```js
-函数 空值 测试()
+函数 空型 测试()
     让 n = 123
     如果 n > 100 那么
       ...
@@ -419,7 +423,7 @@ end
 定义 整数 n = 123
 
 @测试
-函数 空值 第一个测试 ()
+函数 空型 第一个测试 ()
     输出行 (n) // 这里输出全局变量 n 的值
 以上
 ```
@@ -445,7 +449,7 @@ end
 导入 foo.bar
 
 @测试
-函数 空值 第二个测试 ()
+函数 空型 第二个测试 ()
     输出行 (bar.n) // 这里输出 'foo.bar' 模块的变量 n 的值
 以上
 ```
@@ -461,7 +465,7 @@ function Void secondTest ()
 end
 ```
 
-全局变量的赋值语句（即右值，一个字面量或者一个表达式）会在模块被加载时运行。准确来说，加载应用程序时，会先加载所有模块所有定义性质的语句，比如函数、结构体、类别、接口、组件实现等等的定义，然后才执行全局变量的赋值语句。
+全局变量的赋值语句（即右值，一个字面量或者一个表达式）会在模块被加载时运行。准确来说，加载应用程序时，会先加载所有模块所有定义性质的语句，比如函数、结构体、共性、接口、组件实现等等的定义，然后才执行全局变量的赋值语句。
 
 ## 常量
 
@@ -521,7 +525,7 @@ const Int ResponseCode
     ServiceUnavailable = 503
 end
 
-function Result<Unit> firstTest ()
+function Result<Unit, Error> firstTest ()
     writeLine (ResponseCode.Ok) // output the actual value "200"
     writeLine (ResponseCode.NotFound) // output "404"
 end
@@ -532,7 +536,7 @@ end
 ```js
 模块 main
 
-函数 结果<单元> 第二个测试 ()
+函数 结果<单元, 错误> 第二个测试 ()
     导入 http.client.ResponseCode // 导入语句可以写在任何地方
 
     输出行 (ResponseCode.Ok) // 输出 "200"
@@ -543,7 +547,7 @@ end
 ```js
 module main
 
-function Result<Unit> secondTest ()
+function Result<Unit, Error> secondTest ()
     import http.client.ResponseCode // Import statements can be written anywhere
 
     writeLine (ResponseCode.Ok) // output "200"
@@ -586,4 +590,67 @@ function test()
         case _: writeLine("Other") // 这行永远不会被执行
     end
 end
+```
+
+## 枚举
+
+枚举跟全局常量相类似，不过枚举有以下几个特点：
+
+* 枚举的成员数量固定；
+* 枚举的成员的值无需指定；
+* 枚举是一种数据类型；
+* 枚举的值无法跟其他数据类型直接转换。
+
+示例：
+
+```js
+枚举 原色
+    红
+    绿
+    蓝
+以上
+
+让 a = 原色.蓝
+```
+
+```js
+enum PrimaryColor
+    Red
+    Green
+    Blue
+end
+
+let a = PrimaryColor.Blue
+```
+
+因为枚举是数据类型，所以枚举可以用在函数的参数上，用于某个参数只能从有限的几种值当中取其一的这种场合。示例：
+
+```js
+函数 设置背景色 (原色 c)
+    输出行 (c)
+以上
+
+// 调用函数
+设置背景色 (原色.红)
+```
+
+```js
+function setBackgroundColor (PrimaryColor c)
+    writeLine (c)
+end
+
+// call function
+setBackgroundColor (PrimaryColor.Red)
+```
+
+注意枚举值**不能**与其他数据类型的值相互转换，比如无法将整数转为上例中的 `原色` 的值（也无法将枚举的值转成整数）。
+
+例如下面的语句是错误的：
+
+```js
+设置背景色 (1)
+```
+
+```js
+setBackgroundColor (1)
 ```

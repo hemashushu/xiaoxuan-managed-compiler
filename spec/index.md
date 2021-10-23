@@ -7,7 +7,7 @@
 * [05 结构体和联合体](structs-and-unions.md)
 * [06 流程控制](control-flow.md)
 * [07 模式](pattern.md)
-* [08 类别](kind.md)
+* [08 共性](trait.md)
 * [09 接口和组件](interface-and-components.md)
 * [10 模块](modules.md)
 * [11 错误处理](error-handing.md)
