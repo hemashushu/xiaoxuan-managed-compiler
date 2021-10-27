@@ -341,7 +341,7 @@ end
 
 ```js
 function iter (Int[] [])
-    // empty
+    # empty
 end
 
 function iter (Int[] [i, ...remains])
@@ -395,7 +395,7 @@ end
 
 ```js
 function iter (Int[] [])
-    // empty
+    # empty
 end
 
 function iter (Int[] [i, ...remains])

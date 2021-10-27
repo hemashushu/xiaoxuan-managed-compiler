@@ -216,20 +216,20 @@ type FilterFunc<T> = Boolean <= (T)
 使用类型别名可以缩短函数的定义语句，比如下面几个函数的定义的结果是一样的。
 
 ```js
-// 直列式
+## 直列式
 
 函数 列表<整数> 筛选合格者(列表<整数> items, 逻辑 <= (整数) f)
     ...
 以上
 
-// 使用 `其中` 关键字
+## 使用 `其中` 关键字
 
 函数 列表<整数> 筛选合格者(列表<整数> items, 整数过滤函数 f) 其中
     整数过滤函数 = 逻辑 <= (整数)
     ...
 以上
 
-// 使用 `类型` 定义别名
+## 使用 `类型` 定义别名
 
 类型 整数过滤函数 = 逻辑 <= (整数)
 函数 列表<整数> 筛选合格者(列表<整数> items, 整数过滤函数 f)
@@ -238,20 +238,20 @@ type FilterFunc<T> = Boolean <= (T)
 ```
 
 ```js
-// flat list
+## flat list
 
 function List<Int> passFilter(List<Int> items, Boolean <= (Int) f)
     ...
 end
 
-// using 'where` keyword
+## using 'where` keyword
 
 function List<Int> passFilter(List<Int> items, IntFilterFunc f) where
     IntFilterFunc = Boolean <= (Int)
     ...
 end
 
-// using 'type' define alias name
+## using 'type' define alias name
 
 type IntFilterFunc = Boolean <= (Int)
 function List<Int> passFilter(List<Int> items, IntFilterFunc f)
@@ -276,12 +276,12 @@ XiaoXuan 的值（包括各种集合、结构体、联合体等）也是不可�
 
 ```js
 让 a = 123
-a = 456  // 错误
+a = 456  # 错误
 ```
 
 ```js
 let a = 123
-a = 456  // Error
+a = 456  # Error
 ```
 
 因为变量无法重新赋值，所以对于我们所熟悉的（在可变变量的语言里）常用数据处理方法，在 XiaoXuan 里需要稍微转换一下。
@@ -310,8 +310,8 @@ function Int add(Int acc)
   let i = parse<Int>(s)
   let c = acc + i
 
-  // 以当前的累加值作为参数调用自己以
-  // 再执行一遍当前这个过程
+  # 以当前的累加值作为参数调用自己以
+  # 再执行一遍当前这个过程
   add (c)
 end
 
@@ -360,32 +360,32 @@ writeLine(c)
 ```js
 module apple
 
-define val n = 11 // 定义模块级的变量 n
+define val n = 11 # 定义模块级的变量 n
 
 define func Result<Unit, Error> a ()
-    writeLine(n) // 输出模块级的 n = 11
-    let n = 22   // 定义函数级的变量 n，覆盖了模块级的变量 n
-    writeLine(n) // 输出函数级的 n = 22
+    writeLine(n) # 输出模块级的 n = 11
+    let n = 22   # 定义函数级的变量 n，覆盖了模块级的变量 n
+    writeLine(n) # 输出函数级的 n = 22
 
-    for d in [1..10] // 变量 d 的作用域仅限当前 foreach 语句块之内
-        writeLine(n) // 输出函数级的 n = 22
-        let n = 33   // 定义语句块级的变量 n，覆盖了函数级的变量 n
-        writeLine(n) // 输出语句块级的变量 n = 33
+    for d in [1..10] # 变量 d 的作用域仅限当前 foreach 语句块之内
+        writeLine(n) # 输出函数级的 n = 22
+        let n = 33   # 定义语句块级的变量 n，覆盖了函数级的变量 n
+        writeLine(n) # 输出语句块级的变量 n = 33
 
         if d>0 then
-            writeLine(n) // 输出语句块级的变量 n = 33
-            let n = 44   // 定义较内层的语句块级的变量 n，覆盖了较外层的变量 n
-            writeLine(n) // 输出较内层的语句块级的变量 n = 44
+            writeLine(n) # 输出语句块级的变量 n = 33
+            let n = 44   # 定义较内层的语句块级的变量 n，覆盖了较外层的变量 n
+            writeLine(n) # 输出较内层的语句块级的变量 n = 44
         end
 
-        writeLine(n) // 输出语句块级的变量 n = 33
+        writeLine(n) # 输出语句块级的变量 n = 33
     end
 
-    writeLine(n) // 输出函数级的 n = 22
+    writeLine(n) # 输出函数级的 n = 22
 end
 
 define func Result<Unit, Error> b ()
-    writeLine(n) // 输出模块级的 n = 11
+    writeLine(n) # 输出模块级的 n = 11
 end
 ```
 
@@ -398,7 +398,7 @@ end
       ...
     以上
 
-    让 n = 456 // 这句会引起运行时异常
+    让 n = 456 # 这句会引起运行时异常
 以上
 ```
 
@@ -409,7 +409,7 @@ function Void test()
       ...
     end
 
-    let n = 456 // Runtime error
+    let n = 456 # Runtime error
 end
 ```
 
@@ -424,7 +424,7 @@ end
 
 @测试
 函数 空型 第一个测试 ()
-    输出行 (n) // 这里输出全局变量 n 的值
+    输出行 (n) # 这里输出全局变量 n 的值
 以上
 ```
 
@@ -435,7 +435,7 @@ define Int n = 123
 
 @test
 function Void firstTest ()
-    writeLine (n) // output the value of global variable n
+    writeLine (n) # output the value of global variable n
 end
 ```
 
@@ -450,7 +450,7 @@ end
 
 @测试
 函数 空型 第二个测试 ()
-    输出行 (bar.n) // 这里输出 'foo.bar' 模块的变量 n 的值
+    输出行 (bar.n) # 这里输出 'foo.bar' 模块的变量 n 的值
 以上
 ```
 
@@ -461,7 +461,7 @@ import foo.bar
 
 @test
 function Void secondTest ()
-    writeLine (bar.n) // output the value of global variable n which exists in the module 'foo.bar'
+    writeLine (bar.n) # output the value of global variable n which exists in the module 'foo.bar'
 end
 ```
 
@@ -505,8 +505,8 @@ XiaoXuan 规定常量必须一组一组地定义，不能单独地使用一个�
 以上
 
 函数 结果<单元> 第一个测试 ()
-    输出行 (ResponseCode.Ok) // 输出常量的实际值 "200"
-    输出行 (ResponseCode.NotFound) // 输出 "404"
+    输出行 (ResponseCode.Ok) # 输出常量的实际值 "200"
+    输出行 (ResponseCode.NotFound) # 输出 "404"
 以上
 ```
 
@@ -526,8 +526,8 @@ const Int ResponseCode
 end
 
 function Result<Unit, Error> firstTest ()
-    writeLine (ResponseCode.Ok) // output the actual value "200"
-    writeLine (ResponseCode.NotFound) // output "404"
+    writeLine (ResponseCode.Ok)       # output the actual value "200"
+    writeLine (ResponseCode.NotFound) # output "404"
 end
 ```
 
@@ -537,10 +537,10 @@ end
 模块 main
 
 函数 结果<单元, 错误> 第二个测试 ()
-    导入 http.client.ResponseCode // 导入语句可以写在任何地方
+    导入 http.client.ResponseCode # 导入语句可以写在任何地方
 
-    输出行 (ResponseCode.Ok) // 输出 "200"
-    输出行 (ResponseCode.NotFound) // 输出 "404"
+    输出行 (ResponseCode.Ok) # 输出 "200"
+    输出行 (ResponseCode.NotFound) # 输出 "404"
 以上
 ```
 
@@ -548,10 +548,10 @@ end
 module main
 
 function Result<Unit, Error> secondTest ()
-    import http.client.ResponseCode // Import statements can be written anywhere
+    import http.client.ResponseCode # Import statements can be written anywhere
 
-    writeLine (ResponseCode.Ok) // output "200"
-    writeLine (ResponseCode.NotFound) // output "404"
+    writeLine (ResponseCode.Ok) # output "200"
+    writeLine (ResponseCode.NotFound) # output "404"
 end
 ```
 
@@ -586,8 +586,8 @@ end
 function test()
     let Good = 100
     match s
-        case Good: writeLine("Good") // 这里的 Good 将会是一个新的变量，其值等于变量 s
-        case _: writeLine("Other") // 这行永远不会被执行
+        case Good: writeLine("Good") # 这里的 Good 将会是一个新的变量，其值等于变量 s
+        case _: writeLine("Other") # 这行永远不会被执行
     end
 end
 ```
@@ -630,7 +630,7 @@ let a = PrimaryColor.Blue
     输出行 (c)
 以上
 
-// 调用函数
+# 调用函数
 设置背景色 (原色.红)
 ```
 
@@ -639,7 +639,7 @@ function setBackgroundColor (PrimaryColor c)
     writeLine (c)
 end
 
-// call function
+# call function
 setBackgroundColor (PrimaryColor.Red)
 ```
 

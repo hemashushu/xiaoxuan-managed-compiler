@@ -111,7 +111,7 @@ end
 让 v = (77,88)
 匹配 v
     情况 (i, j):
-        输出行 (i) // 输出 '77' 而不是 '123'
+        输出行 (i) # 输出 '77' 而不是 '123'
 以上
 ```
 
@@ -120,7 +120,7 @@ let i = 123
 let v = (77,88)
 match v
     case (i, j):
-        writeLine (i) // output '77' instead of '123'
+        writeLine (i) # output '77' instead of '123'
 end
 ```
 
@@ -224,7 +224,7 @@ end
 
 ```js
 匹配 v
-    情况 (x,y,z) 如果 x > 10: // 仅当后面的条件表达式返回 `真` 时该分支才被匹配中。
+    情况 (x,y,z) 如果 x > 10: # 仅当后面的条件表达式返回 `真` 时该分支才被匹配中。
        ...
 以上
 ```
@@ -299,16 +299,16 @@ end
 下面是测试代码：
 
 ```js
-// a == None
+# a == None
 let a = Parser<Email, String>.parse("foobar")
 
-// b == Some(Email("foo", "bar"))
+# b == Some(Email("foo", "bar"))
 let b = Parser<Email, String>.parse("foo@bar")
 
-// c == None
+# c == None
 let c = Parser<Phone, String>.parse("123")
 
-// d == Some(Phone("+86", "123456"))
+# d == Some(Phone("+86", "123456"))
 let d = Parser<Phone, String>.parse("+86-123456")
 ```
 
@@ -319,8 +319,8 @@ let d = Parser<Phone, String>.parse("+86-123456")
 ```js
 让 s = "foo@bar"
 
-// 注意变量 's' 是字符串类型，而
-// 模式匹配表达式的分别是 Email 和 Phone 类型
+# 注意变量 's' 是字符串类型，而
+# 模式匹配表达式的分别是 Email 和 Phone 类型
 
 匹配 s
     情况 解析 Email(name, domain):
@@ -335,8 +335,8 @@ let d = Parser<Phone, String>.parse("+86-123456")
 ```js
 let s = "foo@bar"
 
-// Note that the variable 's' is a String, while
-// the data type in the matching pattern expression are Email and Phone.
+# Note that the variable 's' is a String, while
+# the data type in the matching pattern expression are Email and Phone.
 
 match s
     case parse Email(name, domain):
@@ -590,36 +590,36 @@ XiaoXuan 的赋值语句实质是模式解构，比如 `让 4 = 4` 语句是合�
 示例：
 
 ```js
-// 第一个 == 1, 第二个 == 2, 剩余 == [3,4,5,6]
+# 第一个 == 1, 第二个 == 2, 剩余 == [3,4,5,6]
 让 [第一个, 第二个, ...剩余] = [1,2,3,4,5,6]
 
-// 丢弃第一个和第二个元素的值， 第三个 == 3
+# 丢弃第一个和第二个元素的值， 第三个 == 3
 让 [_, _, 第三个] = [1,2,3,4,5]
 
-// 解构一个二维列表
-// 第一个 == 1, 第二个 == 2, 第三个 == 3
+# 解构一个二维列表
+# 第一个 == 1, 第二个 == 2, 第三个 == 3
 让 [[第一个, 第二个], [第三个, _]] = [[1,2],[3,4],[5,6]]
 
-// 使用索引来解构（::不支持）
-// 注意索引从 1 开始，而不是从 0 开始
-// x == 1, y == 6
+# 使用索引来解构（::不支持）
+# 注意索引从 1 开始，而不是从 0 开始
+# x == 1, y == 6
 让 [1:x, 6:y] = [1,2,3,4,5,6]
 ```
 
 ```js
-// first == 1, second == 2, rest == [3,4,5,6]
+# first == 1, second == 2, rest == [3,4,5,6]
 let [first, second, ...rest] = [1,2,3,4,5,6]
 
-// drop the first and the second element value, third == 3
+# drop the first and the second element value, third == 3
 let [_, _, third] = [1,2,3,4,5]
 
-// deconstructing a two-dimensional list
-// first == 1, second ==2, third == 3
+# deconstructing a two-dimensional list
+# first == 1, second ==2, third == 3
 let [[first, second], [third, _]] = [[1,2],[3,4],[5,6]]
 
-// Deconstructing using indexes (::not supported)
-// Note that indexes start at 1, not 0
-// x == 1, y == 6
+# Deconstructing using indexes (::not supported)
+# Note that indexes start at 1, not 0
+# x == 1, y == 6
 let [1:x, 6:y] = [1,2,3,4,5,6]
 ```
 
@@ -635,14 +635,14 @@ let [1:x, 6:y] = [1,2,3,4,5,6]
 ```js
 让 名称 = {"姓": "张", "名": "三", "辈": "伯"};
 
-// a == "张", b == "三"
+# a == "张", b == "三"
 let {"姓": a, "名": b} = 名称
 ```
 
 ```js
 let name = {"firstName": "foo", "lastName": "bar", "middleName": "D"};
 
-// a == "foo", b == "bar"
+# a == "foo", b == "bar"
 let {"firstName": a, "lastName": b} = name
 ```
 
@@ -651,12 +651,12 @@ let {"firstName": a, "lastName": b} = name
 示例：
 
 ```js
-// 姓 == "张", 名 == "三"
+# 姓 == "张", 名 == "三"
 让 {姓, 名} = name
 ```
 
 ```js
-// firstName == "foo", lastName == "bar"
+# firstName == "foo", lastName == "bar"
 let {firstName, lastName} = name
 ```
 
@@ -669,32 +669,32 @@ let {firstName, lastName} = name
 ```js
 让 u = 用户(1, "foo", 99)
 
-// id == 1
+# id == 1
 让 User(id) = u
 
-// id == 1, name == "foo"
+# id == 1, name == "foo"
 让 User(id, name) = u
 
-// id == 1, name == "foo", score == 99
+# id == 1, name == "foo", score == 99
 让 User(id, name, score) = u
 
-// score == 99
+# score == 99
 让 User(_, _, score) = u
 ```
 
 ```js
 let u = User(1, "foo", 99)
 
-// id == 1
+# id == 1
 let User(id) = u
 
-// id == 1, name == "foo"
+# id == 1, name == "foo"
 let User(id, name) = u
 
-// id == 1, name == "foo", score == 99
+# id == 1, name == "foo", score == 99
 let User(id, name, score) = u
 
-// score == 99
+# score == 99
 let User(_, _, score) = u
 ```
 
@@ -717,26 +717,26 @@ let User(_, _, score) = u
 ```js
 让 v = (123, "foo", true)
 
-// a == 123
+# a == 123
 让 (a) = v
 
-// a == 123, b == "foo", c == true
+# a == 123, b == "foo", c == true
 让 (a, b, c) = v
 
-// a == true
+# a == true
 让 (_, _, a) = v
 ```
 
 ```js
 let v = (123, "foo", true)
 
-// a == 123
+# a == 123
 let (a) = v
 
-// a == 123, b == "foo", c == true
+# a == 123, b == "foo", c == true
 let (a, b, c) = v
 
-// a == true
+# a == true
 let (_, _, a) = v
 ```
 
@@ -747,6 +747,6 @@ let (_, _, a) = v
 ```js
 let t = ("foo", ("abc","xyz"), "bar")
 
-// a == "abc", b == "xyz"
+# a == "abc", b == "xyz"
 let (_,(a, b),_) = t
 ```

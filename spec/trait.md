@@ -100,7 +100,7 @@ end
 ```js
 赋予 学生
     学生 新建 (整数 编号, 字符串 姓名)
-        // 运行环境的内部代码
+        # 运行环境的内部代码
     以上
 以上
 ```
@@ -108,7 +108,7 @@ end
 ```js
 assign Student
     Student new (Int id, String name)
-        // the runtime internal code here
+        # the runtime internal code here
     end
 end
 ```
@@ -422,21 +422,21 @@ end
 
 ```js
 赋予 具名 到 用户
-    // 这里无代码
+    # 这里无代码
 以上
 
 赋予 具名 到 学生
-    // 这里无代码
+    # 这里无代码
 以上
 ```
 
 ```js
 assign Named to User
-    // no code here
+    # no code here
 end
 
 assign Named to Student
-    // no code here
+    # no code here
 end
 ```
 

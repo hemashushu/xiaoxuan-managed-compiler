@@ -109,18 +109,18 @@ let b = add (1, 2)
 示例：
 
 ```js
-// 按名称传参
+# 按名称传参
 绘图.直线 (x1=0, y1=0, x2=100, y2=100, 颜色=颜色常数.红色, 线条宽度=3)
 
-// 混合按位置和按名称传参
+# 混合按位置和按名称传参
 绘图.直线 (0, 0, 100, 100, 颜色=颜色常数.红色, 线条宽度=3)
 ```
 
 ```js
-// passing parameters by name
+# passing parameters by name
 draw.line (x1=0, y1=0, x2=100, y2=100, color=ColorConstant.Red, lineWidth=3)
 
-// mixing per-position and per-name passing
+# mixing per-position and per-name passing
 draw.line (0, 0, 100, 100, color=ColorConstant.Red, lineWidth=3)
 ```
 
@@ -214,17 +214,17 @@ let dist = sqrt (3 ^ 2 + 4 ^ 2)
 使用点号调用函数比较接近一般面向对象编程语言的对象实例的方法（method）调用风格和习惯，例如：
 
 ```java
-// Java
+# Java
 User userA = ...;
-int id = userA.id;  // 访问对象的属性
-String text = userA.toString() // 访问对象的方法
+int id = userA.id;             # 访问对象的属性
+String text = userA.toString() # 访问对象的方法
 ```
 
 ```js
-// XiaoXuan
+# XiaoXuan
 let userA = ...
-let id = userA.id  // 访问结构体的成员
-let text = userA.toString() // 调用类 "Display" 的 "toString()" 方法
+let id = userA.id  # 访问结构体的成员
+let text = userA.toString() # 调用类 "Display" 的 "toString()" 方法
 ```
 
 在条件允许的情况下推荐使用第二种调用方式。
@@ -464,13 +464,13 @@ let a = myCombFunc (2, 3)
 函数的组合只能用于只有一个参数的函数，如果一个函数有多个参数，可以使用部分调用（假如函数支持部分调用，即有柯里化的重载）后再组合，比如：
 
 ```js
-让 加十分 = 加 (10)  // "加 (10)" 的返回值是一个部分函数： fn (b) = 10 + b
+让 加十分 = 加 (10)  # "加 (10)" 的返回值是一个部分函数： fn (b) = 10 + b
 让 我的组合函数 = 平方根 & 加十分 & 平方
 让 a = 我的组合函数 (60)
 ```
 
 ```js
-let addTen = add (10)  // "add (10)" return a partial function： fn (b) = 10 + b
+let addTen = add (10)  # "add (10)" return a partial function： fn (b) = 10 + b
 let myCombFunc = sqrt & addTen & square
 让 a = myCombFunc (60)
 ```
@@ -487,19 +487,19 @@ let myCombFunc = sqrt & addTen & square
 示例：
 
 ```js
-// 函数的一般调用方式
+# 函数的一般调用方式
 让 s1 = 测试 (123, "Hello")
 
-// 使用 `调用` 语句来调用
+# 使用 `调用` 语句来调用
 让 args = (123, "Hello")
 让 s2 = 调用 (测试, args)
 ```
 
 ```js
-// normal call
+# normal call
 lets1 = test (123, "Hello")
 
-// call by 'call' statement
+# call by 'call' statement
 let args = (123, "Hello")
 let s2 = call (test, args)
 ```
@@ -589,7 +589,8 @@ XiaoXuan 语言里没有运算符，所有运算符实际上都是函数的别�
 部分内置的中置函数的优先级（从高到低排列）如下，如无单独指出，结合顺序默认都是从左到右：
 
 1. 幂运算：`^`（`幂`，`pow`），结合顺序为从右到左；
-2. 算术运算乘除余：`*`（`乘`，`mul`）、`/`（`除`，`div`），`余`（`rem`）；
+2. 有理数分隔符：`//`；
+2. 算术运算乘除余：`*`（`乘`，`mul`）、`/`（`除`，`div`）、`.*`（`点乘`，`dot_mul`，即两个结构相同的数组逐个元素相乘，或者其中一个是标量）、`./`（`点除`，`dot_div`）、`余`（`rem`）；
 3. 算术运算加减：`+`（`加`，`add`）、`-`（`减`，`sub`)；
 4. 位运算移位：`左移`（`lshift`）、`右移`（`rshift`）、`逻辑右移`（`lrshift`）；
 5. 位运算与或：`位与`（`bit_and`）、`位或`（`bit_or`）。这个跟其他语言（如 C、Java）有所不同，其他语言通常位运算的优先级在相等比较之后。因为 XiaoXuan 语言的逻辑值不能转换为数字类型，且只能进行逻辑运算，又因为大小比较和相等比较运算的结果是逻辑值，所以 "位运算与或" 放在这两种运算之后则变得无意义，所以 XiaoXuan 把它的优先级调高；
@@ -603,14 +604,14 @@ XiaoXuan 语言里没有运算符，所有运算符实际上都是函数的别�
 XiaoXuan 里没有：`负` 运算符 `-`、位运算 `位反` 运算符 `~` 以及逻辑 `非` 运算符 `!`，只有相应的函数 `负`（`neg`），`位反`（`bit_inv`）和 `非`（`not`） 函数，示例：
 
 ```java
-// Java
+# Java
 int a = - (3 + 4);
 bool b = !(true && false);
 int c = ~0xff00aabb
 ```
 
 ```js
-// XiaoXuan
+# XiaoXuan
 let a = neg (3 + 4)
 let b = not (true && false)
 let c = bit_inv (0xff00aabb)
@@ -814,11 +815,11 @@ let fav = pick(numbers, fn (i) = i > 3 )
     返回 匿名函数 (整数 x) = i + x
 以上
 
-让 f1 = 增长 (10)  // 函数 f1 绑定了值为 10 的变量 i
-让 f2 = 增长 (20)  // 函数 f2 绑定了值为 20 的变量 i
+让 f1 = 增长 (10)  # 函数 f1 绑定了值为 10 的变量 i
+让 f2 = 增长 (20)  # 函数 f2 绑定了值为 20 的变量 i
 
-输出行 (f1 (2)) // 输出 12
-输出行 (f2 (2)) // 输出 22
+输出行 (f1 (2)) # 输出 12
+输出行 (f2 (2)) # 输出 22
 ```
 
 ```js
@@ -828,11 +829,11 @@ function F inc(Int i) where
     return fn (x) i + x
 end
 
-let f1 = inc (10)  // `f1` binds the variable i with value 10
-let f2 = inc (20)  // `f2` binds the variable i with value 10
+let f1 = inc (10)  # `f1` binds the variable i with value 10
+let f2 = inc (20)  # `f2` binds the variable i with value 10
 
-writeLine (f1 (2)) // output 12
-writeLine (f2 (2)) // output 22
+writeLine (f1 (2)) # output 12
+writeLine (f2 (2)) # output 22
 ```
 
 在支持可变变量的编程语言里，f1 和 f2 里引用了一个共同的变量 i，假如变量 i 的值（或者 i 的成员的值）被 f1 改变了，则该改变也会反映到 f2 所绑定的变量 i 里，有时这种改变并不是预想的，因此引起错误。示例：
@@ -847,23 +848,23 @@ function inc() {
         fns.push(fn);
     }
 
-    // fns 里包含 10 个匿名函数，其绑定的 step 的值都是 10，
-    // 而不是 1 到 10。
+    # fns 里包含 10 个匿名函数，其绑定的 step 的值都是 10，
+    # 而不是 1 到 10。
 
     for(let fn of fns) {
-        console.log(fn(5)); // 都输出 15
+        console.log(fn(5)); # 都输出 15
     }
 
-    // 下面是修正版
+    # 下面是修正版
     let ffs = [];
     for(let i=0; i<10; i++) {
-        let step = i; // 复制 i 值到变量 step
+        let step = i; # 复制 i 值到变量 step
         let fn = x => x + i;
         ffs.push(fn);
     }
 
     for(let ff of ffs) {
-        console.log(ff(5)); // 依次输出 5,6,7,8, ..., 15
+        console.log(ff(5)); # 依次输出 5,6,7,8, ..., 15
     }
 }
 ```
@@ -882,15 +883,15 @@ function makeCounter() {
     ]
 }
 
-// makeCounter 函数返回一个数组，数组有三个匿名函数，
-// 一个递增，一个递减，一个返回当前值
+# makeCounter 函数返回一个数组，数组有三个匿名函数，
+# 一个递增，一个递减，一个返回当前值
 
 let [inc, dec, get] = makeCounter();
-inc();  // 返回 2
-inc();  // 返回 3
-get();  // 返回 3
-dec();  // 返回 2
-dec();  // 返回 1
+inc();  # 返回 2
+inc();  # 返回 3
+get();  # 返回 3
+dec();  # 返回 2
+dec();  # 返回 1
 ```
 
 在 JavaScript 环境里，每个函数被执行时都有两个指针，一个指向父词法环境（即调用者 caller 的词法环境） ，一个指向当前的词法环境（即 callee 自己的词法环境），匿名函数也不例外。当匿名函数被当作返回值跳出所在的函数时，函数尚未被执行，所以没有自己的词法环境。但因为匿名函数有对其所在的环境的引用（即存在上述的第一个指针），所以所在的函数的词法环境不会被回收，会一直被保持者，直到匿名函数被回收为止。
@@ -907,27 +908,27 @@ XiaoXuan 的变量值是不可变的，因此在匿名函数里引用的外部�
 示例：
 
 ```js
-// 假设函数签名为： Int <= (Int)
-匿名函数 Int (Int x) = x + 10 // 标准版匿名函数
-匿名函数 (x) = x + 10         // 简化版匿名函数
-执行 % + 10               // `执行` 版匿名函数
+# 假设函数签名为： Int <= (Int)
+匿名函数 Int (Int x) = x + 10 # 标准版匿名函数
+匿名函数 (x) = x + 10         # 简化版匿名函数
+执行 % + 10               # `执行` 版匿名函数
 
-// 假设函数签名为：Int <= (Int, Int)
-匿名函数 Int (Int x, Int y) = sqrt(x^2 + y^2) // 标准版匿名函数
-匿名函数 (x, y) = sqrt(x^2 + y^2)             // 简化版匿名函数
-执行 sqrt(%1^2 + %2^2)                    // `执行` 版匿名函数
+# 假设函数签名为：Int <= (Int, Int)
+匿名函数 Int (Int x, Int y) = sqrt(x^2 + y^2) # 标准版匿名函数
+匿名函数 (x, y) = sqrt(x^2 + y^2)             # 简化版匿名函数
+执行 sqrt(%1^2 + %2^2)                    # `执行` 版匿名函数
 ```
 
 ```js
-// function signature: Int <= (Int)
-fn Int (Int x) = x + 10 // standard anonymous function
-fn (x) = x + 10         // simplified anonymous function
-do % + 10               // `do` version of anonymous function
+# function signature: Int <= (Int)
+fn Int (Int x) = x + 10 # standard anonymous function
+fn (x) = x + 10         # simplified anonymous function
+do % + 10               # `do` version of anonymous function
 
-// function signature：Int <= (Int, Int)
-fn Int (Int x, Int y) = sqrt(x^2 + y^2) // standard anonymous function
-fn (x, y) = sqrt(x^2 + y^2)             // simplified anonymous function
-do sqrt(%1^2 + %2^2)                    // `do` version of anonymous function
+# function signature：Int <= (Int, Int)
+fn Int (Int x, Int y) = sqrt(x^2 + y^2) # standard anonymous function
+fn (x, y) = sqrt(x^2 + y^2)             # simplified anonymous function
+do sqrt(%1^2 + %2^2)                    # `do` version of anonymous function
 ```
 
 下面是一个实际的例子：
@@ -1072,16 +1073,16 @@ let double_s = s.map(do
 01  函数 说 (字符串 name) = 输出行 (name)
 02  函数 说 (字符串 name, 字符串 sentence) = 输出格式行 ("{} 你好, {}", name, sentence)
 03
-04  说 ("张三", "吃饭了吗") // 调用 02 函数
-05  说 ("张三") // 调用 01 函数
+04  说 ("张三", "吃饭了吗") # 调用 02 函数
+05  说 ("张三") # 调用 01 函数
 ```
 
 ```js
 01  function say (String name) = writeLine (name)
 02  function say (String name, String sentence) = formatWriteLine ("Hi {}, {}", name, sentence)
 03
-04  say ("Foo", "What's up") // call 02
-05  say ("Foo") // call 01
+04  say ("Foo", "What's up") # call 02
+05  say ("Foo") # call 01
 ```
 
 * 函数重载要求参数列表必须**不相同**，可以是参数数量不相同，可以是参数的类型不相同，可以是参数的模式不相同，或者上面三种情况的组合。
@@ -1095,16 +1096,16 @@ let double_s = s.map(do
 01  函数 显示余数 (Int a, Int 0) = 输出行 ("除数不能为零")
 02  函数 显示余数 (Int a, Int b) = 输出格式行 ("余数为 {}", a `余` b)
 03
-04  显示余数 (5, 2) // 02 行函数被调用
-05  显示余数 (5, 0) // 01 行函数被调用
+04  显示余数 (5, 2) # 02 行函数被调用
+05  显示余数 (5, 0) # 01 行函数被调用
 ```
 
 ```js
 01  function showRemain (Int a, Int 0) = writeLine ("The divisor cannot be zero")
 02  function showRemain (Int a, Int b) = writeLine ("The remainder is {}", a `rem` b)
 03
-04  showRemain (5, 2) // 02 function is invoked
-05  showRemain (5, 0) // 01 function is invoked
+04  showRemain (5, 2) # 02 function is invoked
+05  showRemain (5, 0) # 01 function is invoked
 ```
 
 运行环境会根据函数的定义顺序，对每个函数的参数列表进行匹配，只有匹配中的那个函数定义才会被执行。
@@ -1133,10 +1134,10 @@ let double_s = s.map(do
 05      默认: 输出行 ("余数为 {}", a `余` b)
 06  以上
 07
-08  显示余数 (5, 5) // 执行 04 行
-09  显示余数 (5, 2) // 执行 05 行
-10  显示余数 (5, 6) // 执行 03 行
-11  显示余数 (5, 0) // 执行 01 行
+08  显示余数 (5, 5) # 执行 04 行
+09  显示余数 (5, 2) # 执行 05 行
+10  显示余数 (5, 6) # 执行 03 行
+11  显示余数 (5, 0) # 执行 01 行
 ```
 
 ```js
@@ -1147,10 +1148,10 @@ let double_s = s.map(do
 05      default: writeLine ("The remainder is {}", a `rem` b)
 06  end
 07
-08  showRemain (5, 5) // execute line 04
-09  showRemain (5, 2) // execute line 05
-10  showRemain (5, 6) // execute line 03
-11  showRemain (5, 0) // execute line 01
+08  showRemain (5, 5) # execute line 04
+09  showRemain (5, 2) # execute line 05
+10  showRemain (5, 6) # execute line 03
+11  showRemain (5, 0) # execute line 01
 ```
 
 每一个分支情况后面都接着一个能返回逻辑值的表达式，当表达式返回 `真` 时，该分支会被执行。`分支` 语句的语法跟 `条件` 语句一样（除了关键字不一样之外）。条件语句的详细用法请参见 [流程控制](control-flow.md)。
