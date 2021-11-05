@@ -14,14 +14,13 @@
       - [函数](#函数)
         - [类型简写](#类型简写)
     - [定义数据类型别名](#定义数据类型别名)
-    - [类型的自动（隐式）转换](#类型的自动隐式转换)
+    - [字面两类型的自动（隐式）转换](#字面两类型的自动隐式转换)
   - [值的不可变性](#值的不可变性)
   - [变量的不可变性](#变量的不可变性)
   - [变量的可变性（::不支持）](#变量的可变性不支持)
     - [变量的作用域](#变量的作用域)
     - [全局变量（::不支持）](#全局变量不支持)
   - [常量](#常量)
-    - [局部常量](#局部常量)
   - [枚举](#枚举)
 
 <!-- /code_chunk_output -->
@@ -39,6 +38,8 @@
 * `let Int a = 123`
 
 在 XiaoXuan 语言里，基本类型的数据是值，结构体、联合体也是值，一个函数也可以作为一个值，所以它们都可以赋值给一个变量。
+
+变量名可以是大小写字母、中文（严格来说代码点大于 u{00A0} 的 Unicode 字符均可）、数字和下划线的组合，但第一个字不能是数字，变量名区分大小写。
 
 ### 数据类型
 
@@ -128,10 +129,10 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
 
 它的签名是：
 
-* `整数 <= (整数, 整数)`
-* `Int <= (Int, Int)`
+* `整数 <- (整数, 整数)`
+* `Int <- (Int, Int)`
 
-其中 `<=` 符号用于分隔函数返回值的数据类型以及函数的参数列表，也表示这个表达式是一个函数签名。
+其中 `<-` 符号用于分隔函数返回值的数据类型以及函数的参数列表，也表示这个表达式是一个函数签名。
 
 在字面上，函数的签名如同把函数的名称、参数的名称、函数主体通通全部移除之后的骨架，也就是说，函数签名只包含：
 
@@ -140,8 +141,8 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
 
 有时为了便于阅读理解，也可以保留函数的签名的参数名称，比如:
 
-* `整数 <= (整数 number, 整数 amount)`
-* `Int <= (Int number, Int amount)`
+* `整数 <- (整数 number, 整数 amount)`
+* `Int <- (Int number, Int amount)`
 
 对于范型（即类型参数化）函数，参数的数据类型就是范型参数，比如：
 
@@ -150,19 +151,19 @@ XiaoXuan 有类型推导机制，当值的类型可以确定的情况下，可�
 
 它的签名是：
 
-* `甲型 <= (甲型, 乙型)`
-* `T <= (T, E)`
+* `甲型 <- (甲型, 乙型)`
+* `T <- (T, E)`
 
 如果一个函数的参数的数据类型是函数，则该函数的定义语句可能会很长以至于影响阅读，比如：
 
 ```js
-函数 返回值的数据类型 函数名称 (整数 <= (整数 a, 整数 b) 参数1, ..., 字符串 <= (字符串 s, 字符 c) 参数N)
+函数 返回值的数据类型 函数名称 (整数 <- (整数 a, 整数 b) 参数1, ..., 字符串 <- (字符串 s, 字符 c) 参数N)
     ...
 以上
 ```
 
 ```js
-function DataType function_name (Int <= (Int a, Int b) param1, ..., String <= (String s, Char c) paramN)
+function DataType function_name (Int <- (Int a, Int b) param1, ..., String <- (String s, Char c) paramN)
     ...
 end
 ```
@@ -173,16 +174,16 @@ XiaoXuan 语法支持 `其中`（`where`） 关键字，以允许在函数的主
 
 ```js
 函数 返回值的数据类型 函数名称 (签名名称1 参数1, ..., 签名名称N 参数N) 其中
-    签名名称1 = 整数 <= (整数 a, 整数 b),
-    签名名称N = 字符串 <= (字符串 s, 字符 c)
+    签名名称1 = 整数 <- (整数 a, 整数 b),
+    签名名称N = 字符串 <- (字符串 s, 字符 c)
     ...
 以上
 ```
 
 ```js
 function DataType function_name (type1 param1, ..., typeN paramN) where
-    type1 = Int <= (Int a, Int b),
-    typeN = String <= (String s, Char c)
+    type1 = Int <- (Int a, Int b),
+    typeN = String <- (String s, Char c)
     ...
 end
 ```
@@ -204,16 +205,16 @@ end
 类型 字符串 = 列表<字符>
 类型 空型 = 结果<单元, 错误>
 类型 排队令牌 = (整数, 字符串)
-类型 整数过滤函数 = 逻辑 <= (整数)
-类型 过滤函数<T> = 逻辑 <= (T)
+类型 整数过滤函数 = 逻辑 <- (整数)
+类型 过滤函数<T> = 逻辑 <- (T)
 ```
 
 ```js
 type String = List<Char>
 type Void = Result<Unit, Error>
 type Token = (Int, String)
-type IntFilterFunc = Boolean <= (Int)
-type FilterFunc<T> = Boolean <= (T)
+type IntFilterFunc = Boolean <- (Int)
+type FilterFunc<T> = Boolean <- (T)
 ```
 
 使用类型别名可以缩短函数的定义语句，比如下面几个函数的定义的结果是一样的。
@@ -221,20 +222,20 @@ type FilterFunc<T> = Boolean <= (T)
 ```js
 ## 直列式
 
-函数 列表<整数> 筛选合格者(列表<整数> items, 逻辑 <= (整数) f)
+函数 列表<整数> 筛选合格者(列表<整数> items, 逻辑 <- (整数) f)
     ...
 以上
 
 ## 使用 `其中` 关键字
 
 函数 列表<整数> 筛选合格者(列表<整数> items, 整数过滤函数 f) 其中
-    整数过滤函数 = 逻辑 <= (整数)
+    整数过滤函数 = 逻辑 <- (整数)
     ...
 以上
 
 ## 使用 `类型` 定义别名
 
-类型 整数过滤函数 = 逻辑 <= (整数)
+类型 整数过滤函数 = 逻辑 <- (整数)
 函数 列表<整数> 筛选合格者(列表<整数> items, 整数过滤函数 f)
     ...
 以上
@@ -243,44 +244,65 @@ type FilterFunc<T> = Boolean <= (T)
 ```js
 ## flat list
 
-function List<Int> passFilter(List<Int> items, Boolean <= (Int) f)
+function List<Int> passFilter(List<Int> items, Boolean <- (Int) f)
     ...
 end
 
 ## using 'where` keyword
 
 function List<Int> passFilter(List<Int> items, IntFilterFunc f) where
-    IntFilterFunc = Boolean <= (Int)
+    IntFilterFunc = Boolean <- (Int)
     ...
 end
 
 ## using 'type' define alias name
 
-type IntFilterFunc = Boolean <= (Int)
+type IntFilterFunc = Boolean <- (Int)
 function List<Int> passFilter(List<Int> items, IntFilterFunc f)
     ...
 end
 ```
 
-### 类型的自动（隐式）转换
+### 字面两类型的自动（隐式）转换
 
-当将一个能表示范围较小的数值的字面量赋值给一个范围较大的变量时，运行环境会进行类型的隐式转换（也叫类型提升）。
+当将一个能表示范围较小的数值的字面量赋值给一个范围较大的变量时，运行环境（的解析器）会进行类型的隐式转换（有些语言也叫类型提升）。
 
-比如将一个整数（默认是 `Int`）的字面量赋值给 `Float` 类型的变量时，该字面量会被提升为 `Float` 类型。当两个不同类型的字面量进行算术运算时（比如整数和浮点数之间的加法、减法等），也会进行类型提升。
+比如将一个整数（默认是 `Int`）的字面量赋值给 `Float` 类型的变量时，该字面量会被提升为 `Float` 类型。
 
-需要注意的是，跟类似 Java，Python，Julia 等语言不同，类型提升仅发生下面两种情况：
+示例：
 
-* 字面量赋值给指定类型的变量；
+`let Real r = 3`
+
+会被自动替换为：
+
+`let Real r = 3.0`
+
+注意，如果将一个整数字面量（默认为 `Int64` 类型）赋值给诸如 `Int32`、或者 `Int8` 等类型的变量时，解析器也会事先进行检查，然后再赋值正确的数值给变量。
+
+类型隠式转换仅发生在字面量赋值语句里，下面情况不会进行类型转换：
+
 * 字面量之间的算术运算。
-
-下面情况不会进行类型转换：
-
 * 字面量作为参数传给函数；
 * 不同类型变量的赋值；
 * 字面量跟不同类型的变量之间的算术运算；
 * 不同类型变量之间的算术运算。
 
 XiaoXuan 的类型转换是发生在语法分析阶段，而不是在运行时。
+
+当两个不同类型的**字面量**进行算术运算时（比如整数和浮点数之间的加法、减法等），其实不存在类型的隠式转换。其运算过程是：
+
+1. 首先运行环境会获取第一个字面量的数据类型；
+2. 然后查找该类型对应运算的函数；
+3. 然后根据第二个操作数的类型寻找相应的方法重载；
+4. 如果找到则调用该方法，如果找不到则抛出运行时错误。
+
+示例：
+
+`3 + 4.5`
+
+首先运行环境会找到 `Int64::add` 方法，然后继续查找是否存在该方法的重载 `Int64::add(Int64, Real64)` 并调用它，即该加法表达式实际上被翻译为：
+
+`Int64::add(3, 4.5)`
 
 ## 值的不可变性
 
@@ -383,57 +405,55 @@ writeLine(c)
 ```js
 module apple
 
-define val n = 11 # 定义模块级的变量 n
+function a ()
+    let x = 22           # 定义函数级的变量 x
+    # let x = 99         # 当前环境已存在名称为 x 的变量，这里无法再定义变量 x
 
-define func Result<Unit, Error> a ()
-    writeLine(n) # 输出模块级的 n = 11
-    let n = 22   # 定义函数级的变量 n，覆盖了模块级的变量 n
-    writeLine(n) # 输出函数级的 n = 22
+    for d in [1..10]     # 变量 d 的作用域仅限当前 for 语句块之内
+        writeLine(x)     # 能输出函数级的变量 x = 22
+        # let x = 33     # 当前环境仍然存在名称为 x 的变量，这里无法再定义变量 x
 
-    for d in [1..10] # 变量 d 的作用域仅限当前 foreach 语句块之内
-        writeLine(n) # 输出函数级的 n = 22
-        let n = 33   # 定义语句块级的变量 n，覆盖了函数级的变量 n
-        writeLine(n) # 输出语句块级的变量 n = 33
+        let y = 33       # 定义语句块级的变量 y
 
         if d>0 then
-            writeLine(n) # 输出语句块级的变量 n = 33
-            let n = 44   # 定义较内层的语句块级的变量 n，覆盖了较外层的变量 n
-            writeLine(n) # 输出较内层的语句块级的变量 n = 44
+            writeLine(x) # 能输出函数级的变量 x = 22
+            writeLine(y) # 能输出语句块级的变量 y = 33
+
+            let z = 44   # 定义内层语句块级的变量 z
         end
 
-        writeLine(n) # 输出语句块级的变量 n = 33
+        # writeLine(z)   # 这里已经超出内层语句块级的变量 z 作用域
+
+        let z = 55       # 当前环境不存在名称为 z 的变量，这里可以定义语句块级的变量 z
     end
 
-    writeLine(n) # 输出函数级的 n = 22
+    # writeLine(d)       # 这里已经超出 for 语句块变量 d 的作用域
 end
 
-define func Result<Unit, Error> b ()
-    writeLine(n) # 输出模块级的 n = 11
+function b ()
+    # writeLine(x)       # 这里无法访问函数 a 里的变量 x
 end
 ```
 
-注意在同一层作用域里定义同名的变量是不允许的，比如下面的代码会引起运行时异常：
+注意在有效作用域里不允许存在同名变量，比如下面的代码会引起运行时异常：
 
 ```js
 函数 空型 测试()
     让 n = 123
-    如果 n > 100 那么
+    让 n = 456        # 当前环境已存在名称为 n 的变量，这里无法再定义变量 n
+
+    如果 n > 100 那么 # 当前环境已存在名称为 n 的变量，这里无法再定义变量 n
       ...
     以上
 
-    让 n = 456 # 这句会引起运行时异常
+    设有 i 取自 [1..10]
+        ...
+        让 n = 789    # 当前环境已存在名称为 n 的变量，这里无法再定义变量 n
+        ...
+    以上
+
+    让 i = 666        # 这里已经超出循环语句块变量 i 的作用域，这里可以定义变量 i
 以上
-```
-
-```js
-function Void test()
-    let n = 123
-    if n > 100 then
-      ...
-    end
-
-    let n = 456 # Runtime error
-end
 ```
 
 ### 全局变量（::不支持）
@@ -500,6 +520,12 @@ end
 定义常量的语法是：
 
 ```js
+常量 数据类型 常量名称 = 值
+```
+
+也可以一次定义一组：
+
+```js
 常量 数据类型 常量组名称
    成员名称1 = 值1
    成员名称2 = 值2
@@ -508,88 +534,90 @@ end
 以上
 ```
 
-XiaoXuan 规定常量必须一组一组地定义，不能单独地使用一个名称定义一个常量值，访问的时候使用 `组名.成员名` 的格式。
+<!-- XiaoXuan 规定常量必须一组一组地定义，不能单独地使用一个名称定义一个常量值，-->
+访问常量组的成员是，使用 `组名::成员名` 的格式。
 
 示例：
 
 ```js
-模块 http.client
+名称空间 http::client
+    常量 整数 ResponseCode
+        Ok = 200
+        Moved = 301
+        Found = 302
+        NotModified = 304
+        BadRequest = 400
+        Forbidden = 403
+        NotFound = 404
+        ServerError = 500
+        ServiceUnavailable = 503
+    以上
 
-常量 整数 ResponseCode
-    Ok = 200
-    Moved = 301
-    Found = 302
-    NotModified = 304
-    BadRequest = 400
-    Forbidden = 403
-    NotFound = 404
-    ServerError = 500
-    ServiceUnavailable = 503
-以上
-
-函数 结果<单元> 第一个测试 ()
-    输出行 (ResponseCode.Ok) # 输出常量的实际值 "200"
-    输出行 (ResponseCode.NotFound) # 输出 "404"
+    函数 结果<单元> 第一个测试 ()
+        输出行 (ResponseCode::Ok) # 输出常量的实际值 "200"
+        输出行 (ResponseCode::NotFound) # 输出 "404"
+    以上
 以上
 ```
 
 ```js
-module http.client
+namespace http.client
+    const Int ResponseCode
+        Ok = 200
+        Moved = 301
+        Found = 302
+        NotModified = 304
+        BadRequest = 400
+        Forbidden = 403
+        NotFound = 404
+        ServerError = 500
+        ServiceUnavailable = 503
+    end
 
-const Int ResponseCode
-    Ok = 200
-    Moved = 301
-    Found = 302
-    NotModified = 304
-    BadRequest = 400
-    Forbidden = 403
-    NotFound = 404
-    ServerError = 500
-    ServiceUnavailable = 503
-end
-
-function Result<Unit, Error> firstTest ()
-    writeLine (ResponseCode.Ok)       # output the actual value "200"
-    writeLine (ResponseCode.NotFound) # output "404"
+    function Result<Unit, Error> firstTest ()
+        writeLine (ResponseCode::Ok)       # output the actual value "200"
+        writeLine (ResponseCode::NotFound) # output "404"
+    end
 end
 ```
 
 在模块里定义的常量可以在程序的任何地方所读取，所以也称为 "全局常量"，示例：
 
 ```js
-模块 main
+名称空间 main
+    函数 结果<单元, 错误> 第二个测试 ()
+        导入 http::client::ResponseCode # 导入语句可以写在任何地方
 
-函数 结果<单元, 错误> 第二个测试 ()
-    导入 http.client.ResponseCode # 导入语句可以写在任何地方
-
-    输出行 (ResponseCode.Ok) # 输出 "200"
-    输出行 (ResponseCode.NotFound) # 输出 "404"
-以上
+        输出行 (ResponseCode::Ok) # 输出 "200"
+        输出行 (ResponseCode::NotFound) # 输出 "404"
+    以上
+名称空间
 ```
 
 ```js
-module main
+namespace main
+    function Result<Unit, Error> secondTest ()
+        import http.client.ResponseCode # Import statements can be written anywhere
 
-function Result<Unit, Error> secondTest ()
-    import http.client.ResponseCode # Import statements can be written anywhere
-
-    writeLine (ResponseCode.Ok) # output "200"
-    writeLine (ResponseCode.NotFound) # output "404"
+        writeLine (ResponseCode::Ok) # output "200"
+        writeLine (ResponseCode::NotFound) # output "404"
+    end
 end
 ```
 
 注意：
 
-* 导入全局常量时必须整组导入，不能只导入单独一个值，比如 `import http.client.ResponseCode` 是对的，但 `import http.client.ResponseCode.Ok` 是错误的。
-* 常量组不是一种数据类型，不能作为变量或者参数的数据类型，它仅仅是名称的一部分而已。
-* 常量的值只能是基本的数据类型，或者结构体、联合体使用默认构造函数创建的实例，不能是一个表达式，即常量的右值不能是一表达式，比如一个函数的返回值。
+<!--
+* 导入全局常量时必须整组导入，不能只导入单独一个值，比如 `import http.client.ResponseCode` 是对的，但 `import http.client.ResponseCode.Ok` 是错误的。-->
 
-### 局部常量
+* 常量组的组名不是一种数据类型，不能作为变量或者参数的数据类型，它仅仅是名称空间的一部分而已。
 
-有时可能只想在某一个函数里要一个严格只读的值，而不是想定义全局常量，比如在模式匹配里，想定义一个临时的常量（即在地方地方用不着的常量）使用，对于在函数范围内定义的常量，可以不需要定义为一个组，即支持使用一个名称定义一个常量，语法：
+<!--
+* 常量的值只能是基本的数据类型，或者结构体、联合体使用默认构造函数创建的实例，不能是一个表达式，即常量的右值不能是一表达式，比如一个函数的返回值。-->
 
-* `常量 数据类型 常量名称 = 值`
-* `const DataType ConstantName = value`
+<!--### 局部常量 -->
+
+常量也可以在函数范围内定义，<!--比如有时可能只想在某一个函数里要一个严格只读的值，而不是想定义全局常量，--> 比如想定义一个临时的常量（即在地方地方用不着的常量）给模式匹配使用，对于在函数范围内定义的常量，就不能定义常量组了 <!--，可以不需要定义为一个组，即支持使用一个名称定义一个常量，语法：-->
 
 示例：
 

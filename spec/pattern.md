@@ -429,11 +429,17 @@ end
 
 需要注意的是，使用正则匹配的模式匹配时，"被检查的数据" 必须是字符串类型。
 
-如果需要指定正则匹配的参数，则使用 `(pattern_expression, option_value_or_list)` 元组代替正则表达式字符串。示例：
+<!-- 如果需要指定正则匹配的参数，则使用 `(pattern_expression, option_value_or_list)` 元组代替正则表达式字符串。-->
+
+`regular` 后面也能接受一个正则实例，使用正则构造函数 `Regex(String, Options)` 或者使用正则字面量 `/String/Options` 均可构建正则对象。
+
+示例：
 
 ```js
 match s
-    case regular ("[a-z]+", RegularConst.ignoreCase) [name]:
+    case regular new Regex("[a-z]+", RegularConst.ignoreCase) [name]:
+        ...
+    case regular /[0-9]+/ [number]:
         ...
 end
 ```
