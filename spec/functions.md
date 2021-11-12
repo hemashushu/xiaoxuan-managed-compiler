@@ -13,16 +13,16 @@
       - [嵌套调用](#嵌套调用)
       - [参数列表换行](#参数列表换行)
       - [尾部调用优化](#尾部调用优化)
-    - [实例方法和特性函数](#实例方法和特性函数)
-    - [函数的点号调用方式](#函数的点号调用方式)
+    - [实例方法和特性函数 （::考虑移动）](#实例方法和特性函数-考虑移动)
+    - [函数的点号调用方式 （::考虑移动）](#函数的点号调用方式-考虑移动)
       - [一般函数（::不支持）](#一般函数不支持)
       - [连续的函数点号调用（::不支持）](#连续的函数点号调用不支持)
-    - [拆封](#拆封)
-      - [指定拆封的替换值](#指定拆封的替换值)
-      - [指定拆封的替换值为表达式](#指定拆封的替换值为表达式)
-      - [指定拆封的替换为语句块](#指定拆封的替换为语句块)
-      - [会自动退出函数的拆封](#会自动退出函数的拆封)
-    - [链式调用](#链式调用)
+    - [拆封 （::考虑移动）](#拆封-考虑移动)
+      - [指定拆封的替换值 （::考虑移动）](#指定拆封的替换值-考虑移动)
+      - [指定拆封的替换值为表达式 （::考虑移动）](#指定拆封的替换值为表达式-考虑移动)
+      - [指定拆封的替换为语句块 （::考虑移动）](#指定拆封的替换为语句块-考虑移动)
+      - [会自动退出函数的拆封 （::考虑移动）](#会自动退出函数的拆封-考虑移动)
+    - [链式调用 （::考虑移动）](#链式调用-考虑移动)
     - [函数的组合](#函数的组合)
     - [使用 `调用` 函数调用函数（::不支持）](#使用-调用-函数调用函数不支持)
     - [函数的中置调用方式](#函数的中置调用方式)
@@ -43,12 +43,10 @@
       - [流程控制语句当中的 `返回` 关键字](#流程控制语句当中的-返回-关键字)
       - [尾部调用](#尾部调用)
     - [函数的重载](#函数的重载)
-      - [范型函数的重载](#范型函数的重载)
       - [跨模块重载（::不支持）](#跨模块重载不支持)
       - [参数默认值](#参数默认值)
-    - [函数的分支](#函数的分支)
+    - [分支函数](#分支函数)
       - [函数的分支与数学的函数定义](#函数的分支与数学的函数定义)
-      - [函数的模式匹配](#函数的模式匹配)
   - [纯函数](#纯函数)
 
 <!-- /code_chunk_output -->
@@ -192,7 +190,7 @@ let dist = sqrt (3 ^ 2 + 4 ^ 2)
 
 实际上语法解析器在满足尾部调用优化的情况下，会把调用函数自身的语句替换成 `回到`（`recur`）语句。
 
-### 实例方法和特性函数
+### 实例方法和特性函数 （::考虑移动）
 
 如果某个数据类型（包括结构体和联合体）具备了某个`特性`（`Trait`，又叫做类型类、TypeClass），或者被赋予了实例方法，则可以在这个数据类型的实例上使用点号（"."）来调用特性当中的函数或者实例方法。
 
@@ -256,7 +254,7 @@ let text = userA.toString() # 调用类 "Display" 的 "toString()" 方法
 
 直接在数字后面写上点号和函数名称会引起运行时异常。
 
-### 函数的点号调用方式
+### 函数的点号调用方式 （::考虑移动）
 
 #### 一般函数（::不支持）
 
@@ -334,7 +332,7 @@ show (j)
 
 点号连续调用的结合方向是从左到右的。
 
-### 拆封
+### 拆封 （::考虑移动）
 
 如果一个值的类型为 `Result` 或者 `Option`，除了可以使用模式解构获取其有效值，还能通过拆封关键字 "??" 进行读取。
 
@@ -346,7 +344,7 @@ show (j)
 
 拆封关键字只可以作用在实现了 `封装`（`Wrapper`） 类列的数据，否则会引起运行时异常。
 
-#### 指定拆封的替换值
+#### 指定拆封的替换值 （::考虑移动）
 
 拆封关键字 "??" 的右侧用于指定拆封失败后的替换值（也可以称为默认值）。
 
@@ -361,7 +359,7 @@ show (j)
 * 当 `a` 的值为 `Some(123)` 时，变量 `b` 的值为 `123`，
 * 当 `a` 的值为 `Nothing` 时，变量 `b` 的值为 `456`。
 
-#### 指定拆封的替换值为表达式
+#### 指定拆封的替换值为表达式 （::考虑移动）
 
 拆封关键字 `??` 的右侧除了可以是基本的数值，也可以是任意返回类型相符合的表达式。
 
@@ -376,7 +374,7 @@ let x = parseDec(s) ?? parseHex(s) ?? parseBin(s) ?? 0
 
 拆封默认值关键字的结合顺序是从左到右。
 
-#### 指定拆封的替换为语句块
+#### 指定拆封的替换为语句块 （::考虑移动）
 
 拆封关键字 "??" 的右侧还可以是一个语句块，只要该语句块的返回类型相符合即可。如果该语句块由多个语句组成，需要使用一对括号把它们包围起来，在这个语句块了可以使用特殊变量 `%` 获取拆封失败的详细情况。
 
@@ -415,7 +413,7 @@ let file = match File.open("hello.txt")
     end
 ```
 
-#### 会自动退出函数的拆封
+#### 会自动退出函数的拆封 （::考虑移动）
 
 有时候希望在拆封失败时直接让函数返回失败值，即退出函数，而不是抛出运行时异常，这样可以使用 "?" 关键字拆封。
 
@@ -444,7 +442,7 @@ function Result<String, IO.Error> read(String filePath)
 end
 ```
 
-### 链式调用
+### 链式调用 （::考虑移动）
 
 跟 "连续函数点号调用" 类似，关键字 ">>" 也能连续调用函数，只需第二个函数的首个参数的数据类型跟第一个函数的返回值拆封后的数据类型一致即可。可以粗略地认为 ">>" 关键字是 "??" 关键字和函数点号调用的结合体。
 
@@ -1122,39 +1120,6 @@ let double_s = s.map(x =>
 * 函数重载要求参数列表必须**不相同**，可以是参数数量不相同，可以是参数的类型不相同，可以是参数的模式不相同，或者上面三种情况的组合。
 * 函数重载要求返回值数据类型必须**相同**，实际上，在同一个模块里不允许同名但不同返回值类型的函数。
 
-#### 范型函数的重载
-
-当范型函数的实际类型不同时，这时候的同名函数不算重载，比如：
-
-有范型函数 "sum" 的定义如下：
-
-```js
-function T sum<T>(List<T> numbers) where
-    T limit Add
-    let default = T.default()
-    fold(numbers, (i, sum) => i + sum, default)
-end
-```
-
-当使用不同的类型调用（比如分别使用 Int 和 Float 类型调用）该函数时，范型函数的两次调用可以认为是两个不相干的函数，也可以认为是一份（函数）代码更改了类型然后复制了一份。示例：
-
-```js
-let a1 = [1,2,3,4,5]
-let a2 = [1.0, 2.1, 3.2, 4.3, 5.4]
-
-# 调用了函数 function Int sum<Int>(List<Int> numbers) ...
-let s1 = sum(a1)
-
-# 调用了函数 function Float sum<Float>(List<Float> numbers) ...
-let s2 = sum(a2)
-```
-
-对于范型函数，只有参数类型（而不是类型代号）不同时，才是函数重载。示例：
-
-```js
-function T sum<T>(List<T> numbers)...
-function T sum<T>(Matrix<T> numbers) ...
-```
 
 #### 跨模块重载（::不支持）
 
@@ -1267,47 +1232,47 @@ end
 详细的模式匹配见 [08 模式](pattern-and-matching.md)
 -->
 
-### 函数的分支
+### 分支函数
 
-即使参数通过了模式匹配，函数还能再增加一道分支（在诸如 Haskell 语言里也叫 "哨卫"，"guard"）让函数根据不同的条件执行不同的主体。
+可以在函数定义后面使用关键字 `分支`（`branch`）让函数根据不同的条件执行不同的主体，这种函数称为 "分支函数"。
 
-函数分支语句的关键字是 `分支`（`branch`），写在函数的参数列表，或者 `其中`（`where`）列表之后，也可以单独一行写。然后是一个或多个使用 `情况`（`case`） 关键字的条件分支。
+分支函数的关键字是 `分支`（`branch`），写在函数的参数列表，或者 `其中`（`where`）列表之后，也可以单独一行写。然后是一个或多个使用 `情况`（`case`） 关键字的条件分支。
 
 改写上一个示例如下：
 
 ```js
-01  函数 显示余数 (Int a, Int 0) = 输出行 ("除数不能为零")
-02  函数 显示余数 (Int a, Int b) 分支
+01  函数 显示余数 (Int a, Int b) 分支
+02      情况 b == 0: 输出行 ("除数不能为零")
 03      情况 b > a: 输出行 ("除数比被除数还大")
 04      情况 b == a: 输出行 ("没有余数")
 05      默认: 输出行 ("余数为 {}", a `余` b)
 06  以上
 07
-08  显示余数 (5, 5) # 执行 04 行
-09  显示余数 (5, 2) # 执行 05 行
-10  显示余数 (5, 6) # 执行 03 行
-11  显示余数 (5, 0) # 执行 01 行
+08  显示余数 (5, 0) # 执行 02 行
+09  显示余数 (5, 6) # 执行 03 行
+10  显示余数 (5, 5) # 执行 04 行
+11  显示余数 (5, 2) # 执行 05 行
 ```
 
 ```js
-01  function showRemain (Int a, Int 0) = writeLine ("The divisor cannot be zero")
-02  function showRemain (Int a, Int b) branch
+01  function showRemain (Int a, Int b) branch
+02      case b == 0: writeLine ("The divisor cannot be zero")
 03      case b > a: writeLine ("divisor is larger than dividend")
 04      case b == a: writeLine ("no remainder")
 05      default: writeLine ("The remainder is {}", a `rem` b)
 06  end
 07
+11  showRemain (5, 0) # execute line 02
+10  showRemain (5, 6) # execute line 03
 08  showRemain (5, 5) # execute line 04
 09  showRemain (5, 2) # execute line 05
-10  showRemain (5, 6) # execute line 03
-11  showRemain (5, 0) # execute line 01
 ```
 
 每一个分支情况后面都接着一个能返回逻辑值的表达式，当表达式返回 `真` 时，该分支会被执行。`分支` 语句的语法跟 `条件` 语句一样（实际上 `分支` 是一个语法糖，是加了一个默认情况抛出运行时异常的 `条件` 语句）。条件语句的详细用法请参见 [流程控制](control-flow.md)。
 
 每一个分支都是独立的一个函数主体。如果函数主体是多行语句，则需要在语句 `情况`（`case`）关键字后面换行写。
 
-最后一个分支通常是不限任何条件的默认分支，如果没有默认分支，当所有的条件都不满足时，运行环境会抛出一个运行时错误。（实际上会先查看是否存在条件函数，下面将会讲述）
+最后一个分支通常是不限任何条件的默认分支，如果没有默认分支，当所有的条件都不满足时，运行环境会抛出一个运行时错误。
 
 #### 函数的分支与数学的函数定义
 
@@ -1335,107 +1300,6 @@ check(x)=
         5,  & \text{otherwise}
     \end{cases}
 \]
-
-#### 函数的模式匹配
-
-如果有一组函数的签名完全一样，即参数列表的参数数量和类型和顺序必须一样，这种情况下这组函数被成为模式匹配函数，模式匹配函数会自动被运行环境合并为函数的条件分支。
-
-示例：
-
-```js
-function check(List<Int> [])
-    writeLine("empty")
-end
-
-function check(List<Int> [1,2])
-    writeLine("there are two expected elements")
-end
-
-function check(List<Int> [a,b])
-    writeLine(`there are two elements {a} and {b}`)
-end
-
-function check(List<Int> list)
-    writeLine("a list")
-end
-```
-
-等同于：
-
-```js
-function check(List<Int> p) branch
-    case let [] = p:
-        begin
-            writeLine("empty")
-        end
-    case let [1, 2] = p:
-        begin
-            writeLine("there are two expected elements")
-        end
-    case let [a, b] = p:
-        begin
-            writeLine(`there are two elements {a} and {b}`)
-        end
-    case let list = p:
-        begin
-            writeLine("a list")
-        end
-    end
-end
-```
-
-当然在各个模式匹配函数个体里仍然能够使用条件分支，并且在该个体函数的条件分支都不满足时，会自动跳到下一个个体，而不是直接出错。也就是说在模式匹配函数里的分支更像是一个第二道防线（也叫守卫）。
-
-示例：
-
-```js
-function check(List<Int> [])
-    writeLine("empty")
-end
-
-function check(List<Int> [a,b]) branch
-    case a > b:
-        writeLine("a > b")
-    case a < b:
-        writeLine("a < b")
-end
-
-function check(List<Int> list)
-    writeLine("a list")
-end
-```
-
-等同于：
-
-```js
-function check(List<Int> p) branch
-    case let [] = p:
-        begin
-            writeLine("empty")
-        end
-    case let [a, b] = p and isMatch where
-        begin
-            let (isMatch, matchValue) = condition
-                case a > b:
-                    let r = begin
-                        writeLine("a > b")
-                    end
-                    (true, r)
-                case a < b:
-                    let r = begin
-                        writeLine("a < b")
-                    end
-                    (true, r)
-                end
-        end:
-        matchValue
-    case let list = p:
-        begin
-            writeLine("a list")
-        end
-    end
-end
-```
 
 ## 纯函数
 

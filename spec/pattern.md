@@ -17,9 +17,12 @@
       - [带解析的模式匹配](#带解析的模式匹配)
       - [正则表达式模式匹配](#正则表达式模式匹配)
       - [匹配复合结构数据时保留原始值](#匹配复合结构数据时保留原始值)
-    - [`如果 让` 语句](#如果-让-语句)
+    - [`如果 让...匹配` 语句](#如果-让匹配-语句)
+    - [模式匹配函数 (NEW)](#模式匹配函数-new)
   - [模式解构](#模式解构)
+    - [模式解构的异常](#模式解构的异常)
     - [列表的解构](#列表的解构)
+    - [使用模式解构访问列表的元素(::DUPLICATED??)](#使用模式解构访问列表的元素duplicated)
     - [映射表的解构](#映射表的解构)
     - [结构体的解构](#结构体的解构)
     - [元组的解构](#元组的解构)
@@ -510,42 +513,216 @@ function test (u expand parse User(id, name))
 end
 ```
 
-### `如果 让` 语句
+### `如果 让...匹配` 语句
 
-有时可能仅仅为了匹配一种模式，这时可以使用 `如果 让`（`if let`） 语句，而无必要使用 "完整" 的 `匹配` 语句。
+有时可能仅仅为了匹配一种模式，这时可以使用 `如果 让...匹配`（`if let...match`） 语句，而无必要使用完整的 `匹配` 语句。
 
 示例：
 
 ```
 让 v = (123, 456)
-如果 让 (a, b) = v 那么
+如果 让 (a, b) 匹配 v 那么
     输出格式行 ("a 是: {}, b 是: {}", a, b)
 以上
 
-如果 让 (123, b) = v 那么
+如果 让 (123, b) 匹配 v 那么
     输出格式行 ("a 是 123")
 以上
 ```
 
 ```
 let v = (123, 456)
-if let (a, b) = v then
+if let (a, b) match v then
     writeLineFormat ("a is: {}, b is: {}", a, b)
 end
 
-if let (123, b) = v then
+if let (123, b) match v then
     writeLineFormat ("a is 123")
 end
 ```
 
-在 `让` 关键字和 `=` 关键字之间除了可以是一个模式匹配表达式，也可以加入上面 `匹配` 语句当中提到的 `解析`、`展开` 和 `正则匹配` 等关键字。示例：
+在 `让` 关键字和 `匹配` 关键字之间除了可以是一个模式匹配表达式，也可以加入上面 `匹配` 语句当中提到的 `解析`、`展开` 和 `正则匹配` 等关键字。示例：
 
 ```js
-如果 让 解析 User(id, name) = v 那么 ...
-如果 让 u 展开 解析 User(id, name) = v 那么 ...
+如果 让 解析 User(id, name) 匹配 v 那么 ...
+如果 让 u 展开 解析 User(id, name) 匹配 v 那么 ...
 
-如果 让 正则匹配 "^(.+)@(.+)$" [email, name, domain] = v 那么 ...
-如果 让 u 展开 正则匹配 "^(.+)@(.+)$" [email, name, domain] = v 那么 ...
+如果 让 正则匹配 "^(.+)@(.+)$" [email, name, domain] 匹配 v 那么 ...
+如果 让 u 展开 正则匹配 "^(.+)@(.+)$" [email, name, domain] 匹配 v 那么 ...
+```
+
+`让...匹配` 表达式返回的是一个 `逻辑`（`Boolean`）类型的数值，所以有时还可以跟其他条件一起组合成更为复杂的条件语句。比如：
+
+```js
+if let (id, name) match user1 && id > 100 then
+    ...
+end
+```
+
+> `让...匹配` 表达式不能单独写成一条语句，因为这样很容易因为忘记判断其返回值而使用模式匹配表达式里的变量值，所以语法上规定  `让...匹配` 表达式只能写在 `如果` 语句、`分支` 语句、`条件` 语句里。
+
+### 模式匹配函数 (NEW)
+
+如果有一组函数的签名完全一样，即参数列表的参数数量和类型和顺序都一样，且这些函数加上了标注 `@模式`（`@pattern`），则这组函数被称为 `模式匹配函数`。
+
+示例：
+
+```js
+function check(List<Int> [])
+    writeLine("empty")
+end
+
+@pattern
+function check(List<Int> [1,2])
+    writeLine("there are two expected elements")
+end
+
+@pattern
+function check(List<Int> [a,b])
+    writeLine(`there are two elements {a} and {b}`)
+end
+
+@pattern
+function check(List<Int> list)
+    writeLine("a list")
+end
+```
+
+模式函数会被运行环境自动解析为带有模式匹配的分支函数，即上面的代码等同于：
+
+```js
+function check(List<Int> p) branch
+    case let [] match p:
+        begin
+            writeLine("empty")
+        end
+    case let [1, 2] match p:
+        begin
+            writeLine("there are two expected elements")
+        end
+    case let [a, b] match p:
+        begin
+            writeLine(`there are two elements {a} and {b}`)
+        end
+    case let list match p:
+        begin
+            writeLine("a list")
+        end
+    end
+end
+```
+
+需要注意，模式匹配函数的各子函数（第一个子函数可以省略）上面的 `@模式`（`@pattern`） 标注是必须的，否则运行环境会认为你重复定义了函数，并且会引起运行时错误以阻止运行。
+
+当然模式匹配函数的各子函数里仍然能够使用条件分支，并且在该子函数的条件分支都不满足时，会自动跳到下一个个体，而不是（像分支函数那样）直接出错。也就是说在模式匹配函数里的子函数里的分支是该分支的一道防线（也叫函数守卫、Guard）。
+
+示例：
+
+```js
+function check(List<Int> [])
+    writeLine("empty")
+end
+
+@pattern
+function check(List<Int> [a,b]) branch
+    case a > b:
+        writeLine("a > b")
+    case a < b:
+        writeLine("a < b")
+end
+
+@pattern
+function check(List<Int> list)
+    writeLine("a list")
+end
+```
+
+会被运行环境解析为：
+
+```js
+function check(List<Int> p) branch
+    case let [] match p:
+        begin
+            writeLine("empty")
+        end
+    case let [a, b] match p and passed where
+        begin
+            let (passed, value) = condition
+                case a > b:
+                    let r = begin
+                        writeLine("a > b")
+                    end
+                    (true, r)
+                case a < b:
+                    let r = begin
+                        writeLine("a < b")
+                    end
+                    (true, r)
+                end
+        end:
+        value
+    case let list match p:
+        begin
+            writeLine("a list")
+        end
+    end
+end
+```
+
+注意如果在某个子函数的分支里存在 `默认`（`default`） 语句块，则显然一旦该子函数被匹配中，就不会因为分支条件不满足而跳到下一个子函数（因为 `默认` 语句块无条件接受了所有条件）。
+
+示例：
+
+```js
+function check(List<Int> [])
+    writeLine("empty")
+end
+
+function check(List<Int> [a,b]) branch
+    case a > b:
+        writeLine("a > b")
+    case a < b:
+        writeLine("a < b")
+    default:
+        writeLine("equals")
+end
+
+function check(List<Int> list)
+    writeLine("a list")
+end
+```
+
+会被运行环境解析为：
+
+```js
+function check(List<Int> p) branch
+    case let [] match p:
+        begin
+            writeLine("empty")
+        end
+    case let [a, b] match p:
+        begin
+            condition
+                case a > b:
+                    begin
+                        writeLine("a > b")
+                    end
+                case a < b:
+                    begin
+                        writeLine("a < b")
+                    end
+                case a < b:
+                    begin
+                        writeLine("equals")
+                    end
+            end
+        end
+    case let list match p:
+        begin
+            writeLine("a list")
+        end
+    end
+end
 ```
 
 ## 模式解构
@@ -587,9 +764,26 @@ end
 以上
 ```
 
-XiaoXuan 的赋值语句实质是模式解构，比如 `让 4 = 4` 语句是合法的。需要注意的是，虽然模式解构只需部分匹配即可，但因为缺少 `匹配` 语句的 `默认` 分支，如果指定的部分不匹配，则会直接引起运行时异常。也就是说，对于赋值语句 `让`（`let`），除了声明的数据类型不匹配会引起运行时异常，模式不匹配也会引起。
+### 模式解构的异常
+
+XiaoXuan 的赋值语句实质是模式解构，比如 `让 4 = 4` 语句是合法的。需要注意的是，虽然模式解构只需部分匹配即可，但因为缺少 `匹配` 语句的 `默认` 分支，如果指定的部分不匹配，则会直接引起运行时异常。
 
 示例：
+
+```js
+union User
+    Student(String name)
+    Teacher(String name)
+end
+
+let s = new User.Student("foo")
+let Teacher t1 = s
+let Teacher(name) = s
+```
+
+上面代码最后两行都会引起运行时异常，第一行很容易理解，跟很多编程语言一样，变量的类型不一致是不能赋值的，但 XiaoXuan 并不是简单地根据数据类型来判断，而是通过模式匹配来判断的。第二行则是标准的模式匹配失败。
+
+再举一个数据类型匹配，但模式匹配失败的示例：
 
 ```js
 让 (a, b, b, a) = (1, 2, 3, 4)
@@ -597,7 +791,25 @@ XiaoXuan 的赋值语句实质是模式解构，比如 `让 4 = 4` 语句是合�
 
 上面的赋值语句（模式解构）虽然左右两边的数据类型一致（都是元组），但因为模式不匹配，所以会引起运行时异常。
 
-模式解构可以应用于列表、映射表、结构体、元组等数据，但**无法解构**联合体，因为联合体的值是其多个成员的其中一个，只能通过模式匹配先匹配类型再解构，即只能使用 `匹配` 语句或者使用 `如果 让` 语句来获取其中的值。
+<!-- 模式解构可以应用于列表、映射表、结构体、元组等数据，但**无法解构**联合体，因为联合体的值是其多个成员的其中一个，只能通过模式匹配先匹配类型再解构，即只能使用 `匹配` 语句或者使用 `如果 让` 语句来获取其中的值。-->
+
+具体来说，模式结构语句在成功匹配时，语句的返回值是成功解构后的值，而匹配失败时，则抛出运行时异异常。
+
+示例：
+
+```
+let v1 = (let a = 123)
+let v2 = (let User(name) = new User("foo"))
+let v3 = (let User(99, name) = new User(99, "foo"))
+let v4 = (let u expand User(id, name) = new User(88, "bar"))
+```
+
+以上的 4 个变量的值分别为：
+
+* 一个整数，值为 `123`
+* 一个字符串， 值为 `"foo"`
+* 一个元组，值为 `(99, "foo")`
+* 一个 `(User, Int, String)` 元组，值为 `(User(88, "bar"), 88, "bar")`
 
 ### 列表的解构
 
@@ -641,6 +853,33 @@ let [1:x, 6:y] = [1,2,3,4,5,6]
 
 * 其中的 `...` 符号（三个点号）表示获取列表当中剩余的其他元素；
 * 其中的 `_` 符号（下划线）表示仅匹配位置，丢弃其值。
+
+### 使用模式解构访问列表的元素(::DUPLICATED??)
+
+使用模式解构来获取列表的元素比使用函数的更加简单直观，示例：
+
+```js
+让 a = [1,2,3,4,5]
+
+# 获取第 1 个元素并赋值给变量 i，此时 i == 1
+让 [i] = a
+
+# 获取第 1 和第 2 个元素分别赋值给变量 i 和变量 j，此时 i == 1, j == 2
+让 [i, j] = a
+
+# 获取第 1 和第 2 个元素，第 1 个元素的值丢弃，第 2 个元素的值赋值给 i，此时 i = 2
+让 [_, i] = a
+
+# 获取第 1 个以及剩余的元素，第 1 个元素赋值给变量 i，
+# 剩余的元素（是一个列表）赋值给变量 j，此时变量 j == [2, 3, 4, 5]。
+让 [i, ...j] = a
+
+# 获取第 1 和第 2 个以及剩余的元素，前两个元素分别赋值给变量 i 和 j，
+# 剩余的元素（是一个列表）赋值给变量 k，此时变量 k == [3, 4, 5]
+让 [i, j, ...k] = a
+```
+
+需注意的是**剩余**关键字 `...` （即三个点，同 "展开" 关键字）只能出现在中括号的末尾，诸如 `let [i, ...j, k]` 语句是有语法错误的。
 
 ### 映射表的解构
 
