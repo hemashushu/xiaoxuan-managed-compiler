@@ -49,6 +49,41 @@ version = "0.1.0"
 
 
 
-## 名称空间
+## 命名空间
+
+### 名称路径
 
 std::math.floor(...)
+
+### 隐含的命名空间
+
+多值常量、结构体、联合体、特性都会产生同名的名称空间，其中联合体以及特性的赋予语句产生二级命名空间。所以不能创建跟这些数据类型同名的子命名空间。示例：
+
+```js
+namespace Foo
+
+    struct User
+        Int id
+        String name
+    end
+
+    namespace User # Error
+    # ...
+    end
+end
+
+namespace Foo.User # Error
+    # ...
+end
+```
+
+
+## 语言相关代码
+
+在模块级作用范围内，使用 `lang` 语句块可以定义语言专门的代码
+
+```js
+lang "zh-cn"
+    运算符 ("+", "加", 优先级 = 99, 结合顺序值 = 结合顺序.左)
+end
+```

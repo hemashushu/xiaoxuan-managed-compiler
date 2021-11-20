@@ -153,7 +153,7 @@ let u4 = User(name="Smith", checked=false, ...u1)
 有时一个结构体的成员的值有一定的使用限制，比如表示有理数的结构体的分母不能为 0 等。可以在定义结构体时添加 `@验证`（`@validate`）标注用于约束成员的值。示例：
 
 ```js
-@验证(id > 0 && name != "")
+@验证(id > 0 :并且 name != "")
 结构体 用户
     整数 id
     字符串 name
@@ -162,7 +162,7 @@ let u4 = User(name="Smith", checked=false, ...u1)
 ```
 
 ```js
-@validate(id > 0 && name != "")
+@validate(id > 0 :and name != "")
 struct User
     Int id
     String name

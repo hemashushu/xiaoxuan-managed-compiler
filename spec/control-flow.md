@@ -14,15 +14,14 @@
       - [多个条件语句组合](#多个条件语句组合)
       - [条件表达当中的局部变量](#条件表达当中的局部变量)
     - [`条件` 语句](#条件-语句)
-      - [条件表达式里的模式匹配](#条件表达式里的模式匹配)
+      - [条件表达式里的模式匹配(::移动)](#条件表达式里的模式匹配移动)
       - [条件语句的局部语句](#条件语句的局部语句)
-    - [`选择` 语句](#选择-语句)
+    - [`选择` 语句（::不支持，使用模式匹配替代）](#选择-语句不支持使用模式匹配替代)
   - [语句块和跳转语句](#语句块和跳转语句)
   - [循环语句](#循环语句)
     - ["设有 让" 语句](#设有-让-语句)
       - [`设有 让` 的返回值](#设有-让-的返回值)
     - ["设有 取自" 语句](#设有-取自-语句)
-    - [`逐个` 函数](#逐个-函数)
     - [指定次数循环](#指定次数循环)
 
 <!-- /code_chunk_output -->
@@ -84,7 +83,7 @@ let v = (
 
 ```js
 let v = (a + b) * c
-let p = (a || b) && c
+let p = (a :or b) :and c
 ```
 
 而 `开始...以上` 格式一般用于多行语句。
@@ -293,7 +292,7 @@ let s = condition
 end
 ```
 
-#### 条件表达式里的模式匹配
+#### 条件表达式里的模式匹配(::移动)
 
 条件表达式除了可以是一个返回逻辑数值的表达式，还可以是一个模式匹配表达式 `让...匹配`。
 
@@ -314,7 +313,7 @@ let s = condition
 ```js
 let x = (70, 80)
 let s = condition
-    case let (a,b) match x && a >= 60:
+    case let (a,b) match x :and a >= 60:
         `got two numbers, {a} and {b}`
     end
 ```
@@ -328,8 +327,8 @@ let s = condition
 让 s = 条件
     其中 让 isEven = x `余` 2 == 0,
          让 isOdd = x `余` 2 != 0
-    情况 x >= 90 && isEven: "优.偶数"
-    情况 x >= 90 && isOdd: "优.奇数"
+    情况 x >= 90 :并且 isEven: "优.偶数"
+    情况 x >= 90 :并且 isOdd: "优.奇数"
     ...
 以上
 ```
@@ -339,8 +338,8 @@ let x = 70
 let s = condition
     where let isEven = x `rem` 2 == 0,
          let isOdd = x `rem` 2 != 0
-    case x >= 90 && isEven: "Excellent.Even"
-    case x >= 90 && isOdd: "Excellent.Odd"
+    case x >= 90 :并且 isEven: "Excellent.Even"
+    case x >= 90 :并且 isOdd: "Excellent.Odd"
     ...
 end
 ```
@@ -352,10 +351,10 @@ end
 ```js
 让 x = 70
 让 s = 条件
-    情况 x >= 90 && isEven
+    情况 x >= 90 :并且 isEven
         其中 让 isEven = x `余` 2 == 0
         :"优.偶数"
-    情况 x >= 90 && isOdd
+    情况 x >= 90 :并且 isOdd
         其中 让 isOdd = x `余` 2 != 0
         :"优.奇数"
     ...
@@ -365,15 +364,18 @@ end
 ```js
 let x = 70
 let s = condition
-    case x >= 90 && isEven
+    case x >= 90 :并且 isEven
         where let isEven = x `rem` 2 == 0
         : "Excellent.Even"
-    case x >= 90 && isOdd
+    case x >= 90 :并且 isOdd
         where let isOdd = x `rem` 2 != 0
         : "Excellent.Odd"
     ...
 end
 ```
+
+- - -
+(::移动)
 
 需要注意，`其中` 部分的代码在条件判断之前，所以如果某条件分支里既包含模式匹配表达式，又包含 `其中` 语句，那么条件语句里是可以使用 `其中` 语句定义的局部变量，但 `其中` 语句里不能使用模式表达式创建的变量。
 
@@ -381,9 +383,9 @@ end
 
 ```js
 条件
-    情况 让 (id, name) 匹配 User &&
-        id >= 100 &&  # 没问题, 变量 `id` 来自 `让...匹配` 表达式
-        isEven        # 没问题, 变量 `isEven` 来自 `其中` 语句
+    情况 让 (id, name) 匹配 User :并且
+        id >= 100 :并且  # 没问题, 变量 `id` 来自 `让...匹配` 表达式
+        isEven           # 没问题, 变量 `isEven` 来自 `其中` 语句
         其中 开始
             让 isEven = id % 2 == 0
             # 错误，变量 `id` 还不存在，因为 `其中` 语句
@@ -395,9 +397,9 @@ end
 
 ```js
 condition
-    case let (id, name) match User &&
-        id >= 100 &&  # OK, the variable `id` comes from the `let...match` expression
-        isEven        # OK, the variable `isEven` comes from the `where` statement
+    case let (id, name) match User :and
+        id >= 100 :and  # OK, the variable `id` comes from the `let...match` expression
+        isEven          # OK, the variable `isEven` comes from the `where` statement
         where begin
             let isEven = id % 2 == 0
             # ERROR, becuase the variable `id` does not exist yet
@@ -408,7 +410,7 @@ condition
 end
 ```
 
-### `选择` 语句
+### `选择` 语句（::不支持，使用模式匹配替代）
 
 如果需要一个值与多个候选值比较，可以使用 `选择`（`switch`）语句。
 
@@ -599,7 +601,7 @@ end
 下面演示如果通过元组实现在循环体里使用多个变量：
 
 ```js
-for let (x,y) = (0, 0) if x > 10 && y < 100
+for let (x,y) = (0, 0) if x > 10 :and y < 100
     ...
     writeLine (y)
     ...

@@ -1,9 +1,9 @@
 # 目录
 
-* [01 基本数据类型](data-types.md)
+* [01 数据类型](data-types.md)
 * [02 变量](variables.md)
 * [03 函数](functions.md)
-* [04 数据集合](collection.md)
+* [04 集合](collection.md)
 * [05 结构体和联合体](structs-and-unions.md)
 * [06 流程控制](control-flow.md)
 * [07 模式](pattern.md)
