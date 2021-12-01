@@ -57,7 +57,9 @@ std::math.floor(...)
 
 ### 隐含的命名空间
 
-多值常量、结构体、联合体、特性都会产生同名的名称空间，其中联合体以及特性的赋予语句产生二级命名空间。所以不能创建跟这些数据类型同名的子命名空间。示例：
+常量组、结构体、联合体、特性都会产生同名的名称空间，其中联合体的子类型、以及将特性赋予给结构体等会产生二级命名空间。所以不能创建跟这些数据类型同名的子命名空间。相应地，也不能创建跟子命名空间同名的常量组、结构体、联合体、特性。
+
+示例：
 
 ```js
 namespace Foo
@@ -67,16 +69,28 @@ namespace Foo
         String name
     end
 
-    namespace User # Error
-    # ...
+    namespace User  # Error
+        # ...
     end
-end
 
-namespace Foo.User # Error
-    # ...
+    unit Color
+        RGB(Int red, Int green, Int blue)
+        HSL(Int H, Int S, Int L)
+    end
+
+    namespace Color  # Error
+        # ...
+    end
+
+    namespace Color::RGB  # Error
+        # ...
+    end
 end
 ```
 
+使用 use 引入
+* 对于函数，一般引入其所在的名称空间，而不是把函数名称引入；
+* 对于结构体、联合体、枚举、常量组、特性等其他项，习惯是指定它们的完整路径，即将它们本身引入。
 
 ## 语言相关代码
 
