@@ -19,6 +19,12 @@
   - [元组](#元组)
     - [元组的访问](#元组的访问)
     - [添加元组元素](#添加元组元素)
+  - [枚举](#枚举)
+  - [数据类型的内部实现](#数据类型的内部实现)
+    - [基本数据类型](#基本数据类型)
+    - [联合体](#联合体-1)
+    - [枚举](#枚举-1)
+    - [值的复制](#值的复制)
 
 <!-- /code_chunk_output -->
 
@@ -77,6 +83,8 @@ end
 
 struct Login(User user, Time time)
 ```
+
+> 结构体的成员是有区分顺序的，即使成员的名称和类型相同，只要顺序不同，则结构体也不同。比如 `struct User(Int id, String name)` 跟 `struct User(String name, Int id)` 是不同的结构体，所以当重构代码时，如果调整了成员的顺序，则需要保证所有使用到该结构体的模块都要重新编译。
 
 ### 实例化结构体
 
@@ -472,3 +480,278 @@ end
 ```
 
 这种语法对应的函数是 `元组::添加`（`Tuple::add`），它是一个系统函数，有且只有一个参数，可以接受任意类型的值，另外还有 `元组::追加`（`Tuple::append`） 系统函数用于向元组末尾添加成员。
+
+## 枚举
+
+枚举跟全局常量相类似，不过枚举有以下几个特点：
+
+* 枚举的成员数量固定；
+* 枚举的成员的值无需指定，运行环境内部按照枚举成员的定义顺序自动分配从 `整数` 数值 `0` 开始分配数值；
+* 枚举是一种数据类型；
+* 枚举的值无法直接跟其他数据类型转换，也就是说无法从枚举值转为 `整数`，也无法直接从 `整数` 转成枚举值。
+
+示例：
+
+```js
+枚举 原色
+    红
+    绿
+    蓝
+以上
+
+让 a = 原色.蓝
+```
+
+```js
+enum PrimaryColor
+    Red
+    Green
+    Blue
+end
+
+let a = PrimaryColor.Blue
+```
+
+因为枚举是数据类型，所以枚举可以用在函数的参数上，用于某个参数只能从有限的几种值当中取其一的这种场合。示例：
+
+```js
+函数 设置背景色 (原色 c)
+    书写行 (c)
+以上
+
+# 调用函数
+设置背景色 (原色.红)
+```
+
+```js
+function setBackgroundColor (PrimaryColor c)
+    writeLine (c)
+end
+
+# call function
+setBackgroundColor (PrimaryColor.Red)
+```
+
+注意枚举值**不能**与其他数据类型的值相互转换，比如无法将整数转为上例中的 `原色` 的值（也无法将枚举的值转成整数）。
+
+例如下面的语句是错误的：
+
+```js
+设置背景色 (1)
+```
+
+```js
+setBackgroundColor (1)
+```
+
+可以使用 @enumValue 标注指定枚举成员的具体值，不过一般没必要这样做，因为语言不提供读取成员内部值（一个整数）的方法。另外编译器不检查指定的成员值是否有重复，所以需要用户确保成员值是正确的。
+
+这个标注的作用是当一个枚举数据类型需要（通过 API 或者序列化）跟外部程序或者本地库（比如 C/C++/Rust 等语言所生成的库）进行内存级别的运算时才有实际意义。比如基本数据类型 `逻辑`（`Boolean`）的定义如下：
+
+```js
+enum Boolean
+    @enumValue(0)
+    False
+
+    @enumValue(-1)
+    True
+end
+```
+
+## 类型的内部实现
+
+XiaoXuan 的类型系统包括数据类型（简称类型）、函数类型（也叫做函数签名）两种。
+
+注意数据类型的检查位于编译阶段，在 IR 层面及在运行过程中均不作数据类型检查。也就是说 XiaoXuan 是静态数据类型编译型语言。
+
+### 数据类型
+
+在运行环境内部，所有数据类型（包括结构体、联合体、元组、枚举）本质上都是结构体，程序使用到的所有结构体都会登记在一个 `数据类型记录表` 里。这个记录表是一个有序表，一般有以下几个部分组成：
+
+1. 成员表。成员表是一个有序数组，可以使用下标访问成员。
+   数据的每一个元素由两个数据组成：
+   * 数据类型编号。
+   * 成员名称
+
+成员表的第一条记录（即编号 0）是一个空数组。
+
+2. 信息表
+   * members 成员表编号。如果当前数据类型没有成员（即空结构体）或者是虚拟机基本数据类型，则该字段值为 0。
+   * category 数据类型的类别，可能的值有：
+     - 结构体，即一般结构体
+     - 联合体结构体
+     - 联合体成员结构体
+     - 枚举结构体
+     - 元组
+     - 基本数据类型
+   * name 数据类型名称，比如 "Int64"，注意一个数据类型可以定义别名，所以存在多个类型指向同一个成员表的情况；
+   * namePath 所在的名称空间，比如 "core"；
+   * fullName 包括命名空间路径和名称的全称，比如 "core::Int64"；
+   * parent 联合体结构体指针。仅当当前类型为联合体成员结构体时这个字段值才有意义，除此之外该字段值为 0。
+
+信息表的第一条记录（即编号 0）是一个空元组。
+
+可以使用宏 typeOf(...) 获取一个数据类型的详细信息，宏返回一个 `Type` 结构体，该结构体的定义如下：
+
+```js
+struct Type
+    // Option<Array<Member>> members
+    TypeCategory typeCategory
+    String name
+    String namePath
+    // String fullName
+    Option<Type> parent
+end
+
+enum TypeCategory
+    Struct
+    Union
+    UnionMember
+    Enum
+    Tuple
+    Primitive
+end
+```
+
+可以通过 `Type::getMembers` 方法获取类型的成员列表。
+
+```js
+struct Member
+    Type type
+    String name
+end
+```
+
+#### 基本数据类型的实现
+
+XiaoXuan 的基本数据类型（比如整数、实数）在标准库里定义为结构体，所以在运行环境内部的 `数据类型记录表` 里也有其相关记录。
+
+下面是标准库里对于 `Int32` 类型的定义：
+
+```js
+@compileTypeCategory(TypeCategory::Primitive)
+@compileTypeNative(type="i32") // 编译指令，用户不可使用
+struct Int32
+    // empty
+end
+```
+
+上面的 `@compileTypeNative` 标记用于告诉编译器，当一个基本数据类型的变量在编译成 IR 时会被解析为虚拟机基本数据类型，其类型信息将会被丢弃。也就是说对于基本数据类型的变量值，在运算过程中其值是存储在寄存器即栈当中，当遇到 `typeOf` 一个基本数据类型时，编译器实际上会把它翻译成一个内部的函数 `typeByNumber` 直接从类型记录表里读取类型信息。
+
+#### 一般结构体的实例的实现
+
+一个结构体变量储存的是一个指向该结构体数据（一个内部结构体）的指针，该内部结构体的信息如下：
+
+* type
+  数据类型编号，也就是目标数据类型在 `数据类型记录表` 的索引值；
+* value_ref
+  - 当数据类型是虚拟机基本数组类型时，该值是一个指向实际值的指针。
+  - 当数据类型是一个结构体时，该值是一个指向结构体各成员情况的指针。
+
+结构体成员是一个数组，数组的每个成员跟上面结构体一样，该数组如下：
+
+[{type, value_ref}, {type, value_ref}, ...]
+
+> 跟一个基本数据类型的变量的情况不同，如果一个结构体的成员是基本数据类型，其值也是保存在堆（heap）里。
+
+#### 联合体的实现
+
+联合体使用两次结构体实现，即联合体本身会被解析为一个结构体
+
+假设有如下一个联合体：
+
+```js
+union Field
+    Null
+    Number(Real value)
+    Text(String value)
+end
+```
+
+编译器会自动生成如下结构体及其常量值：
+
+```js
+@compileTypeCategory(TypeCategory::Union)
+@derive(std::trait::Union)
+struct Field
+    Int memberNumber
+    Pointer memberValue
+end
+
+namespace Field
+    @compileTypeCategory(TypeCategory::UnionMember)
+    @compileTypeParent(typeOf(Parent::Field))
+    struct Number
+        Real value
+    end
+
+    @compileTypeCategory(TypeCategory::UnionMember)
+    @compileTypeParent(typeOf(Parent::Field))
+    struct Text
+        String value
+    end
+
+    const Array<UnionMember> FieldMembers = #[
+        UnionMember::new(UnionMemberType::Constant, "Null"),
+        UnionMember::new(UnionMemberType::Struct, "Number", typeOf(Number)),
+        UnionMember::new(UnionMemberType::Struct, "Text", typeOf(Text)),
+    ]
+
+    const Null = 0
+end
+```
+
+其中的 `Pointer` 是一个指向数据实例的内存指针。
+
+#### 枚举的实现
+
+枚举也是使用结构体实现。
+
+假设有如下一个枚举：
+
+```js
+enum Color
+    Red
+    Green
+    Blue
+end
+```
+
+编译器会自动生成如下结构体及其常量值：
+
+```js
+@compileTypeCategory(TypeCategory::Enum)
+@derive(std::trait::Enum)
+struct Color
+    Int Value
+end
+
+namespace Color
+    const Color Red = Color::new(0)
+    const Color Green = Color::new(1)
+    const Color Blue = Color::new(2)
+end
+```
+
+#### 元组的实现
+
+::TODO
+
+### 值的复制
+
+XiaoXuan 默认使用数据的引用计数来实现资源/垃圾回收。变量是一个指向存放在堆中的数据的指针，当将一个变量赋值给另外一个变量，以及作为参数传递给一个函数时，该变量所指向的数据的引用数便增加一个；当变量离开其作用范围时引用数则减少一个。当数据的引用数减少到 0 时，运行时就会回收这个数据资源。
+
+但有些数据类型是不使用引用计数来管理的，这些数据直接在栈里参与计算，如果被赋值给另外一个变量，则直接复制一份。这些数据类型有：
+
+* 基本数据类型：整数、自然数、实数、逻辑、字符；
+* 枚举
+
+它们具有 `复制` 特性。
+
+### 函数签名
+
+::TODO
+
+函数的签名由返回值（一个数据类型）和一个参数列表（一个元组数据类型）组成，函数的名称、各参数的名称都不属于函数签名的一部分，函数签名本身也是一种数据类型，也会登记在运行环境的 `数据类型记录表` 里，函数签名的第一个成员是返回值的数据类型，第二个成员是参数列表（元组数据类型）。
+
+> 函数的泛型、参数默认值（可选参数）、模式表达式等信息，在翻译成 IR 时已经会被丢弃（源码与 IR 码的映射信息存储在其他地方，不在 IR 代码里）。

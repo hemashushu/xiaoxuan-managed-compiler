@@ -2,23 +2,31 @@
 
 ## 线程变量
 
-* void <- setVar<T>(KeyString name, T value)
-* Option<T> <- tryGetVar<T>(KeyString name)
-* T <- getVar<T>(KeyString name)
-* void <- removeVar(KeyString name)
+::TODO
+
+core::variable
+
+* void <- set<T>(KeyString name, T value)
+* Option<T> <- tryGet<T>(KeyString name)
+* T <- get<T>(KeyString name)
+* void <- remove<T>(KeyString name)
 
 ```js
-void <- writeMut(KeyString name, T value)
-T <- readMut<T>(KeyString name)
-Option<T> <- tryReadMut<T>(KeyString name)
-void <- removeMut(KeyString name)
+无返回 <- 设值<T>(散列字符串 name, T value)
+T <- 读值<T>(散列字符串 name)
+可选<T> <- 尝试读值<T>(散列字符串 name)
+无返回 <- 删除<T>(散列字符串 name)
 ```
+
+线程变量一般使用一个内置的线程关联的映射表 `Map<KeyString, T>` 实现。
+
+### 线程变量的数据类型
+
+对于每种数据类型的线程变量的读写，都会产生相应的一个独立映射表，比如：
 
 ```js
-无返回 <- 写变数(散列字符串 name, T value)
-T <- 读变数<T>(散列字符串 name)
-可选<T> <- 尝试读变数<T>(散列字符串 name)
-无返回 <- 删除变数(散列字符串 name)
+set<Int>(#"foo", 123)
+set<String>(#"foo", "bar")
 ```
 
-线程变量一般使用一个线程关联的内部映射表（键为字符串类型，值可为任意数据类型）实现，因为运行时会对字符串字面量会自动生成散列值，所以读写线程变量一般场合不会有性能问题。
+上面两句会分别产生一个 `Map<KeyString, Int>` 和一个 `Map<KeyString, String>`，两个映射表分别存储相应数据类型的值，所以即使看起来线程变量可以接受任何数据类型，但实际上还是严格遵守静态数据类型检查。

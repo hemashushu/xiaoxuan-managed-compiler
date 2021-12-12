@@ -120,7 +120,7 @@ end
 
 ##### 作用域内存在同名变量
 
-如果模式表达式当中存在其 `匹配` 语句所在的作用域同名的变量名，则模式表达式当中的变量会覆盖外面的变量，新变量的作用域包括该分支的代码。
+如果模式表达式当中存在其 `匹配` 语句所在的作用域同名的变量名，因为 XiaoXuan 语言不允许在作用域内存在同名变量，所以这条模式表达式会引起语法错误。<!-- 模式表达式当中的变量会覆盖外面的变量，新变量的作用域包括该分支的代码。-->
 
 示例：
 
@@ -129,7 +129,7 @@ end
 让 v = (77,88)
 匹配 v
     情况 (i, j):
-        输出行 (i) # 输出 '77' 而不是 '123'
+        // 上面一行会引起语法错误，因为在作用域内已经存在名称为 `i` 的变量
 以上
 ```
 
@@ -138,7 +138,7 @@ let i = 123
 let v = (77,88)
 match v
     case (i, j):
-        writeLine (i) # output '77' instead of '123'
+        // syntax error,
 end
 ```
 
@@ -150,9 +150,9 @@ end
 让 v = (11, 22, 22, 11)
 匹配 v
     情况 (a, a, b, b):
-        输出行 ("匹配失败")
+        书写行 ("匹配失败")
     情况 (a, b, b, a):
-        输出行 ("匹配成功，变量 a 的值将会是 11, b 是 22")
+        书写行 ("匹配成功，变量 a 的值将会是 11, b 是 22")
 以上
 ```
 
@@ -638,11 +638,11 @@ let d = Parser<Phone, String>.parse("+86-123456")
 
 匹配 s
     情况 解析 Email(name, domain):
-        输出行("一个电子邮箱")
+        书写行("一个电子邮箱")
     情况 解析 Phone(countryCode, number):
-        输出行("一个电话号码")
+        书写行("一个电话号码")
     默认:
-        输出行("未检测到")
+        书写行("未检测到")
 以上
 ```
 
@@ -665,13 +665,13 @@ end
 如果模式匹配发生在函数的参数，则 `解析` 关键字加在模式表达式之前，比如：
 
 ```js
-函数 测试 (解析 电子邮箱(name, domain), 解析 电话(countryCode, number))
+模式函数 测试 (解析 电子邮箱(name, domain), 解析 电话(countryCode, number))
     ...
 以上
 ```
 
 ```js
-function test (parse Email(name, domain), parse Phone(countryCode, number))
+pattern function test (parse Email(name, domain), parse Phone(countryCode, number))
     ...
 end
 ```
@@ -698,7 +698,7 @@ end
     情况 有([_, name, domain]):
         输出格式行("名称是: {}, 域名是: {}", name, domain)
     默认:
-        输出行("未侦测到电子邮箱")
+        书写行("未侦测到电子邮箱")
 以上
 ```
 
@@ -719,12 +719,12 @@ end
 让 s = "foo@domain"
 
 匹配 s
-    情况 正则匹配 "^(.+)@(.+)$" [email, name, domain]:
+    情况 正则匹配 /^(.+)@(.+)$/ [email, name, domain]:
         输出格式行("是一个电子邮箱: {}", email)
-    情况 正则匹配 "^(\\+\\d+)-(\\d+)$" [phone, countryCode, number]:
+    情况 正则匹配 /^(\\+\\d+)-(\\d+)$/ [phone, countryCode, number]:
         输出格式行("是一个电话号码: {}", phone)
     默认:
-        输出行("未侦测到")
+        书写行("未侦测到")
 以上
 ```
 
@@ -732,9 +732,9 @@ end
 let s = "foo@domain"
 
 match s
-    case regular "^(.+)@(.+)$" [email, name, domain]:
+    case regular /^(.+)@(.+)$/ [email, name, domain]:
         writeLineFormat("It's Email: {}", email)
-    case regular "^(\\w+)://(.+)$" [phone, countryCode, number]:
+    case regular /^(\\w+):\/\/(.+)$/ [phone, countryCode, number]:
         writeLineFormat("It's phone number: {}", phone)
     default:
         writeLine("Not detected")
@@ -745,15 +745,41 @@ end
 
 <!-- 如果需要指定正则匹配的参数，则使用 `(pattern_expression, option_value_or_list)` 元组代替正则表达式字符串。-->
 
-`regular` 后面也能接受一个正则实例，使用正则构造函数 `Regex(String, Options)` 或者使用正则字面量 `/String/Options` 均可构建正则对象。
+`regular` 后面也能接受一个正则实例，使用正则构造函数 `Regex::new(String, Options)` 或者使用正则字面量 `/String/` 均可构建正则对象。
 
 示例：
 
 ```js
 match s
-    case regular new Regex("[a-z]+", RegularConst.ignoreCase) [name]:
+    case regular Regex::new("[a-z]+", RegularConst.ignoreCase) [name]:
         ...
     case regular /[0-9]+/ [number]:
+        ...
+end
+```
+
+#### 模板字符串模式匹配
+
+模板字符串模式匹配是正则表达式匹配的简化版。
+
+示例：
+
+```js
+match s
+    case template `/user/{userName:\w+}`:
+        writeLineFormat("Get user {}", userId)
+    case template `/user/{userName:\w+}/post/{postId:\d+}`:
+        writeLineFormat("Get post {}", postId)
+end
+```
+
+其中的 `template ...` 会被解析为 `regular ...`，而模板字符串里面的占位符 `{...}` 是正则表达式以及其捕获值所存储的变量名，如果省略正则表达式部分，默认正则表达式是 `(.+)`。上面的代码会被解析为：
+
+```js
+match s
+    case regular /\/user\/(\w+)/ [userName]:
+        ...
+    case regular /\/user\/(\w+)\/post\/(\d+)/ [userName, postId]:
         ...
 end
 ```
@@ -910,6 +936,8 @@ end
 ### 模式匹配函数 (NEW)
 
 如果有一组函数的签名完全一样，即参数列表的参数数量和类型和顺序都一样，且这些函数 <!--加上了标注 `@模式`（`@pattern`）--> 定义语句前添加了 `模式`（`pattern`）关键字，则这组函数被称为 `模式匹配函数`。
+
+普通函数（相对于模式函数来说）的每个参数只能是 **单独的一个变量**，而模式函数在定义参数时，就可以写上模式匹配表达式，通常用这个方法来在接收参数的同时 "解构" 其中的值（比如解构一个结构体、解构一个元组等）。
 
 示例：
 
