@@ -18,7 +18,18 @@ T <- 读值<T>(散列字符串 name)
 无返回 <- 删除<T>(散列字符串 name)
 ```
 
-线程变量一般使用一个内置的线程关联的映射表 `Map<KeyString, T>` 实现。
+线程变量的实现方式由具体的运行环境决定。一般使用一个内置的线程关联的映射表 `Map<KeyString, T>` 实现。
+
+示例：
+
+`set(#foo, 123)`
+`set(#bar, "hello")`
+
+`let i = get<Int>(#foo)`
+`let j = get<String>(#hello)`
+
+`let Int i = get(#foo)`
+`let String j = get(#hello)`
 
 ### 线程变量的数据类型
 

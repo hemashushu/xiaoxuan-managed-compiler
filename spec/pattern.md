@@ -10,22 +10,25 @@
       - [模式表达式](#模式表达式)
         - [作用域内存在同名变量](#作用域内存在同名变量)
         - [模式表达式存在同名变量](#模式表达式存在同名变量)
-      - [类型匹配](#类型匹配)
-      - [结构体匹配](#结构体匹配)
+    - [赋值语句的模式解构(::TODO 待修改)](#赋值语句的模式解构todo-待修改)
+      - [`让` 语句的返回值](#让-语句的返回值)
+    - [`如果 让...匹配` 语句](#如果-让匹配-语句)
+    - [列表的解构（示例代码需改成 match 语句）](#列表的解构示例代码需改成-match-语句)
+    - [使用模式解构访问列表的元素(::DUPLICATED??)](#使用模式解构访问列表的元素duplicated)
+    - [映射表的解构（示例代码需改成 match 语句）](#映射表的解构示例代码需改成-match-语句)
+    - [元组的解构（示例代码需改成 match 语句）](#元组的解构示例代码需改成-match-语句)
+    - [结构体的解构（示例代码需改成 match 语句）](#结构体的解构示例代码需改成-match-语句)
+      - [结构体匹配(::内容跟上一段重复，待编辑)](#结构体匹配内容跟上一段重复待编辑)
+      - [联合体匹配](#联合体匹配)
       - [部分匹配](#部分匹配)
       - [带条件的模式匹配](#带条件的模式匹配)
-      - [带解析的模式匹配](#带解析的模式匹配)
+      - [带数据解析的模式匹配](#带数据解析的模式匹配)
       - [正则表达式模式匹配](#正则表达式模式匹配)
-      - [匹配复合结构数据时保留原始值](#匹配复合结构数据时保留原始值)
-    - [`如果 让...匹配` 语句](#如果-让匹配-语句)
+      - [模板字符串模式匹配](#模板字符串模式匹配)
+      - [范围匹配](#范围匹配)
+      - [匹配时保留原始值](#匹配时保留原始值)
+    - [嵌套匹配](#嵌套匹配)
     - [模式匹配函数 (NEW)](#模式匹配函数-new)
-  - [模式解构](#模式解构)
-    - [模式解构的异常](#模式解构的异常)
-    - [列表的解构](#列表的解构)
-    - [使用模式解构访问列表的元素(::DUPLICATED??)](#使用模式解构访问列表的元素duplicated)
-    - [映射表的解构](#映射表的解构)
-    - [结构体的解构](#结构体的解构)
-    - [元组的解构](#元组的解构)
 
 <!-- /code_chunk_output -->
 
@@ -204,9 +207,9 @@ end
 ```
 -->
 
-### 赋值语句的模式解构
+### 赋值语句的模式解构(::TODO 待修改)
 
-XiaoXuan 的赋值语句实质是模式解构，比如 `让 4 = 4` 语句是合法的（虽然没有任何意义）。当赋值语句的左边是一个单纯的变量时，因为变量能匹配任何值，所以其作用就是单纯的 "赋值"。当赋值语句左边不是一个单纯的变量时，则发生模式匹配。
+XiaoXuan 的赋值语句实质是模式解构，比如 `让 4 = 4` 语句是合法的（并且返回字面量 4）。当赋值语句的左边是一个单纯的变量时，因为变量能匹配任何值，所以其作用就是单纯的 "赋值"。当赋值语句左边不是一个单纯的变量时，则发生模式匹配。
 
 需要注意的是，因为缺少 `匹配` 语句的 `默认` 分支，如果赋值语句的模式不匹配，会直接引起运行时异常。
 
@@ -220,7 +223,7 @@ end
 
 let s = new User.Student("foo")
 let Teacher t1 = s
-let Teacher(name) = s
+let Teacher (name) = s
 ```
 
 上面代码最后两行都会引起运行时异常，第一行很容易理解，跟很多编程语言一样，变量的类型不一致是不能赋值的，但 XiaoXuan 并不是简单地根据数据类型来判断，而是通过模式匹配来判断的。第二行则是标准的模式匹配失败。
@@ -235,7 +238,7 @@ let Teacher(name) = s
 
 <!-- 模式解构可以应用于列表、映射表、结构体、元组等数据，但**无法解构**联合体，因为联合体的值是其多个成员的其中一个，只能通过模式匹配先匹配类型再解构，即只能使用 `匹配` 语句或者使用 `如果 让` 语句来获取其中的值。-->
 
-### `让` 语句的返回值
+#### 赋值语句的模式解构语句的返回值
 
 模式结构语句在成功匹配时，语句的返回值是成功解构后的值，而匹配失败时，则抛出运行时异异常。
 
@@ -245,7 +248,7 @@ let Teacher(name) = s
 let v1 = (let a = 123)
 let v2 = (let User(name) = new User("foo"))
 let v3 = (let User(99, name) = new User(99, "foo"))
-let v4 = (let u expand User(id, name) = new User(88, "bar"))
+let v4 = (let User u expand (id, name) = new User(88, "bar"))
 ```
 
 以上的 4 个变量的值分别为：
@@ -253,9 +256,57 @@ let v4 = (let u expand User(id, name) = new User(88, "bar"))
 * 一个整数，值为 `123`
 * 一个字符串， 值为 `"foo"`
 * 一个元组，值为 `(99, "foo")`
-* 一个 `(User, Int, String)` 元组，值为 `(User(88, "bar"), 88, "bar")`
+* 一个嵌套的元组 `(User, (Int, String))`，值为 `(User(88, "bar"), (88, "bar"))`
 
-### 列表的解构
+### `如果 让...匹配` 语句
+
+有时可能仅仅为了匹配一种模式，这时可以使用 `如果 让...匹配`（`if let...match`） 语句，而无必要使用完整的 `匹配` 语句。
+
+示例：
+
+```
+让 v = (123, 456)
+如果 让 (a, b) 匹配 v 那么
+    书写格式行 ("a 是: {}, b 是: {}", a, b)
+以上
+
+如果 让 (123, b) 匹配 v 那么
+    书写格式行 ("a 是 123")
+以上
+```
+
+```
+let v = (123, 456)
+if let (a, b) match v then
+    writeLineFormat ("a is: {}, b is: {}", a, b)
+end
+
+if let (123, b) match v then
+    writeLineFormat ("a is 123")
+end
+```
+
+在 `让` 关键字和 `匹配` 关键字之间除了可以是一个模式匹配表达式，也可以加入上面 `匹配` 语句当中提到的 `解析`、`展开` 和 `正则匹配` 等关键字。示例：
+
+```js
+如果 让 解析 User(id, name) 匹配 v 那么 ...
+如果 让 u 展开 解析 User(id, name) 匹配 v 那么 ...
+
+如果 让 正则匹配 "^(.+)@(.+)$" [email, name, domain] 匹配 v 那么 ...
+如果 让 u 展开 正则匹配 "^(.+)@(.+)$" [email, name, domain] 匹配 v 那么 ...
+```
+
+`让...匹配` 表达式返回的是一个 `逻辑`（`Boolean`）类型的数值，所以有时还可以跟其他条件一起组合成更为复杂的条件语句。比如：
+
+```js
+if let (id, name) match user1 :and id > 100 then
+    ...
+end
+```
+
+> `让...匹配` 表达式不能单独写成一条语句，因为这样很容易因为忘记判断其返回值而使用模式匹配表达式里的变量值，所以语法上规定  `让...匹配` 表达式只能写在 `如果` 语句、`分支` 语句、`条件` 语句里。
+
+### 列表的解构（示例代码需改成 match 语句）
 
 示例：
 
@@ -325,7 +376,7 @@ let [1:x, 6:y] = [1,2,3,4,5,6]
 
 需注意的是**剩余**关键字 `...` （即三个点，同 "展开" 关键字）只能出现在中括号的末尾，诸如 `let [i, ...j, k]` 语句是有语法错误的。
 
-### 映射表的解构
+### 映射表的解构（示例代码需改成 match 语句）
 
 示例：
 
@@ -357,9 +408,7 @@ let {"firstName": a, "lastName": b} = name
 let {firstName, lastName} = name
 ```
 
-
-
-### 元组的解构
+### 元组的解构（示例代码需改成 match 语句）
 
 示例：
 
@@ -400,7 +449,7 @@ let t = ("foo", ("abc","xyz"), "bar")
 let (_,(a, b),_) = t
 ```
 
-### 结构体的解构
+### 结构体的解构（示例代码需改成 match 语句）
 
 结构体的解构必须使用其**默认构造函数**的各成员的顺序获取各个成员的值。
 
@@ -410,32 +459,32 @@ let (_,(a, b),_) = t
 让 u = 用户(1, "foo", 99)
 
 # id == 1
-让 User(id) = u
+让 User (id) = u
 
 # id == 1, name == "foo"
-让 User(id, name) = u
+让 User (id, name) = u
 
 # id == 1, name == "foo", score == 99
-让 User(id, name, score) = u
+让 User (id, name, score) = u
 
 # score == 99
-让 User(_, _, score) = u
+让 User (_, _, score) = u
 ```
 
 ```js
 let u = User(1, "foo", 99)
 
 # id == 1
-let User(id) = u
+let User (id) = u
 
 # id == 1, name == "foo"
-let User(id, name) = u
+let User (id, name) = u
 
 # id == 1, name == "foo", score == 99
-let User(id, name, score) = u
+let User (id, name, score) = u
 
 # score == 99
-let User(_, _, score) = u
+let User (_, _, score) = u
 ```
 
 在上例中，其中的 `_` 符号（下划线）表示仅匹配位置，丢弃其值。
@@ -494,16 +543,14 @@ end
 
 ```js
 01  match v
-02      case Book(title, isbn):
+02      case Book (title, isbn):
 03          writeLineFormat ("Book title: {}, ISBN: {}", title, isbn)
-04      case Album(title, artist):
+04      case Album (title, artist):
 05          writeLineFormat ("Album title: {}, artist: {}", title, artist)
 06  end
 ```
 
 当变量 `v` 的值为 `Book` 的实例，02 行会被匹配中，如果值为 `Album` 的实例，则 04 行会被匹配中。
-
-
 
 #### 部分匹配
 
@@ -552,13 +599,13 @@ end
 
 `如果` 条件语句能够使用其作用域已存在的变量，包括写在匹配表达式里的变量。
 
-#### 带解析的模式匹配
+#### 带数据解析的模式匹配
 
 有时用于 "被匹配的数据" 并不是最终所需的数据，可能需要经过一定的转换后才是所需的数据。模式匹配支持同时 "转换" 和 "匹配"。
 
 示例：
 
-假设原始数据是 String 类型，既可以解析为 `Email(name, domain)` 类型，也能解析为 `Phone(countryCode, number)`，`Email` 和 `Phone` 是联合体 `SocialId` 的两个成员：
+假设原始数据是 `String` 类型，既可以解析为 `Email` 类型，也能解析为 `Phone`，`Email` 和 `Phone` 是联合体 `SocialId` 的两个成员：
 
 ```js
 联合体 社交帐号
@@ -637,9 +684,20 @@ let d = Parser<Phone, String>.parse("+86-123456")
 # 模式匹配表达式的分别是 Email 和 Phone 类型
 
 匹配 s
-    情况 解析 Email(name, domain):
+    情况 解析 Email email
         书写行("一个电子邮箱")
-    情况 解析 Phone(countryCode, number):
+    情况 解析 Phone phone:
+        书写行("一个电话号码")
+    默认:
+        书写行("未检测到")
+以上
+
+// 或者在解析的同时进行解构
+
+匹配 s
+    情况 解析 Email (name, domain):
+        书写行("一个电子邮箱")
+    情况 解析 Phone (countryCode, number):
         书写行("一个电话号码")
     默认:
         书写行("未检测到")
@@ -653,9 +711,18 @@ let s = "foo@bar"
 # the data type in the matching pattern expression are Email and Phone.
 
 match s
-    case parse Email(name, domain):
+    case parse Email email:
         writeLine("It's an Email address")
-    case parse Phone(countryCode, number):
+    case parse Phone phone:
+        writeLine("It's a phone number")
+    default:
+        writeLine("Not detected")
+end
+
+match s
+    case parse Email (name, domain):
+        writeLine("It's an Email address")
+    case parse Phone (countryCode, number):
         writeLine("It's a phone number")
     default:
         writeLine("Not detected")
@@ -665,16 +732,47 @@ end
 如果模式匹配发生在函数的参数，则 `解析` 关键字加在模式表达式之前，比如：
 
 ```js
-模式函数 测试 (解析 电子邮箱(name, domain), 解析 电话(countryCode, number))
+模式函数 测试 (解析 电子邮箱 email, 解析 电话 phone)
+    ...
+以上
+
+// 或者
+
+模式函数 测试 (解析 电子邮箱 (name, domain), 解析 电话 (countryCode, number))
     ...
 以上
 ```
 
 ```js
-pattern function test (parse Email(name, domain), parse Phone(countryCode, number))
+pattern function test (parse Email email, parse Phone phone)
+    ...
+end
+
+// or
+
+pattern function test (parse Email (name, domain), parse Phone (countryCode, number))
     ...
 end
 ```
+
+标准库里的很多基本类型都有从字符串转换到其类型的 `parse` 方法，比如 `Int::parse(String)`，`Boolean::parse(String)`, `Real::parse(String)`，其实它们都实现了 `parse` 特性，所以当然也就可以使用模式匹配的 `parse` 转换兼匹配的便利了，比如：
+
+```js
+let tokens = // [...]
+let symbols = tokens.map(s =>
+    match s
+        case parse Int i:
+            Symbol::Int(i)
+        case parse Boolean b:
+            Symbol::Boolean(b)
+        case parse Real r:
+            Symbol::Real(r)
+        default:
+            Symbol::Unknown
+    end
+)
+```
+
 
 #### 正则表达式模式匹配
 
@@ -696,7 +794,7 @@ end
 ```js
 匹配 ss
     情况 有([_, name, domain]):
-        输出格式行("名称是: {}, 域名是: {}", name, domain)
+        书写格式行("名称是: {}, 域名是: {}", name, domain)
     默认:
         书写行("未侦测到电子邮箱")
 以上
@@ -720,9 +818,9 @@ end
 
 匹配 s
     情况 正则匹配 /^(.+)@(.+)$/ [email, name, domain]:
-        输出格式行("是一个电子邮箱: {}", email)
+        书写格式行("是一个电子邮箱: {}", email)
     情况 正则匹配 /^(\\+\\d+)-(\\d+)$/ [phone, countryCode, number]:
-        输出格式行("是一个电话号码: {}", phone)
+        书写格式行("是一个电话号码: {}", phone)
     默认:
         书写行("未侦测到")
 以上
@@ -760,14 +858,23 @@ end
 
 #### 模板字符串模式匹配
 
-模板字符串模式匹配是正则表达式匹配的简化版。
+模板字符串模式匹配是 `正则匹配` 的简化版。
 
 示例：
 
 ```js
+匹配 s
+    情况 模板匹配 `/user/{userName:\w+}`:
+        书写格式行("Get user {}", userName)
+    情况 模板匹配 `/user/{userName:\w+}/post/{postId:\d+}`:
+        书写格式行("Get post {}", postId)
+end
+```
+
+```js
 match s
     case template `/user/{userName:\w+}`:
-        writeLineFormat("Get user {}", userId)
+        writeLineFormat("Get user {}", userName)
     case template `/user/{userName:\w+}/post/{postId:\d+}`:
         writeLineFormat("Get post {}", postId)
 end
@@ -784,85 +891,110 @@ match s
 end
 ```
 
-#### 匹配复合结构数据时保留原始值
+#### 范围匹配
 
-当匹配一个复合结构的数据时，写在匹配表达式里的变量获取的是原始数据的某个部分，如果想获取完整的原始数据，可以在模式表达式之前加上一个变量名称加上 `展开`（`expand`）关键字。
+```js
+匹配 i
+    情况 位于 1..2:
+        ...
+```
+
+```js
+match i
+    case in 1..2:
+        ...
+```
+
+```js
+match c
+    case in 'a'..'f':
+        ...
+```
+
+关键字 `范围匹配` 后面可以是一个 `Range`、一个 `List` 对象，只要是一个拥有 `Exist` 特性的对象都可以。比如：
+
+```js
+匹配 i
+    情况 位于 数列::新建(1, 100):
+        ...
+```
+
+匹配时会使用被匹配的值传入目标对象的 `exist` 方法，如果方法返回 `true`，则该匹配式成立。
+
+#### 匹配时保留原始值
+
+当匹配一个复合结构的数据时，写在匹配表达式里的变量获取的是原始数据的某个部分，如果想获取完整的原始数据，可以在模式表达式之前加上一个 `展开`（`expand`）关键字。
 
 示例：
 
 ```js
 让 v = 通过ID获取用户(123)
 匹配 v
-    情况 u 展开 用户(id, name):
-        输出格式行("id: {}, 名称: {}", id, name)
-        输出格式行("{:?}", u)
+    情况 用户 u 展开 (id, name):
+        书写格式行("id: {}, 名称: {}", id, name)
+        书写格式行("{:?}", u)
 以上
 ```
 
 ```js
 let v = getUserById(123)
 match v
-    case u expand User(id, name):
+    case User u expand (id, name):
         writeLineFormat("id: {}, name: {}", id, name)
         writeLineFormat("{:?}", u)
 end
 ```
 
-如果模式匹配发生在函数的参数，则 `展开` 关键字加在模式表达式之前，比如：
+显然变量 `u` 的值就是被匹配变量 `v` 的值，初看起来 `展开` 没什么用途，但在 `赋值` 性质的匹配场合里却非常有意义，比如模式匹配发生在函数的参数，则 `展开` 关键字加在模式表达式之前，比如：
 
 ```js
-函数 测试 (u 展开 User(id, name))
+函数 测试 (User u 展开 (id, name))
     ...
 以上
 ```
 
 ```js
-function test (u expand User(id, name))
+function test (User u expand (id, name))
     ...
 end
 ```
 
-如果 `解析` 和 `展开` 同时进行，则先写 `展开` 再写 `解析` 关键字，比如：
+关键字 `展开` 也可以写在 `解析` 匹配里，比如：
 
 ```js
 匹配 v
-    情况 u 展开 解析 用户(id, name):
+    情况 解析 用户 u 展开 (id, name):
         ...
 以上
 ```
 
 ```js
 match v
-    case u expand parse User(id, name):
+    case parse User u expand (id, name):
         ...
 end
 ```
 
 ```js
-函数 测试 (u 展开 解析 User(id, name))
+函数 测试 (解析 User u 展开 (id, name))
     ...
 以上
 ```
 
 ```js
-function test (u expand parse User(id, name))
+function test (parse User u expand (id, name))
     ...
 end
 ```
 
-### 匹配一个数字范围
+关键字 `展开` 也可以写在 `正则匹配`、`模板匹配` 里，比如：
 
 ```js
-match i
-    case range 1..2:
-        ...
+case regular /^(.+)@(.+)$/ resultList expand [email, name, domain]: // ...
+case template `/user/{userName:\w+}` resultList: // ...
 ```
 
-```js
-match c
-    case range 'a'..'f':
-        ...
-```
+因为 `正则匹配`、`模板匹配` 的结果都是字符串数组，所以变量 `resultList` 也是一个字符串数组，而不是一个元组或者映射表。
 
 ### 嵌套匹配
 
@@ -874,64 +1006,15 @@ match a
         ...
 ```
 
-`expand, range, regex` 等关键字可以用于嵌套内的变量值。
+`regular， in` 等关键字也可以用于嵌套内的变量值。
 
 ```js
 match a
-    case User(name, score: v expand range 60..100):
-        # got `name` and `v`
-    case User(name: n regex /^foo/, score):
-        # got `n` and `score`
+    case User(name, score in 60..100):
+        # got `name` and `score`
+    case User(name regular /^foo/, score):
+        # got `name` and `score`
 ```
-
-
-### `如果 让...匹配` 语句
-
-有时可能仅仅为了匹配一种模式，这时可以使用 `如果 让...匹配`（`if let...match`） 语句，而无必要使用完整的 `匹配` 语句。
-
-示例：
-
-```
-让 v = (123, 456)
-如果 让 (a, b) 匹配 v 那么
-    输出格式行 ("a 是: {}, b 是: {}", a, b)
-以上
-
-如果 让 (123, b) 匹配 v 那么
-    输出格式行 ("a 是 123")
-以上
-```
-
-```
-let v = (123, 456)
-if let (a, b) match v then
-    writeLineFormat ("a is: {}, b is: {}", a, b)
-end
-
-if let (123, b) match v then
-    writeLineFormat ("a is 123")
-end
-```
-
-在 `让` 关键字和 `匹配` 关键字之间除了可以是一个模式匹配表达式，也可以加入上面 `匹配` 语句当中提到的 `解析`、`展开` 和 `正则匹配` 等关键字。示例：
-
-```js
-如果 让 解析 User(id, name) 匹配 v 那么 ...
-如果 让 u 展开 解析 User(id, name) 匹配 v 那么 ...
-
-如果 让 正则匹配 "^(.+)@(.+)$" [email, name, domain] 匹配 v 那么 ...
-如果 让 u 展开 正则匹配 "^(.+)@(.+)$" [email, name, domain] 匹配 v 那么 ...
-```
-
-`让...匹配` 表达式返回的是一个 `逻辑`（`Boolean`）类型的数值，所以有时还可以跟其他条件一起组合成更为复杂的条件语句。比如：
-
-```js
-if let (id, name) match user1 :and id > 100 then
-    ...
-end
-```
-
-> `让...匹配` 表达式不能单独写成一条语句，因为这样很容易因为忘记判断其返回值而使用模式匹配表达式里的变量值，所以语法上规定  `让...匹配` 表达式只能写在 `如果` 语句、`分支` 语句、`条件` 语句里。
 
 ### 模式匹配函数 (NEW)
 
