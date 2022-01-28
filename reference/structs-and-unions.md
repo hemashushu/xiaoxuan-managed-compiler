@@ -86,6 +86,8 @@ struct Login(User user, Time time)
 
 > 结构体的成员是有区分顺序的，即使成员的名称和类型相同，只要顺序不同，则结构体也不同。比如 `struct User(Int id, String name)` 跟 `struct User(String name, Int id)` 是不同的结构体，所以当重构代码时，如果调整了成员的顺序，则需要保证所有使用到该结构体的模块都要重新编译。
 
+> 结构体成员的数据类型只能是基本的数据类型、结构体、枚举、联合体等，不能是函数（函数签名）、特性、接口等。
+
 ### 实例化结构体
 
 :: TODO 尚未决定
@@ -97,25 +99,30 @@ struct Login(User user, Time time)
 ```js
 # 使用 new 关键字
 让 u1 = 新建 用户 (100, "张三", true)
-让 u2 = 新建 用户 (101, "李四", false)
+让 u2 = 新建 用户 (id=101, name="李四", checked=false)
 
 # 原始函数调用
 让 u1 = 用户::新建 (100, "张三", true)
-让 u2 = 用户::新建 (101, "李四", false)
+让 u2 = 用户::新建 (id=101, name="李四", checked=false)
 
 # 使用符号
 让 u1 = 用户!(100, "张三", true)
 让 u1 = 用户!(101, "李四", false)
+
+# 使用符号 # 方案 2
+让 u1 = 用户{100, "张三", true}
+让 u1 = 用户{id: 101, name: "李四", checked: false}
 ```
 
 ```js
 let u1 = new User (100, "foo", true)
-let u2 = new User (101, "bar", false)
+let u2 = new User (id = 101, name = "bar", checked = false)
+
 let u1 = User::new (100, "foo", true)
-let u2 = User::new (101, "bar", false)
+let u2 = User::new (id = 101, name = "bar", checked = false)
 
 let u1 = User!(100, "foo", true)
-let u2 = User::new(101, "bar", false)
+let u1 = User{id: 101, name: "bar", checked: false}
 ```
 
 跟普通函数一样，构造函数也可以按参数名称调用。
@@ -267,7 +274,7 @@ end
 ```js
 01  联合体 名称
 02      成员名称1 (数据类型1 成员名称1, 数据类型2 成员名称2, ...)
-03      成员名称2 (数据类型1, 数据类型2, ...)
+03      成员名称2 (数据类型1, 数据类型2, ...) // ::TODO 考虑不支持无成员名称的成员
 04      成员名称3
 05      ...
 06  以上
@@ -276,13 +283,13 @@ end
 ```js
 01  Union Name
 02      MemberName1 (DataType1 memberName1, DataType2 memberName2, ...)
-03      MemberName2 (DataType1, DataType2, ...)
+03      MemberName2 (DataType1, DataType2, ...) // ::TODO removed?
 04      MemberName3
 05      ...
 06  end
 ```
 
-上面语句的 02 行定义了一个结构体类型的成员，03 行定义了一个元组类型的成员，04 行定义了一个常量，需注意的是这个常量并不需要指定其数值，这点跟其他面向对象语言当中的 "枚举" 类型有些类似。
+上面语句的 02 行定义了一个结构体类型的成员，03 行定义了一个元组类型的成员（::TODO 考虑不支持无成员名称的成员），04 行定义了一个常量，需注意的是这个常量并不需要指定其数值，这点跟其他面向对象语言当中的 "枚举" 类型有些类似。
 
 示例：
 
@@ -299,6 +306,8 @@ union Work
     Album(String title, String artist)
 end
 ```
+
+> 联合体的成员是有区分顺序的，即使成员的名称和类型相同，只要顺序不同，则联合体也不同。比如 `union One(...) Two(...)` 跟 `union Two(...) One(...)` 是不同的联合体，所以当重构代码时，如果调整了成员的顺序，则需要保证所有使用到该联合体的模块都要重新编译。
 
 ### 实例化联合体
 
@@ -354,9 +363,9 @@ end
 
 ## 元组
 
-`元组`（`Tuple`）是 XiaoXuan 函数传参的底层原理，也就是说，传一组参数给一个函数，实际上是传了一个由一个或多个数值组成的元组给函数。一个函数有且只有一个参数和一个返回值。
+`元组`（`Tuple`）<!-- 考虑取消这个特性  是 XiaoXuan 函数传参的底层原理，也就是说，传一组参数给一个函数，实际上是传了一个由一个或多个数值组成的元组给函数。一个函数有且只有一个参数和一个返回值。 -->
 
-元组同时也可用于函数的返回值，当一个函数需要返回多个数值，可以使用元组把多个值包装成一个值然后返回。
+元组一般用于函数需要返回多个数值（却又不想单独创建一个专门的结构体）的情况，即使用元组把多个值包装成一个值然后返回。
 
 一个元组可以视为一个 **匿名成员的结构体**，即它由固定数量、顺序、数据类型的一个或多个成员组成。注意跟其他语言的元组不同，XiaoXuan 的元组并不是一种集合。
 
@@ -403,11 +412,15 @@ someFunction(1,2),
 * 如果写在函数的后面，它会被解析为元组。
 * 写在其他地方会被解析为语句块。
 
+<!--
+::TODO 考虑取消
+
 另外还有空元组 `()`，它是 `Unit::Empty` 值的字面量。它用在几种场合：
 
 * 调用一个无参数的函数，比如 `doSomething()`
 * 当一个函数的参数数据类型为 `Unit` 时，可以传入 `Unit::Empty`，也可以传入 `()`，比如 `Result::Ok(())`；
 * 当一个函数的返回值类型为 `Unit` 时，返回语句可以写 `return Unit::Empty`，也可以写 `return ()`，甚至直接写成 `return`。
+-->
 
 ### 元组的访问
 
@@ -444,6 +457,7 @@ someFunction(1,2),
 让 c = a.成员个数() # 3
 ```
 
+<!-- 考虑去除此特性
 需注意的是，在构造元组实例时，运行环境支持为成员值附带上名称。比如在调用函数时，可以按参数位置传参，也可以按参数名称传参，或者混合两种传参方式。但成员的名称仅仅用于构造元组实例，只是成员的一个附加的数据，XiaoXuan 没提供获取成员名称的方法，也没提供按元组成员名称访问成员的方法。
 
 示例：
@@ -463,11 +477,14 @@ union TupleMember<T>
     ValueWithName(Int index, String name, T v)
 end
 ```
+-->
 
 ### 添加元组元素
 
-元组常用的只有构造和读取两种操作，一般很少需要修改元组的数据，不过<!-- XiaoXuan 还是提供了添加新成员到一个元组的头部的方法，用于构造一个新元组。--> 可以通过是使用一对圆括号和 "..." 符号（三个点号）的方法向元组头部添加成员。
+<!-- 考虑取消此特性 -->
 
+元组常用的只有构造和读取两种操作，一般很少需要修改元组的数据，不过<!-- XiaoXuan 还是提供了添加新成员到一个元组的头部的方法，用于构造一个新元组。--> 可以通过是使用一对圆括号和 "..." 符号（三个点号）的方法向元组头部添加成员。
+<!--
 示例：
 
 ```js
@@ -479,7 +496,7 @@ end
 # b2 == (77, "foo", true, 1, 2, 3)
 ```
 
-这种语法对应的函数是 `元组::添加`（`Tuple::add`），它是一个系统函数，有且只有一个参数，可以接受任意类型的值，另外还有 `元组::追加`（`Tuple::append`） 系统函数用于向元组末尾添加成员。
+这种语法对应的函数是 `元组::添加`（`Tuple::add`），它是一个系统函数，有且只有一个参数，可以接受任意类型的值，另外还有 `元组::追加`（`Tuple::append`） 系统函数用于向元组末尾添加成员。 -->
 
 ## 枚举
 
@@ -544,6 +561,10 @@ setBackgroundColor (PrimaryColor.Red)
 setBackgroundColor (1)
 ```
 
+> 枚举的成员是有区分顺序的，即使成员的名称相同，只要顺序不同，则枚举也不同。比如 `enum Red Blue` 跟 `enum Blue Red` 是不同的枚举，所以当重构代码时，如果调整了成员的顺序，则需要保证所有使用到该枚举的模块都要重新编译。
+
+<!-- 考虑移除
+
 可以使用 @enumValue 标注指定枚举成员的具体值，不过一般没必要这样做，因为语言不提供读取成员内部值（一个整数）的方法。另外编译器不检查指定的成员值是否有重复，所以需要用户确保成员值是正确的。
 
 这个标注的作用是当一个枚举数据类型需要（通过 API 或者序列化）跟外部程序或者本地库（比如 C/C++/Rust 等语言所生成的库）进行内存级别的运算时才有实际意义。比如基本数据类型 `逻辑`（`Boolean`）的定义如下：
@@ -553,10 +574,11 @@ enum Boolean
     @enumValue(0)
     False
 
-    @enumValue(-1)
+    @enumValue(1)
     True
 end
 ```
+-->
 
 ## 类型的内部实现
 
@@ -661,47 +683,84 @@ end
 假设有如下一个联合体：
 
 ```js
-union Field
-    Null
-    Number(Real value)
-    Text(String value)
+union Option
+    Some(Int value)
+    None
 end
 ```
 
 编译器会自动生成如下结构体及其常量值：
 
 ```js
-@compileTypeCategory(TypeCategory::Union)
-@derive(std::trait::Union)
-struct Field
-    Int memberNumber
-    Pointer memberValue
-end
-
-namespace Field
-    @compileTypeCategory(TypeCategory::UnionMember)
-    @compileTypeParent(typeOf(Parent::Field))
-    struct Number
-        Real value
+namespace std
+    @compileTypeCategory(TypeCategory::Union)
+    @derive(std::trait::Union)
+    struct Option
+        WordWidth memberNumber
+        WordWidth memberAddr
     end
 
-    @compileTypeCategory(TypeCategory::UnionMember)
-    @compileTypeParent(typeOf(Parent::Field))
-    struct Text
-        String value
+    namespace Option
+        // 构造结构体型成员
+        function Parent::Option new(WordWidth memberNumber, WordWidth memberAddr)
+            // native
+        end
+
+        // 构造常量型成员
+        function Parent::Option new(WordWidth memberNumber)
+            // native
+        end
+
+        @compileTypeCategory(TypeCategory::UnionMember)
+        @compileTypeParent("std::Option")
+        @compileMemberNumber(0)
+        struct Some
+            Int value
+        end
+
+        // 构造成员 None
+        @compileTypeCategory(TypeCategory::UnionMember)
+        @compileTypeParent("std::Option")
+        @compileMemberNumber(1)
+        const None = new(1)
+
+        // 构造成员 Some
+        function Parent::Option Some(Int value)
+            let some = Current::Some::new(value)
+            let addr = Pointer(some)
+            new(0, addr)
+        end
+
+        function equal(Parent::Option left, Parent::Option right)
+            // 自动生成
+            // 先比较 memberNumber
+            // memberNumber 相同时再逐个 member 比较，伪代码如下：
+            // if left.memberNumber == right.memberNumber then
+            //      switch left.memberNumber
+            //          case 0:
+            //              Current::Some::equal(*left.memberAddress, *right.memberAddress)
+            //          case 1:
+            //              1
+            //      end
+            // else
+            //      false
+            // end
+
+        end
+
+        namespace Some
+            // 构造成员 Some 的实际函数
+            function Parent::Some new(Int value)
+                // native
+            end
+
+            function equal(Parent::Some left, Parent::Some right)
+                // 自动生成
+            end
+        end
     end
-
-    const Array<UnionMember> FieldMembers = #[
-        UnionMember::new(UnionMemberType::Constant, "Null"),
-        UnionMember::new(UnionMemberType::Struct, "Number", typeOf(Number)),
-        UnionMember::new(UnionMemberType::Struct, "Text", typeOf(Text)),
-    ]
-
-    const Null = 0
 end
 ```
-
-其中的 `Pointer` 是一个指向数据实例的内存指针。
 
 #### 枚举的实现
 

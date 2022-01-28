@@ -46,7 +46,23 @@
 以上
 ```
 
-## 其他示例
+## 紧凑写法
+
+使用分号可以将一行语句分为多行，示例：
+
+```js
+使用数学::{平方,平方根}
+令勾等于三;令股等于四;令弦等于平方根(平方(勾),平方(股))
+格式化书写行("斜边长 {:D}",弦)
+```
+
+```js
+use Math::{square, sqrt}
+assign x as 3; assign y as 4; assign z as sqrt(square(x), square(y))
+writeLineFormat("distance {}",z)
+```
+
+## 示例
 
 ```js
 让字符串变量甲="你好"

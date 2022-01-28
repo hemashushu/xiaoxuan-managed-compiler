@@ -267,11 +267,11 @@ let v4 = (let User u expand (id, name) = new User(88, "bar"))
 ```
 让 v = (123, 456)
 如果 让 (a, b) 匹配 v 那么
-    书写格式行 ("a 是: {}, b 是: {}", a, b)
+    格式化书写行 ("a 是: {}, b 是: {}", a, b)
 以上
 
 如果 让 (123, b) 匹配 v 那么
-    书写格式行 ("a 是 123")
+    格式化书写行 ("a 是 123")
 以上
 ```
 
@@ -794,7 +794,7 @@ let symbols = tokens.map(s =>
 ```js
 匹配 ss
     情况 有([_, name, domain]):
-        书写格式行("名称是: {}, 域名是: {}", name, domain)
+        格式化书写行("名称是: {}, 域名是: {}", name, domain)
     默认:
         书写行("未侦测到电子邮箱")
 以上
@@ -818,9 +818,9 @@ end
 
 匹配 s
     情况 正则匹配 /^(.+)@(.+)$/ [email, name, domain]:
-        书写格式行("是一个电子邮箱: {}", email)
+        格式化书写行("是一个电子邮箱: {}", email)
     情况 正则匹配 /^(\\+\\d+)-(\\d+)$/ [phone, countryCode, number]:
-        书写格式行("是一个电话号码: {}", phone)
+        格式化书写行("是一个电话号码: {}", phone)
     默认:
         书写行("未侦测到")
 以上
@@ -865,9 +865,9 @@ end
 ```js
 匹配 s
     情况 模板匹配 `/user/{userName:\w+}`:
-        书写格式行("Get user {}", userName)
+        格式化书写行("Get user {}", userName)
     情况 模板匹配 `/user/{userName:\w+}/post/{postId:\d+}`:
-        书写格式行("Get post {}", postId)
+        格式化书写行("Get post {}", postId)
 end
 ```
 
@@ -931,8 +931,8 @@ match c
 让 v = 通过ID获取用户(123)
 匹配 v
     情况 用户 u 展开 (id, name):
-        书写格式行("id: {}, 名称: {}", id, name)
-        书写格式行("{:?}", u)
+        格式化书写行("id: {}, 名称: {}", id, name)
+        格式化书写行("{:?}", u)
 以上
 ```
 

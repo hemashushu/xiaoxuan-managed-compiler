@@ -185,6 +185,23 @@ function DataType function_name (Int <- (Int a, Int b) param1, ..., String <- (S
 end
 ```
 
+#### 结构体
+
+::TODO
+
+```js
+struct User
+    Int number
+    String name
+end
+
+List<User> users = [User::new(1,"foo"), User::new(2, "bar")]
+
+// 可以省略列表内元素的类型，由变量声明的类型自动推导
+
+List<User> users = [{1, "foo"}, {2, "bar"}]
+```
+
 ##### 类型简写（考虑移动到函数一章）
 
 XiaoXuan 语法支持 `类型`（`type`） 关键字，以允许在函数的主体之前将函数的签名定义成一个单独的名称，语法如下：

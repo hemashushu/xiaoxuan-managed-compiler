@@ -6,10 +6,14 @@
 
 core::variable
 
-* void <- set<T>(KeyString name, T value)
-* Option<T> <- tryGet<T>(KeyString name)
-* T <- get<T>(KeyString name)
-* void <- remove<T>(KeyString name)
+* void <- set<T>(HashString name, T value)
+  更新
+
+* Option<T> <- tryGet<T>(HashString name)
+  尝试读取
+
+* T <- get<T>(HashString name)
+* void <- delete<T>(HashString name)
 
 ```js
 无返回 <- 设值<T>(散列字符串 name, T value)
@@ -18,7 +22,7 @@ T <- 读值<T>(散列字符串 name)
 无返回 <- 删除<T>(散列字符串 name)
 ```
 
-线程变量的实现方式由具体的运行环境决定。一般使用一个内置的线程关联的映射表 `Map<KeyString, T>` 实现。
+线程变量的实现方式由具体的运行环境决定。一般使用一个内置的线程关联的映射表 `Map<HashString, T>` 实现。
 
 示例：
 
@@ -40,4 +44,4 @@ set<Int>(#"foo", 123)
 set<String>(#"foo", "bar")
 ```
 
-上面两句会分别产生一个 `Map<KeyString, Int>` 和一个 `Map<KeyString, String>`，两个映射表分别存储相应数据类型的值，所以即使看起来线程变量可以接受任何数据类型，但实际上还是严格遵守静态数据类型检查。
+上面两句会分别产生一个 `Map<HashString, Int>` 和一个 `Map<HashString, String>`，两个映射表分别存储相应数据类型的值，所以即使看起来线程变量可以接受任何数据类型，但实际上还是严格遵守静态数据类型检查。
