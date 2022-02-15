@@ -1,10 +1,10 @@
-# 数据集合
+# 数据容器
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
 
-- [数据集合](#数据集合)
+- [数据容器](#数据容器)
   - [列表](#列表)
     - [使用构造函数构建列表](#使用构造函数构建列表)
     - [获取列表的长度](#获取列表的长度)
@@ -47,6 +47,7 @@
       - [存在结束 ::TODO](#存在结束-todo)
     - [`全部匹配` ::TODO](#全部匹配-todo)
     - [`逐个` 函数](#逐个-函数)
+    - [枚举](#枚举)
     - [`映射` ::TODO](#映射-todo)
     - [折叠 ::TODO](#折叠-todo)
     - [右折叠 ::TODO](#右折叠-todo)
@@ -61,7 +62,7 @@
     - [省略结束值](#省略结束值)
   - [数列集](#数列集)
   - [数组](#数组)
-    - [字符数组](#字符数组)
+    - [字符串](#字符串)
       - [toUpperCase](#touppercase)
       - [toLowerCase](#tolowercase)
       - [裁剪空白 ::TODO](#裁剪空白-todo)
@@ -87,7 +88,7 @@
     - [删除多个 "键-值对"](#删除多个-键-值对)
     - [过滤 "键-值对"](#过滤-键-值对)
     - [遍历映射表元素](#遍历映射表元素)
-  - [集](#集)
+  - [集合](#集合)
     - [转换为普通列表](#转换为普通列表)
 
 <!-- /code_chunk_output -->
@@ -432,7 +433,7 @@ let b = a[2:3]
 `拿走` `take`
 
   `序列<T> <- 拿走 (整数 数量, 序列<T> 目标)`
-  `Seq<T> <- take (Int count, Seq<T> target)`
+  `Sequence<T> <- take (Int count, Sequence<T> target)`
 
 ### 跳过部分元素
 
@@ -499,8 +500,8 @@ XiaoXuan 所有类型的数据都不支持更改，自然也无法对一个列�
 
 函数 `添加` 的原型是：
 
-* `Seq<T> <- add (T, Seq<T>)`
-* `Seq<T> <- add (Seq<T> additional, Seq<T> target)`
+* `Sequence<T> <- add (T, Sequence<T>)`
+* `Sequence<T> <- add (Sequence<T> additional, Sequence<T> target)`
 
 示例：
 
@@ -532,8 +533,8 @@ let c = a.add([77,88,99])
 
 `追加` 函数的原型是：
 
-* `Seq<T> <- append (T, Seq<T>)`
-* `Seq<T> <- append (Seq<T> additional, Seq<T> target)`
+* `Sequence<T> <- append (T, Sequence<T>)`
+* `Sequence<T> <- append (Sequence<T> additional, Sequence<T> target)`
 
 示例：
 
@@ -559,9 +560,9 @@ let ab = a.append([77,88,99])
 
 `删除` 函数的原型是：
 
-* `Seq<T> <- remove (position, Seq<T>)`
-* `Seq<T> <- remove (startPos, count, Seq<T>)`
-* `Seq<T> <- remove (Boolean <- (T), Seq<T>)`
+* `Sequence<T> <- remove (position, Sequence<T>)`
+* `Sequence<T> <- remove (startPos, count, Sequence<T>)`
+* `Sequence<T> <- remove (Boolean <- (T), Sequence<T>)`
 
 示例：
 
@@ -726,18 +727,18 @@ let (a, b) = s.separate(i=> i % 2 == 0)
 `裁剪`（`trim`）
 trim/trimStart/trimEnd
 
-  `Seq<T> <- trim (T, Seq<T>)`
-  `Seq<T> <- trim (Boolean <- T, Seq<T>)`
-  `Seq<T> <- trimStart (T, Seq<T>)`
-  `Seq<T> <- trimStart (Boolean <- T, Seq<T>)`
-  `Seq<T> <- trimEnd (T, Seq<T>)`
-  `Seq<T> <- trimEnd (Boolean <- T, Seq<T>)`
+  `Sequence<T> <- trim (T, Sequence<T>)`
+  `Sequence<T> <- trim (Boolean <- T, Sequence<T>)`
+  `Sequence<T> <- trimStart (T, Sequence<T>)`
+  `Sequence<T> <- trimStart (Boolean <- T, Sequence<T>)`
+  `Sequence<T> <- trimEnd (T, Sequence<T>)`
+  `Sequence<T> <- trimEnd (Boolean <- T, Sequence<T>)`
 
 ### 补齐
 padStart/padEnd
 
-  `Seq<T> <- padStart(T, Int length, Seq<T>)`
-  `Seq<T> <- padEnd(T, Int length, Seq<T>)`
+  `Sequence<T> <- padStart(T, Int length, Sequence<T>)`
+  `Sequence<T> <- padEnd(T, Int length, Sequence<T>)`
 
 ### 重复序列
 
@@ -1106,6 +1107,10 @@ allMatch
 上面的示例将会输出数列 `[1..10]` 的每一个元素，也就是数字 `1` 到 `10`。
 
 `逐个` 函数跟 `设有 取自` 语句的作用一样，不同的是 `逐个` 是一个函数，而 `设有 取自` 是语句，它们都没有返回值。
+
+### 枚举
+
+enum() 用于返回一个带有序号/索引的 Seq，比如原有数列 ["a", "b", "c"]，enum(list, indexBase) 返回 [(0, "a"), (1, "b"), (2, "c")]
 
 ### `映射` ::TODO
 
@@ -1596,41 +1601,43 @@ XiaoXuan 还提供诸如 `获取列`（`getColumn`） 函数，用来获取指�
 
 上面讲述的列表、数列、数集、列表、数组都属于序列，即它们都实现了 `序列`（`Sequence`）特性，`序列` 特性包含了两个方法 `第一个`（以及 `尝试第一个`） 和 `其余`。
 
-然而大部分派生于 `序列` 的数据类型都不仅仅具有 `序列` 特性，同时还具有其他伴随的特性，这里不一一展开，下面笼统地使用 `序列`（`Seq`）代替这类派生于 `序列` 的数据类型。
+::TODO 至于 List, Array 它们实现了 `Collection` 特性，该特性是好几个特性的组合。
+
+然而大部分派生于 `序列` 的数据类型都不仅仅具有 `序列` 特性，同时还具有其他伴随的特性，这里不一一展开，下面笼统地使用 `序列`（`Sequence`）代替这类派生于 `序列` 的数据类型。
 
 下面列出这些数据类型通常会具有的方法及其方法原型。
 
 * 长度 length
   `整数 <- 长度 (序列<T> 目标)`
-  `Int <- length (Seq<T> target)`
+  `Int <- length (Sequence<T> target)`
 
 * 第一个 first
   `T <- 第一个 (序列<T> 目标)`
-  `T <- first (Seq<T> target)`
+  `T <- first (Sequence<T> target)`
 
 * 尝试第一个 tryFirst
   `可选<T> <- 尝试第一个 (序列<T> 目标)`
-  `Option<T> <- tryFirst (Seq<T> target)`
+  `Option<T> <- tryFirst (Sequence<T> target)`
 
 * 其余 rest
   `序列<T> <- 其余 (序列<T> 目标)`
-  `Seq<T> <- rest (Seq<T> target)`
+  `Sequence<T> <- rest (Sequence<T> target)`
 
 * 最后一个 last
   `T <- 最后一个 (序列<T> 目标)`
-  `T <- last (Seq<T> target)`
+  `T <- last (Sequence<T> target)`
 
 * 尝试最后一个 tryLast
   `可选<T> <- 尝试最后一个 (序列<T> 目标)`
-  `Option<T> <- tryLast (Seq<T> target)`
+  `Option<T> <- tryLast (Sequence<T> target)`
 
 * 最后一个除外 exceptLast
   `序列<T> <- 最后一个除外 (序列<T> 目标)`
-  `Seq<T> <- exceptLast (Seq<T> target)`
+  `Sequence<T> <- exceptLast (Sequence<T> target)`
 
 * 获取 get
   `T <- 获取 (整数 位置, 序列<T> 目标)`
-  `T <- get (Int position, Seq<T> target)`
+  `T <- get (Int position, Sequence<T> target)`
 
   语法糖：
   `目标序列[位置]`
@@ -1638,11 +1645,11 @@ XiaoXuan 还提供诸如 `获取列`（`getColumn`） 函数，用来获取指�
 
 * 尝试获取 tryGet
   `可选<T> <- 尝试获取 (整数 位置, 序列<T> 目标)`
-  `Option<T> <- tryGet (Int position, Seq<T> target)`
+  `Option<T> <- tryGet (Int position, Sequence<T> target)`
 
 * 选取 slice
   `序列<T> <- 选取 (整数 开始位置, 整数 数量, 序列<T> 目标)`
-  `Seq<T> <- slice (Int startPos, Int count, Seq<T> target)`
+  `Sequence<T> <- slice (Int startPos, Int count, Sequence<T> target)`
 
   语法糖：
   `目标序列[开始位置:数量]`
@@ -1650,11 +1657,11 @@ XiaoXuan 还提供诸如 `获取列`（`getColumn`） 函数，用来获取指�
 
 * 开始部分 take
   `序列<T> <- 开始部分 (整数 数量, 序列<T> 目标)`
-  `Seq<T> <- take (Int count, Seq<T> target)`
+  `Sequence<T> <- take (Int count, Sequence<T> target)`
 
 * 添加 add
   `序列<T> <- 添加 (T 新增项, 序列<T> 目标)`
-  `Seq<T> <- add (T additional, Seq<T> target)`
+  `Sequence<T> <- add (T additional, Sequence<T> target)`
 
   语法糖：
   `[新增项, ...目标序列]`
@@ -1666,8 +1673,8 @@ XiaoXuan 还提供诸如 `获取列`（`getColumn`） 函数，用来获取指�
   `序列<T> <- 追加 (T 新增项, 序列<T> 目标)`
   `序列<T> <- 追加 (序列<T> 新增项, 序列<T> 目标)`
 
-  `Seq<T> <- append (T additional, Seq<T> target)`
-  `Seq<T> <- append (Seq<T> additional, Seq<T> target)`
+  `Sequence<T> <- append (T additional, Sequence<T> target)`
+  `Sequence<T> <- append (Sequence<T> additional, Sequence<T> target)`
 
 //TODO:: drop (抛弃，删除最后一个元素，返回 (last, expectLast))
 
@@ -1676,24 +1683,24 @@ XiaoXuan 还提供诸如 `获取列`（`getColumn`） 函数，用来获取指�
   `序列<T> <- 删除 (整数 开始位置, 整数 数量, 序列<T> 目标)`
   `序列<T> <- 删除 (逻辑 <- (T), 序列<T> 目标)`
 
-  `Seq<T> <- remove (Int position, Seq<T> target)`
-  `Seq<T> <- remove (Int startPos, Int count, Seq<T> target)`
-  `Seq<T> <- remove (Boolean <- (T), Seq<T> target)`
+  `Sequence<T> <- remove (Int position, Sequence<T> target)`
+  `Sequence<T> <- remove (Int startPos, Int count, Sequence<T> target)`
+  `Sequence<T> <- remove (Boolean <- (T), Sequence<T> target)`
 
 * 过滤 filter
   `序列<T> <- 过滤 (逻辑 <- (T), 序列<T> 目标)`
-  `Seq<T> <- filter (Boolean <- (T), Seq<T> target)`
+  `Sequence<T> <- filter (Boolean <- (T), Sequence<T> target)`
 
 * 拆分 separate
   `(序列<T>, 序列<T>) <- 拆分 (整数 位置之前, 序列<T> 目标)`
   `(序列<T>, 序列<T>) <- 拆分 (逻辑 <- (T), 序列<T> 目标)`
 
-  `(Seq<T>, Seq<T>) <- separate (Int posBefore, Seq<T> target)`
-  `(Seq<T>, Seq<T>) <- separate (Boolean <- (T), Seq<T> target)`
+  `(Sequence<T>, Sequence<T>) <- separate (Int posBefore, Sequence<T> target)`
+  `(Sequence<T>, Sequence<T>) <- separate (Boolean <- (T), Sequence<T> target)`
 
 * 连接 concat （TODO:: 考虑使用 append 代替）
   `序列<T> <- 连接 (序列<T> 新增项, 序列<T> 目标)`
-  `Seq<T> <- concat (Seq<T> additional, Seq<T> target)`
+  `Sequence<T> <- concat (Sequence<T> additional, Sequence<T> target)`
 
   语法糖：
   `新增项 ++ 目标序列`
@@ -1707,131 +1714,131 @@ XiaoXuan 还提供诸如 `获取列`（`getColumn`） 函数，用来获取指�
   `序列<T> <- 裁剪尾 (T 项目, 序列<T> 目标)`
   `序列<T> <- 裁剪尾 (逻辑 <- T, 序列<T> 目标)`
 
-  `Seq<T> <- trim (T item, Seq<T> target)`
-  `Seq<T> <- trim (Boolean <- T, Seq<T> target)`
-  `Seq<T> <- trimStart (T item, Seq<T> target)`
-  `Seq<T> <- trimStart (Boolean <- T, Seq<T> target)`
-  `Seq<T> <- trimEnd (T item, Seq<T> target)`
-  `Seq<T> <- trimEnd (Boolean <- T, Seq<T> target)`
+  `Sequence<T> <- trim (T item, Sequence<T> target)`
+  `Sequence<T> <- trim (Boolean <- T, Sequence<T> target)`
+  `Sequence<T> <- trimStart (T item, Sequence<T> target)`
+  `Sequence<T> <- trimStart (Boolean <- T, Sequence<T> target)`
+  `Sequence<T> <- trimEnd (T item, Sequence<T> target)`
+  `Sequence<T> <- trimEnd (Boolean <- T, Sequence<T> target)`
 
 * 补齐
   `序列<T> <- 补齐头(T 项目, 整数 长度, 序列<T> 目标)`
   `序列<T> <- 补齐尾(T 项目, 整数 长度, 序列<T> 目标)`
 
-  `Seq<T> <- padStart(T item, Int length, Seq<T> target)`
-  `Seq<T> <- padEnd(T item, Int length, Seq<T> target)`
+  `Sequence<T> <- padStart(T item, Int length, Sequence<T> target)`
+  `Sequence<T> <- padEnd(T item, Int length, Sequence<T> target)`
 
 * 重复 replicate
   `序列<T> <- 重复 (整数 数量, 序列<T> 目标)`
-  `Seq<T> <- replicate (Int count, Seq<T> target)`
+  `Sequence<T> <- replicate (Int count, Sequence<T> target)`
 
 * 平分 part
   `序列<序列<T>> <- 平分 (整数 数量, 序列<T> 目标)`
-  `Seq<Seq<T>> <- part (Int count, Seq<T> target)`
+  `Sequence<Sequence<T>> <- part (Int count, Sequence<T> target)`
 
 * 分隔 split
   `序列<序列<T>> <- 分隔 (T 分隔符, 序列<T> 目标)`
   `序列<序列<T>> <- 分隔 (逻辑 <- (T), 序列<T> 目标)`
 
-  `Seq<Seq<T>> <- split (T separater, Seq<T> target)`
-  `Seq<Seq<T>> <- split (Boolean <- (T), Seq<T> target)`
+  `Sequence<Sequence<T>> <- split (T separater, Sequence<T> target)`
+  `Sequence<Sequence<T>> <- split (Boolean <- (T), Sequence<T> target)`
 
 * 拼接 join
   `序列<T> <- 拼接 (T 连接符, 序列<T> 目标)`
   `序列<T> <- 拼接 (序列<T> 连接符, 序列<T> 目标)`
 
-  `Seq<T> <- join (T joint, Seq<T> target)`
-  `Seq<T> <- join (Seq<T> joint, Seq<T> target)`
+  `Sequence<T> <- join (T joint, Sequence<T> target)`
+  `Sequence<T> <- join (Sequence<T> joint, Sequence<T> target)`
 
 * 插入 insert
   `序列<T> <- insert (整数 位置之前, T 新增项, 序列<T> 目标)`
   `序列<T> <- insert (整数 位置之前, 序列<T> 新增项, 序列<T> 目标)`
 
-  `Seq<T> <- insert (Int posBefore, T additional, Seq<T> target)`
-  `Seq<T> <- insert (Int posBefore, Seq<T> additional, Seq<T> target)`
+  `Sequence<T> <- insert (Int posBefore, T additional, Sequence<T> target)`
+  `Sequence<T> <- insert (Int posBefore, Sequence<T> additional, Sequence<T> target)`
 
 * 替换 replace
   `序列<T> <- replace (整数 开始位置, 整数 数量, T 替换项, 序列<T> 目标)`
   `序列<T> <- replace (整数 开始位置, 整数 数量, 序列<T> 替换项, 序列<T> 目标)`
 
-  `Seq<T> <- replace (Int startPos, Int count, T, Seq<T> target)`
-  `Seq<T> <- replace (Int startPos, Int count, Seq<T>, Seq<T> target)`
+  `Sequence<T> <- replace (Int startPos, Int count, T, Sequence<T> target)`
+  `Sequence<T> <- replace (Int startPos, Int count, Sequence<T>, Sequence<T> target)`
 
 * 排序 sort
   `序列<T> <- sort (序列<T> 目标)`
-  `Seq<T> <- sort (Seq<T> target)`
+  `Sequence<T> <- sort (Sequence<T> target)`
 
 * 反转 reverse
   `序列<T> <- reverse (序列<T> 目标)`
-  `Seq<T> <- reverse (Seq<T> target)`
+  `Sequence<T> <- reverse (Sequence<T> target)`
 
 * 查找位置 findPosition
   `可选<整数> <- 查找位置 (T 查找项, 序列<T> 目标)`
   `可选<整数> <- 查找位置 (逻辑 <- (T), 序列<T> 目标)`
 
-  `Option<Int> <- findPosition (T searching, Seq<T> target)`
-  `Option<Int> <- findPosition (Boolean <- (T), Seq<T> target)`
+  `Option<Int> <- findPosition (T searching, Sequence<T> target)`
+  `Option<Int> <- findPosition (Boolean <- (T), Sequence<T> target)`
 
 * 反向查找位置 reverseFindPosition
   `可选<整数> <- 反向查找位置 (T 查找项, 序列<T> 目标)`
   `可选<整数> <- 反向查找位置 (逻辑 <- (T), 序列<T> 目标)`
 
-  `Option<Int> <- reverseFindPosition (T searching, Seq<T> target)`
-  `Option<Int> <- reverseFindPosition (Boolean <- (T), Seq<T> target)`
+  `Option<Int> <- reverseFindPosition (T searching, Sequence<T> target)`
+  `Option<Int> <- reverseFindPosition (Boolean <- (T), Sequence<T> target)`
 
 * 查找 find
   `可选<T> <- 查找 (逻辑 <- (T), 序列<T> 目标)`
-  `Option<T> <- 查找 (Boolean <- (T), Seq<T> target)`
+  `Option<T> <- 查找 (Boolean <- (T), Sequence<T> target)`
 
 * 存在 exist
   `逻辑 <- 存在 (T 查找项, 序列<T> 目标)`
   `逻辑 <- 存在 (逻辑 <- (T), 序列<T> 目标)`
 
-  `Boolean <- exist (T searching, Seq<T> target)`
-  `Boolean <- exist (Boolean <- (T), Seq<T> target)`
+  `Boolean <- exist (T searching, Sequence<T> target)`
+  `Boolean <- exist (Boolean <- (T), Sequence<T> target)`
 
 * 存在开始 existStart
   `逻辑 <- 存在开始 (T 查找项, 序列<T> 目标)`
   `逻辑 <- 存在开始 (序列<T> 查找项, 序列<T> 目标)`
   `逻辑 <- 存在开始 (逻辑 <- (T), 序列<T> 目标)`
 
-  `Boolean <- existStart (T searching, Seq<T> target)`
-  `Boolean <- existStart (Seq<T> searching, Seq<T> target)`
-  `Boolean <- existStart (Boolean <- (T), Seq<T> target)`
+  `Boolean <- existStart (T searching, Sequence<T> target)`
+  `Boolean <- existStart (Sequence<T> searching, Sequence<T> target)`
+  `Boolean <- existStart (Boolean <- (T), Sequence<T> target)`
 
 * 存在结束 existEnd
   `逻辑 <- 存在结束 (T 查找项, 序列<T> 目标)`
   `逻辑 <- 存在结束 (序列<T> 查找项, 序列<T> 目标)`
   `逻辑 <- 存在结束 (Boolean <- (T), 序列<T> 目标)`
 
-  `Boolean <- existEnd (T searching, Seq<T> target)`
-  `Boolean <- existEnd (Seq<T> searching, Seq<T> target)`
-  `Boolean <- existEnd (Boolean <- (T), Seq<T> target)`
+  `Boolean <- existEnd (T searching, Sequence<T> target)`
+  `Boolean <- existEnd (Sequence<T> searching, Sequence<T> target)`
+  `Boolean <- existEnd (Boolean <- (T), Sequence<T> target)`
 
 * 全部匹配 allMatch
   `逻辑 <- 全部匹配 (Boolean <- (T), 序列<T> 目标)`
-  `Boolean <- allMatch (Boolean <- (T), Seq<T> target)`
+  `Boolean <- allMatch (Boolean <- (T), Sequence<T> target)`
 
 * 逐个 each
   `void <- 逐个(void <- (T), 序列<T> 目标)`
-  `void <- each(void <- (T), Seq<T> target)`
+  `void <- each(void <- (T), Sequence<T> target)`
 
 * 映射 map
   `序列<E> <- 映射 (E <- (T), 序列<T> 目标)`
-  `Seq<E> <- map (E <- (T), Seq<T> target)`
+  `Sequence<E> <- map (E <- (T), Sequence<T> target)`
 
 * 折叠 fold
   `E <- 折叠(E <- (E 累计值, T 当前值), E 初始值,  序列<T> 目标)`
-  `E <- fold(E <- (E accumulator, T currentValue), E initialValue,  Seq<T> target)`
+  `E <- fold(E <- (E accumulator, T currentValue), E initialValue,  Sequence<T> target)`
 
 * 右折叠 foldRight
   `E <- 右折叠(E <- (E 累计值, T 当前值), E 初始值,  序列<T> 目标)`
-  `E <- foldRight(E <- (E accumulator, T currentValue), E initialValue,  Seq<T> target)`
+  `E <- foldRight(E <- (E accumulator, T currentValue), E initialValue,  Sequence<T> target)`
 
 * 配对 zip
   `序列<(E, T)> <- 配对 (序列<E> 增加项, 序列<T> 目标)`
 
-  `Seq<(E, T)> <- zip (Seq<E> additional, Seq<T> target)`
+  `Sequence<(E, T)> <- zip (Sequence<E> additional, Sequence<T> target)`
 
 ### 数字列表
 
@@ -2161,9 +2168,9 @@ end
 
 另外还有 `获取键组`（`getKeys`） 和 `获取值组`（`getValues`）函数可以获取映射表的键组和值组。
 
-## 集
+## 集合
 
-`集`（`Set`）跟列表类似，但它不允许有重复的数据。集合可以理解为只有 "键" 而没有 "值" 的映射表，实际上 `Set` 就是 `Map<T, Unit>` 数据类型的别名（`Unit` 即 `空元型`，它只有一个值 `空间型::空元`，`Unit::Empty`）。集合一般用来排除重复数据。
+`集合`（`Set`）跟列表类似，但它不允许有重复的数据。集合可以理解为只有 "键" 而没有 "值" 的映射表，实际上 `Set` 就是 `Map<T, Unit>` 数据类型的别名（`Unit` 即 `空元型`，它只有一个值 `空间型::空元`，`Unit::Empty`）。集合一般用来排除重复数据。
 
 集的字面量表示方法，
 
