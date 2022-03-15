@@ -210,18 +210,25 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
                     }
 
                     '0' => {
-                        if match_char('x', rest) || match_char('b', rest) {
-                            // 十六进制整数，或者，二进制整数
+                        if match_char('x', rest) {
+                            // `十六进制` 整数
                             panic!("not implemented")
                             // todo::
-                            // let (token, post_rest) = lex_radix_integer(rest)?;
+                            // let (token, post_rest) = lex_16_radix_integer(rest)?;
+                            // add_token(&mut tokens, token);
+                            // post_rest
+                        } else if match_char('b', rest) {
+                            // `二进制` 整数
+                            panic!("not implemented")
+                            // todo::
+                            // let (token, post_rest) = lex_2_radix_integer(rest)?;
                             // add_token(&mut tokens, token);
                             // post_rest
                         } else if match_char('.', rest) {
-                            // `0.x` 整数部分为 0 的浮点数
+                            // `0.` 整数部分为 0 的浮点数
                             panic!("not implemented")
                             // todo::
-                            // let (token, post_rest) = lex_float(rest)?;
+                            // let (token, post_rest) = lex_zero_point_float(rest)?;
                             // add_token(&mut tokens, token);
                             // post_rest
                         } else {
@@ -300,8 +307,22 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
                         }
                     }
 
-                    // 数字、比特数、标识符、关键字等
-                    _ => return Err(Error::LexerError("unexpected char")),
+                    // 整数、浮点数、比特数、标识符、关键字等
+                    _ => {
+                        if is_none_zero_number(*first) {
+                            // 整数、浮点数或者比特数
+                            let (token, post_rest) = lex_number(chars)?;
+                            add_token(&mut tokens, token);
+                            post_rest
+                        } else if is_valid_first_letter_of_identifier(*first) {
+                            // 标识符或者关键字
+                            let (token, post_rest) = lex_identifier_or_keyword(chars)?;
+                            add_token(&mut tokens, token);
+                            post_rest
+                        } else {
+                            return Err(Error::LexerError("unexpected char"));
+                        }
+                    }
                 };
             }
             None => break,
@@ -559,16 +580,144 @@ fn lex_named_operator(source_chars: &[char]) -> Result<(Token, &[char]), Error> 
     Ok((new_token(TokenType::NamedOperator(value)), rest))
 }
 
-fn is_valid_first_number_of_integer(c: char) -> bool {
-    match c {
-        '1'..='9' => true,
-        _ => false,
+fn lex_number(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+    // 整数、浮点数或者比特数
+    //
+    // 查找连续的数字
+    // e.g.
+    // 123
+    // 1_234
+    // 8'xff
+    // 4'b01_10
+    // 2.71828
+    // 6.626e-34
+    // ^-------- 当前所在的位置
+
+    let mut chars = source_chars;
+    let mut end_pos: usize = 0;
+
+    // 注：
+    // 第一个字符已经验证过是合法的标识符首个数字
+
+    loop {
+        chars = match chars.split_first() {
+            Some((first, rest)) => {
+                match *first {
+                    '0'..='9' | '_' => {
+                        // 仍在有效的数字之中
+                        end_pos += 1;
+                        rest
+                    }
+                    '.' => {
+                        return continue_lex_float_number(&source_chars[..end_pos], rest);
+                    }
+                    '\'' => {
+                        return continue_lex_bit_number(&source_chars[..end_pos], rest);
+                    }
+                    'e' => {
+                        return continue_lex_float_number_exponent(&source_chars[..end_pos], rest);
+                    }
+                    _ => {
+                        // 遇到了一个非数字
+                        break;
+                    }
+                }
+            }
+            None => {
+                // 到了末尾
+                break;
+            }
+        }
+    }
+
+    let value_chars = &source_chars[..end_pos];
+    let value_string = value_chars
+        .iter()
+        .filter(|c| **c != '_') // 移除字符串当中的下划线
+        .collect::<String>();
+
+    // 将字符串转换为数字
+    let value: i64 = value_string
+        .parse()
+        .map_err(|_| Error::LexerError("invalid integer number"))?;
+
+    // 当前 end_pos 处于标识符的最后一个字符位置
+    // 剩余的字符应该从标识符位置之后开始，即跳过 end_pos 个字符即可。
+    let rest = move_forword(source_chars, end_pos);
+
+    Ok((new_token(TokenType::Integer(value)), rest))
+}
+
+fn continue_lex_float_number<'a>(
+    previous_chars: &'a [char],
+    remain_chars: &'a [char],
+) -> Result<(Token, &'a [char]), Error> {
+    panic!("not implemented");
+}
+
+fn continue_lex_bit_number<'a>(
+    previous_chars: &'a [char],
+    remain_chars: &'a [char],
+) -> Result<(Token, &'a [char]), Error> {
+    panic!("not implemented");
+}
+
+fn continue_lex_float_number_exponent<'a>(
+    previous_chars: &'a [char],
+    remain_chars: &'a [char],
+) -> Result<(Token, &'a [char]), Error> {
+    panic!("not implemented");
+}
+
+fn lex_identifier_or_keyword(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+    // 标识符或者关键字
+    //
+    // 查找连续的字符
+    // e.g.
+    // foo_bar
+    // ^-------- 当前所在的位置
+
+    let mut chars = source_chars;
+    let mut end_pos: usize = 0;
+
+    // 注：
+    // 第一个字符已经验证过是合法的标识符首个字符
+
+    loop {
+        chars = match chars.split_first() {
+            Some((first, rest)) => {
+                if is_letter(*first) {
+                    // 仍在有效标识符字符之中
+                    end_pos += 1;
+                    rest
+                } else {
+                    // 遇到无效的标识符字符，提前退出循环
+                    break;
+                }
+            }
+            None => {
+                // 到了末尾
+                break;
+            }
+        }
+    }
+
+    let value_chars = &source_chars[..end_pos];
+    let value = value_chars.iter().collect::<String>();
+
+    // 当前 end_pos 处于标识符的最后一个字符位置
+    // 剩余的字符应该从标识符位置之后开始，即跳过 end_pos 个字符即可。
+    let rest = move_forword(source_chars, end_pos);
+
+    match lookup_keyword(&value) {
+        Some(token_type) => Ok((new_token(token_type), rest)),
+        None => Ok((new_token(TokenType::Identifier(value)), rest)),
     }
 }
 
-fn is_number(c: char) -> bool {
+fn is_none_zero_number(c: char) -> bool {
     match c {
-        '0'..='9' | '.' | '_' => true,
+        '1'..='9' => true,
         _ => false,
     }
 }
@@ -633,40 +782,38 @@ fn move_forword(chars: &[char], count: usize) -> &[char] {
 }
 
 // 用于检测字符是关键字还是标识符
-fn lookup_keyword(name: &str) -> TokenType {
+fn lookup_keyword(name: &str) -> Option<TokenType> {
     match name {
-        "let" => TokenType::Let,
-        "match" => TokenType::Match,
-        "if" => TokenType::If,
-        "then" => TokenType::Then,
-        "else" => TokenType::Else,
-        "for" => TokenType::For,
-        "next" => TokenType::Next,
-        "in" => TokenType::In,
-        "branch" => TokenType::Branch,
-        "each" => TokenType::Each,
-        "mix" => TokenType::Mix,
-        "which" => TokenType::Which,
-        "where" => TokenType::Where,
-        "only" => TokenType::Only,
-        "within" => TokenType::Within,
-        "into" => TokenType::Into,
-        "regular" => TokenType::Regular,
-        "template" => TokenType::Template,
-        "to" => TokenType::To,
-        "namespace" => TokenType::Namespace,
-        "use" => TokenType::Use,
-        "function" => TokenType::Function,
-        "const" => TokenType::Const,
-        "enum" => TokenType::Enum,
-        "struct" => TokenType::Struct,
-        "union" => TokenType::Union,
-        "trait" => TokenType::Trait,
-        "impl" => TokenType::Impl,
-        "alias" => TokenType::Alias,
-
-        // 返回标识符
-        _ => TokenType::Identifier(name.to_string()),
+        "let" => Some(TokenType::Let),
+        "match" => Some(TokenType::Match),
+        "if" => Some(TokenType::If),
+        "then" => Some(TokenType::Then),
+        "else" => Some(TokenType::Else),
+        "for" => Some(TokenType::For),
+        "next" => Some(TokenType::Next),
+        "in" => Some(TokenType::In),
+        "branch" => Some(TokenType::Branch),
+        "each" => Some(TokenType::Each),
+        "mix" => Some(TokenType::Mix),
+        "which" => Some(TokenType::Which),
+        "where" => Some(TokenType::Where),
+        "only" => Some(TokenType::Only),
+        "within" => Some(TokenType::Within),
+        "into" => Some(TokenType::Into),
+        "regular" => Some(TokenType::Regular),
+        "template" => Some(TokenType::Template),
+        "to" => Some(TokenType::To),
+        "namespace" => Some(TokenType::Namespace),
+        "use" => Some(TokenType::Use),
+        "function" => Some(TokenType::Function),
+        "const" => Some(TokenType::Const),
+        "enum" => Some(TokenType::Enum),
+        "struct" => Some(TokenType::Struct),
+        "union" => Some(TokenType::Union),
+        "trait" => Some(TokenType::Trait),
+        "impl" => Some(TokenType::Impl),
+        "alias" => Some(TokenType::Alias),
+        _ => None,
     }
 }
 
@@ -761,6 +908,30 @@ mod tests {
         assert_eq!(
             tokens_to_string(&tokens1),
             vec![":", "::", ":", "\"value\"", ":foo:", ":bar:"]
+        );
+    }
+
+    #[test]
+    fn test_integer_number() {
+        let tokens1 = tokenize("1 100 1_234 1_2_3").unwrap();
+        assert_eq!(tokens_to_string(&tokens1), vec!["1", "100", "1234", "123"]);
+    }
+
+    #[test]
+    fn test_identifier() {
+        let tokens1 = tokenize("a ab a_b a123 _ _a a_").unwrap();
+        assert_eq!(
+            tokens_to_string(&tokens1),
+            vec!["a", "ab", "a_b", "a123", "_", "_a", "a_"]
+        );
+    }
+
+    #[test]
+    fn test_keywords() {
+        let tokens1 = tokenize("let match if then else trait").unwrap();
+        assert_eq!(
+            tokens_to_string(&tokens1),
+            vec!["let", "match", "if", "then", "else", "trait"]
         );
     }
 }

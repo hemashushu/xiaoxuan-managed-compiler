@@ -24,7 +24,7 @@ pub enum TokenType {
     // 字面量
     Integer(i64), // 123, 1_001, 0xab, 0b1001
     Float(f64),   // 3.14, 1.6e-23,
-    Bit(u8, i64), // 4b1010, 8xff, 8d10
+    Bit(u8, i64), // 4'b1010, 8'xff, 8'd10
     Boolean(bool),
     Char(char),
     String(String),
