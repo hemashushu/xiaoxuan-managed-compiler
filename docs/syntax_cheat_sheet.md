@@ -143,13 +143,15 @@
 
 ## 字面量
 
-数字 \d+
+数字（整数、浮点数、十六进制数、二进制整数、虚数）
+比特数（4b1010, 12xabc）
 逻辑型 true|false
 字符 'a'
 字符串 "abc"
 模板字符串 `abc`
 哈希字符串 #abc
-正则表达式 /\w+/
+
+正则表达式 /\w+/ （不支持）
 
 ## 复合数据类型
 
@@ -202,6 +204,7 @@ List<User> aa = [{1, "foo", true}, {2, "bar", false}]
 ```
 union Name {
       MemberName1 {DataType1 memberName1, DataType2 memberName2, ...}
+      MemberName2 (DataType1, DataType2, ...)
       MemberName3
 }
 ```
@@ -462,7 +465,8 @@ let [a,b] = ... // 列表解构
 let #[a,b] = ... // 数组解构
 let User{id, name} = ... // 结构体解构
 let User{id: user_id, name: user_name } = ...
-let Json::String{value} = ... // 枚举解构
+let Json::String{value} = ... // 结构体形式的枚举值解构
+let Json::Value(v) = ... // 元组形式的枚举值解构
 ```
 
 # let ... match 表达式

@@ -14,21 +14,23 @@ pub struct Location {
     pub end: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
-    NewLine, // 换行 '\r\n', '\n', '\r'，包括 ';'
+    NewLine, // 换行 '\r\n', '\n', 包括 ';'，不考虑单独一个 '\r' 字符的换行符的情况
 
     // 标识符
     Identifier(String),
 
     // 字面量
-    Integer(i64),
+    Integer(i64), // 123, 1_001, 0xab, 0b1001
+    Float(f64),   // 3.14, 1.6e-23,
+    Bit(u8, i64), // 4b1010, 8xff, 8d10
     Boolean(bool),
     Char(char),
     String(String),
     TemplateString(String),
     HashString(String),
-    Regexp(String),
+    // Regexp(String),
 
     // 符号名称参考
     // https://en.wikipedia.org/wiki/List_of_typographical_symbols_and_punctuation_marks
@@ -77,11 +79,12 @@ pub enum TokenType {
     RightParen, // )
 
     // 其他符号
-    Hash,     // #
-    Range,    // ..
-    Ellipsis, // ...
-    Colon,    // :
-    Comma,    // ,
+    Hash,      // #
+    Range,     // ..
+    Ellipsis,  // ...
+    Separator, // ::
+    Colon,     // :
+    Comma,     // ,
 
     // 关键字
     Let,
@@ -115,7 +118,7 @@ pub enum TokenType {
     Alias,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     // pub raw: String,
     pub location: Location,
@@ -141,12 +144,15 @@ impl fmt::Display for TokenType {
             TokenType::Identifier(value) => write!(f, "{}", value),
 
             TokenType::Integer(value) => write!(f, "{}", value),
+            TokenType::Float(value) => write!(f, "{}", value),
+            TokenType::Bit(bit_width, value) => write!(f, "{}d{}", bit_width, value),
+
             TokenType::Boolean(value) => write!(f, "{}", value),
-            TokenType::Char(value) => write!(f, "{}", value),
-            TokenType::String(value) => write!(f, "{}", value),
-            TokenType::TemplateString(value) => write!(f, "{}", value),
-            TokenType::HashString(value) => write!(f, "{}", value),
-            TokenType::Regexp(value) => write!(f, "{}", value),
+            TokenType::Char(value) => write!(f, "'{}'", value),
+            TokenType::String(value) => write!(f, "\"{}\"", value),
+            TokenType::TemplateString(value) => write!(f, "`{}`", value),
+            TokenType::HashString(value) => write!(f, "#{}", value),
+            // TokenType::Regexp(value) => write!(f, "{}", value),
 
             TokenType::LeftBrace => write!(f, "{{"),  // {
             TokenType::RightBrace => write!(f, "}}"), // }
@@ -155,7 +161,7 @@ impl fmt::Display for TokenType {
             TokenType::Forward => write!(f, ">>"), // >>
             TokenType::Pipe => write!(f, "|"),     // |
 
-            TokenType::NamedOperator(value) => write!(f, "{}", value),
+            TokenType::NamedOperator(value) => write!(f, ":{}:", value),
             TokenType::LogicOr => write!(f, "||"),    // ||
             TokenType::LogicAnd => write!(f, "&&"),   // &&
             TokenType::Equal => write!(f, "=="),      // ==
@@ -194,6 +200,7 @@ impl fmt::Display for TokenType {
             TokenType::Hash => write!(f, "#"),       // #
             TokenType::Range => write!(f, ".."),     // ..
             TokenType::Ellipsis => write!(f, "..."), // ...
+            TokenType::Separator => write!(f, "::"), // ::
             TokenType::Colon => write!(f, ":"),      // :
             TokenType::Comma => write!(f, ","),      // ,
 
@@ -227,6 +234,7 @@ impl fmt::Display for TokenType {
             TokenType::Trait => write!(f, "trait"),
             TokenType::Impl => write!(f, "impl"),
             TokenType::Alias => write!(f, "alias"),
+
         }
     }
 }
