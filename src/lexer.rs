@@ -22,14 +22,16 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
         match chars.split_first() {
             Some((first, rest)) => {
                 chars = match *first {
-                    // skip whitespace
-                    ' ' | '\t' => rest,
+                    ' ' | '\t' => {
+                        // skip whitespace
+                        rest
+                    }
 
-                    // skip comment
                     '/' => {
                         if match_char('/', rest) {
-                            // skip comment
-                            skip_comment(chars) // "//..."
+                            // lex comment
+                            let post_rest = lex_comment(rest); // "//..."
+                            post_rest
                         } else {
                             add_token(&mut tokens, new_token(TokenType::Slash)); // "/"
                             rest
@@ -37,21 +39,10 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
                     }
 
                     // new line
-                    '\n' => {
+                    '\n' | '\r' | ';' => {
+                        let post_rest = lex_new_line(rest);
                         add_token(&mut tokens, new_token(TokenType::NewLine)); // "\n"
-                        rest
-                    }
-                    '\r' => {
-                        if match_char('\n', rest) {
-                            add_token(&mut tokens, new_token(TokenType::NewLine)); // "\r\n"
-                            move_forword(rest, 1)
-                        } else {
-                            return Err(Error::LexerError("unsupported new line mark"));
-                        }
-                    }
-                    ';' => {
-                        add_token(&mut tokens, new_token(TokenType::NewLine)); // ";"
-                        rest
+                        post_rest
                     }
 
                     // 符号
@@ -212,22 +203,19 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
                     '0' => {
                         if match_char('x', rest) {
                             // `十六进制` 整数
-                            panic!("not implemented")
-                            // todo::
+                            todo!()
                             // let (token, post_rest) = lex_16_radix_integer(rest)?;
                             // add_token(&mut tokens, token);
                             // post_rest
                         } else if match_char('b', rest) {
                             // `二进制` 整数
-                            panic!("not implemented")
-                            // todo::
+                            todo!()
                             // let (token, post_rest) = lex_2_radix_integer(rest)?;
                             // add_token(&mut tokens, token);
                             // post_rest
                         } else if match_char('.', rest) {
                             // `0.` 整数部分为 0 的浮点数
-                            panic!("not implemented")
-                            // todo::
+                            todo!()
                             // let (token, post_rest) = lex_zero_point_float(rest)?;
                             // add_token(&mut tokens, token);
                             // post_rest
@@ -332,12 +320,43 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
     Ok(tokens)
 }
 
-fn skip_comment(chars: &[char]) -> &[char] {
+fn lex_comment(source_chars: &[char]) -> &[char] {
     // 行注释，跳过所有字符直到行尾（'\n' 或者 '\r\n'）
-    match chars.iter().position(|c| *c == '\n') {
-        Some(index) => &chars[index..],
-        None => &chars[chars.len()..],
+    // 注意要保留换行符到返回的字符数组（rest）中
+    match source_chars.iter().position(|c| *c == '\n') {
+        Some(index) => &source_chars[index..],
+        None => &source_chars[source_chars.len()..],
     }
+}
+
+fn lex_new_line(source_chars: &[char]) -> &[char] {
+    let mut chars = source_chars;
+    let mut end_pos: usize = 0;
+
+    loop {
+        chars = match chars.split_first() {
+            Some((first, rest)) => match *first {
+                '\n' | '\r' | ';' => {
+                    // ';' 符号视为换行符
+                    end_pos += 1;
+                    rest
+                }
+                ' ' | '\t' => {
+                    // 跳过行与行之间的空白
+                    end_pos += 1;
+                    rest
+                }
+                _ => {
+                    break;
+                }
+            },
+            None => {
+                break;
+            }
+        }
+    }
+
+    move_forword(source_chars, end_pos)
 }
 
 fn lex_char(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
@@ -587,6 +606,8 @@ fn lex_number(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
     // e.g.
     // 123
     // 1_234
+    // 3i
+    // 9.9i
     // 8'xff
     // 4'b01_10
     // 2.71828
@@ -613,6 +634,9 @@ fn lex_number(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
                     }
                     '\'' => {
                         return continue_lex_bit_number(&source_chars[..end_pos], rest);
+                    }
+                    'i' => {
+                        return continue_lex_imaginary_number(&source_chars[..end_pos], rest);
                     }
                     'e' => {
                         return continue_lex_float_number_exponent(&source_chars[..end_pos], rest);
@@ -652,21 +676,28 @@ fn continue_lex_float_number<'a>(
     previous_chars: &'a [char],
     remain_chars: &'a [char],
 ) -> Result<(Token, &'a [char]), Error> {
-    panic!("not implemented");
+    todo!()
+}
+
+fn continue_lex_imaginary_number<'a>(
+    previous_chars: &'a [char],
+    remain_chars: &'a [char],
+) -> Result<(Token, &'a [char]), Error> {
+    todo!()
 }
 
 fn continue_lex_bit_number<'a>(
     previous_chars: &'a [char],
     remain_chars: &'a [char],
 ) -> Result<(Token, &'a [char]), Error> {
-    panic!("not implemented");
+    todo!()
 }
 
 fn continue_lex_float_number_exponent<'a>(
     previous_chars: &'a [char],
     remain_chars: &'a [char],
 ) -> Result<(Token, &'a [char]), Error> {
-    panic!("not implemented");
+    todo!()
 }
 
 fn lex_identifier_or_keyword(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
@@ -839,17 +870,20 @@ mod tests {
         let tokens1 = tokenize("/").unwrap();
         assert_eq!(tokens_to_string(&tokens1), vec!["/"]);
 
-        let tokens2 = tokenize("/ // + - * /").unwrap();
+        let tokens2 = tokenize("/ // comment").unwrap();
         assert_eq!(tokens_to_string(&tokens2), vec!["/"]);
+
+        let tokens3 = tokenize("/ // comment\n/").unwrap();
+        assert_eq!(tokens_to_string(&tokens3), vec!["/", "\n", "/"]);
     }
 
     #[test]
     fn test_new_line() {
         let tokens1 = tokenize("\n \r\n").unwrap();
-        assert_eq!(tokens_to_string(&tokens1), vec!["\n", "\n"]);
+        assert_eq!(tokens_to_string(&tokens1), vec!["\n"]);
 
-        let tokens2 = tokenize(";\n").unwrap();
-        assert_eq!(tokens_to_string(&tokens2), vec!["\n", "\n"]);
+        let tokens2 = tokenize("; \n").unwrap();
+        assert_eq!(tokens_to_string(&tokens2), vec!["\n"]);
     }
 
     #[test]

@@ -120,7 +120,7 @@
 - which
 - where
 - only
-- within
+- in
 - into
 - regular
 - template
@@ -143,13 +143,14 @@
 
 ## 字面量
 
-数字（整数、浮点数、十六进制数、二进制整数、虚数）
-比特数（4b1010, 12xabc）
+数字（整数（含十六进制数、二进制整数）、浮点数、虚数）
+比特数（4'b1010, 8'xff）
 逻辑型 true|false
 字符 'a'
 字符串 "abc"
 模板字符串 `abc`
 哈希字符串 #abc
+命名操作符 :abc:
 
 正则表达式 /\w+/ （不支持）
 
@@ -673,23 +674,23 @@ end
 
 template `...` 会被转换为 regular
 
-#### within 子表达式
+#### in 子表达式
 
-case 后面可以添加 within 关键字
+case 后面可以添加 in 关键字
 
 ```js
 match i
-    case within [1..2]:
+    case in [1..2]:
         ...
 ```
 
 ```js
 match c
-    case within ['a'..'f']:
+    case in ['a'..'f']:
         ...
 ```
 
-关键字 `within` 后面可以是一个 `Range`、一个 `List` 对象，只要是一个拥有 `Exist` 特性的对象都可以。
+关键字 `in` 后面可以是一个 `Range`、一个 `List` 对象，只要是一个拥有 `Exist` 特性的对象都可以。
 
 #### to 子表达式
 
@@ -718,7 +719,7 @@ match u {
         name only ...,
         number where ...,
         addr: Addr {
-                city within [...],
+                city in [...],
                 ...
             }
         } to u1: ...

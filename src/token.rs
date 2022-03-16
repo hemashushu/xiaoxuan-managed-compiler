@@ -7,6 +7,7 @@
  */
 use core::fmt;
 
+// token 的源文件id， 开始位置，结束位置
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Location {
     pub file_id: usize,
@@ -22,9 +23,11 @@ pub enum TokenType {
     Identifier(String),
 
     // 字面量
-    Integer(i64), // 123, 1_001, 0xab, 0b1001
-    Float(f64),   // 3.14, 1.6e-23,
-    Bit(u8, i64), // 4'b1010, 8'xff, 8'd10
+    Integer(i64),   // 123, 1_001, 0xab, 0b1001
+    Float(f64),     // 3.14, 1.6e-23,
+    Imaginary(f64), // 3i, 9.9i
+    Bit(u8, i64),   // 4'b1010, 8'xff, 8'd10
+
     Boolean(bool),
     Char(char),
     String(String),
@@ -146,7 +149,7 @@ impl fmt::Display for TokenType {
             TokenType::Integer(value) => write!(f, "{}", value),
             TokenType::Float(value) => write!(f, "{}", value),
             TokenType::Bit(bit_width, value) => write!(f, "{}d{}", bit_width, value),
-
+            TokenType::Imaginary(value) => write!(f, "{}i", value),
             TokenType::Boolean(value) => write!(f, "{}", value),
             TokenType::Char(value) => write!(f, "'{}'", value),
             TokenType::String(value) => write!(f, "\"{}\"", value),
