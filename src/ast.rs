@@ -7,7 +7,7 @@
  */
 use std::fmt::Display;
 
-use crate::token::TokenType;
+use crate::token::Token;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
@@ -16,9 +16,9 @@ pub enum Node {
     Expression(Expression),
 }
 
-// * Program
-// *  : StatementList
-// *  ;
+// Program
+//  : {Statement}
+//  ;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
@@ -42,40 +42,18 @@ impl Display for Node {
     }
 }
 
-// * StatementList
-// *  : Statement
-// *  | StatementList Statement
-// *  ;
-//
-// * Statement
-// *  : ExpressionStatement
-// *  | BlockStatement
-// *  | EmptyStatement
-// *  | VariableStatement
-// *  | IterationStatement
-// *  | FunctionDeclaration
-// *  | ReturnStatement
-// *  | ClassDeclaration
-// *  ;
+// Statement
+//  : EmptyStatement
+//  | FunctionDeclaration
+//  | Expression
+//  ;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
+    EmptyStatement,
     FunctionDeclaration(FunctionDeclaration),
     Expression(Expression),
 }
-
-// * ClassDeclaration
-// *  : 'class' IDENTIFIER OptionalClassExtends BlockStatement
-// *  ;
-//
-// * FunctionDeclaration
-// *  : 'function' IDENTIFIER '(' OptionalFormalParameterList ')' BlockStatement
-// *  ;
-//
-// * FormalParameterList
-// *  : Identifier
-// *  | FormalParameterList ',' Identifier
-// *  ;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
@@ -123,12 +101,29 @@ impl Display for Statement {
             Statement::Expression(expression) => {
                 write!(f, "{}\n", expression)
             }
+            Statement::EmptyStatement => {
+                write!(f, "")
+            }
         }
     }
 }
 
-// 表达式
-//
+// Expression
+//  : BlockExpression
+//  | LetExpression
+//  | ForExpression
+//  | BranchExpression
+//  | MatchExpression
+//  | IfExpression
+//  | BinaryExpression
+//  | UnaryExpression
+//  | FunctionCallExpression
+//  | MemberExpression
+//  | ConstructorExpression
+//  | Identifier
+//  | Literal
+//  ;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     BlockExpression(BlockExpression),
@@ -137,63 +132,26 @@ pub enum Expression {
     BranchExpression(BranchExpression),
     MatchExpression(MatchExpression),
     IfExpression(IfExpression),
+
+    // operator with precedence
     BinaryExpression(BinaryExpression),
     UnaryExpression(UnaryExpression),
     FunctionCallExpression(FunctionCallExpression),
     MemberExpression(MemberExpression),
     ConstructorExpression(ConstructorExpression),
+
+    // primary expression
     Identifier(Identifier),
     Literal(Literal),
 }
 
+// 显式代码块 `do...` 表达式，或者隠式的花括号 `{...}` 代码块
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockExpression {
+    pub is_explicit: bool,
     pub body: Vec<Expression>,
     pub range: Range,
 }
-
-//
-// * IterationStatement
-// *  : WhileStatement
-// *  | DoWhileStatement
-// *  | ForStatement''
-// * DoWhileStatement
-// *  : 'do' Statement 'while' '(' Expression ')' ';'
-// *  ;
-//
-// * ForStatement
-// *  : 'for' '(' OptionalForStatementInit ';' OptionalExpression ';' OptionalExpression ')' Statement
-// *  ;
-//
-// * ForStatementInit
-// *  : VariableStatementInit
-// *  | Expression
-// *  ;
-//
-// * IfStatement
-// *  : 'if' '(' Expression ')' Statement
-// *  | 'if' '(' Expression ')' Statement 'else' Statement
-// *  ;
-//
-// * VariableStatementInit
-// *  : 'let' VariableDeclarationList
-// *  ;
-//
-// * VariableStatement
-// *  : 'let' VariableDeclarationList ';'
-// *  ;
-//
-// * VariableDeclarationList
-// *  : VariableDeclaration
-// *  | VariableDeclarationList ',' VariableDeclaration
-
-// * VariableDeclaration
-// *  : Identifier OptionalVariableInitializer
-// *  ;
-//
-// * VariableInitializer
-// *  : SIMPLE_ASSIGN AssignmentExpression
-// *  ;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LetExpression {
@@ -202,28 +160,6 @@ pub struct LetExpression {
     pub value: Box<Expression>,
     pub range: Range,
 }
-
-// * BlockStatement
-// *  : '{' OptionalStatementList  '}'
-// *  ;
-//
-// * ExpressionStatement
-// *  : Expression ';'
-// *  ;
-
-// * Expression
-// *  : AssignmentExpression
-// * ;
-//
-// * AssignmentExpression
-// *  : LogicalOrExpression
-// *  | LeftHandSideExpression AssignmentOperator AssignmentExpression
-// *  ;
-//
-// * AssignmentOperator
-// *  : SIMPLE_ASSIGN
-// *  | COMPLEX_ASSIGN
-// *  ;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ForExpression {
@@ -291,71 +227,20 @@ pub struct IfExpression {
     pub range: Range,
 }
 
-// * LogicalOrExpression
-// *  : LogicalAndExpression
-// *  | LogicalOrExpression LOGICAL_OR LogicalAndExpression
-// *  ;
-//
-// * LogicalAndExpression
-// *  : EqualityExpression
-// *  | LogicalAndExpression LOGICAL_AND EqualityExpression
-// *  ;
-//
-// * EqualityExpression
-// *  : RelationalExpression
-// *  | EqualityExpression EQUALITY_OPERATOR RelationalExpression
-// *  ;
-//
-// * RelationalExpression
-// *  : AdditiveExpression
-// *  | RelationalExpression RELATIONAL_OPERATOR AdditiveExpression
-// *  ;
-//
-// * AdditiveExpression
-// *  : MultiplicativeExpression
-// *  | AdditiveExpression ADDITIVE_OPERATOR MultiplicativeExpression
-//
-// * MultiplicativeExpression
-// *  : UnaryExpression
-// *  | MultiplicativeExpression MULTIPLICATIVE_OPERATOR UnaryExpression
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinaryExpression {
-    pub operator: TokenType,
+    pub operator: Token,
     pub left: Box<Expression>,
     pub right: Box<Expression>,
     pub range: Range,
 }
 
-// * UnaryExpression
-// *  : LeftHandSideExpression
-// *  | ADDITIVE_OPERATOR UnaryExpression
-// *  | LOGICAL_NOT UnaryExpression
-// *  ;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnaryExpression {
-    pub operator: TokenType,
+    pub operator: Token,
     pub operand: Box<Expression>,
     pub range: Range,
 }
-
-// * LeftHandSideExpression
-// *  : CallOrMemberExpression
-// *  ;
-//
-// * CallOrMemberExpression
-// *  : MemberExpression
-// *  | CallExpression
-// *  ;
-//
-// * CallExpression
-// *  : Callee Arguments
-// *  ;
-// *
-// * Callee
-// *  : MemberExpression
-// *  | CallExpression
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCallExpression {
@@ -363,11 +248,6 @@ pub struct FunctionCallExpression {
     pub arguments: Vec<Expression>,
     pub range: Range,
 }
-
-// * MemberExpression
-// *  : PrimaryExpression
-// *  | MemberExpression '.' Identifier
-// *  | MemberExpression '[' Expression ']'
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MemberExpression {
@@ -377,9 +257,6 @@ pub struct MemberExpression {
     pub range: Range,
 }
 
-// * ConstructorExpression
-// *  : Identifier {...}
-// *  ;
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstructorExpression {
     pub object: Identifier,
@@ -387,21 +264,11 @@ pub struct ConstructorExpression {
     pub range: Range,
 }
 
-// 基本表达式
-//
-// PrimaryExpression
-//    : Literal
-//    | ParenthesizedExpression
-//    | Tuple
-//    | List
-//    | Map
-//    | Identifier
-//    ;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier {
     pub dirs: Vec<Identifier>,
     pub name: String,
+    // pub is_prefix: bool, // 是否函数的前置调用格式，即 `name!`
     // pub generic_type: Identifier
     pub range: Range,
 }
@@ -535,24 +402,22 @@ impl Display for Expression {
     }
 }
 
-// 字面量
-//
 // Literal
-//     : Integer
-//     | Float
-//     | Imaginary
-//     | Bit
-//     | Boolean
-//     | Char
-//     | GeneralString
-//     | TemplateString
-//     | HashString
-//     | NamedOperator
-//     | List
-//     | Array
-//     | Tuple
-//     | Map
-//     ;
+//  : Integer
+//  | Float
+//  | Imaginary
+//  | Bit
+//  | Boolean
+//  | Char
+//  | GeneralString
+//  | TemplateString
+//  | HashString
+//  | NamedOperator
+//  | List
+//  | Array
+//  | Tuple
+//  | Map
+//  ;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
@@ -769,19 +634,19 @@ fn format_expressions_with_new_line(expressions: &[Expression]) -> String {
         .join("\n")
 }
 
-// 节点的源文件id，开始位置，结束位置
+// 记录 Node 在源文件中的位置
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Range {
-    pub file_id: usize,
-    pub start: usize,
-    pub end: usize,
+    pub file_id: usize, // 源文件 id
+    pub start: usize,   // 开始位置
+    pub end: usize,     // 结束位置（不包括）
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
         ast::{Expression, GeneralString, Identifier, NamedOperator},
-        token::TokenType,
+        token::Token,
     };
 
     use super::{
@@ -916,7 +781,7 @@ mod tests {
                 range: new_range(),
             },
             body: Box::new(Expression::BinaryExpression(BinaryExpression {
-                operator: TokenType::Plus,
+                operator: Token::Plus,
                 left: Box::new(Expression::Identifier(Identifier {
                     dirs: vec![],
                     name: "a".to_string(),

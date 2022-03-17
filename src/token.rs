@@ -7,46 +7,42 @@
  */
 use core::fmt;
 
-// token 的源文件id， 开始位置，结束位置
+// 记录 Token 在源文件中的位置
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Location {
-    pub file_id: usize,
-    pub start: usize,
-    pub end: usize,
+    pub file_id: usize, // 源文件 id
+    pub start: usize,   // 开始位置
+    pub end: usize,     // 结束位置（不包括）
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TokenType {
-    NewLine, // 换行 '\r\n', '\n', 包括 ';'，不考虑单独一个 '\r' 字符的换行符的情况
-
-    // 标识符
-    Identifier(String),
+pub enum Token {
+    NewLine,            // 换行符号，包括 '\r\n', '\n'， '\r' 以及 ';'
+    Identifier(String), // 标识符
 
     // 字面量
-    Integer(i64),   // 123, 1_001, 0xab, 0b1001
-    Float(f64),     // 3.14, 1.6e-23,
-    Imaginary(f64), // 3i, 9.9i
-    Bit(u8, i64),   // 4'b1010, 8'xff, 8'd10
-
-    Boolean(bool),
-    Char(char),
-    String(String),
-    TemplateString(String),
-    HashString(String),
-    // Regexp(String),
-
-    // 符号名称参考
-    // https://en.wikipedia.org/wiki/List_of_typographical_symbols_and_punctuation_marks
+    Integer(i64),           // 123, 1_001, 0xab, 0b1001
+    Float(f64),             // 3.14, 1.6e-23,
+    Imaginary(f64),         // 3i, 9.9i
+    Bit(u8, i64),           // 4'b1010, 8'xff, 8'd10
+    Boolean(bool),          // true, false
+    Char(char),             // 'a', '\x41', '\u{6587}'
+    String(String),         // "foo"
+    TemplateString(String), // `foo`
+    HashString(String),     // #foo
 
     // 符号
+    //
+    // 符号名称参考
+    // https://en.wikipedia.org/wiki/List_of_typographical_symbols_and_punctuation_marks
+    //
+    // 运算符优先级参考
+    // https://en.wikipedia.org/wiki/Operators_in_C_and_C%2B%2B#Operator_precedence
     LeftBrace,  // {
     RightBrace, // }
 
-    Assign,  // =
-    Forward, // >>
-    Pipe,    // |
-
-    NamedOperator(String), // :name:
+    Assign,                // =
+    Pipe,                  // |
     LogicOr,               // ||
     LogicAnd,              // &&
     Equal,                 // ==
@@ -55,21 +51,19 @@ pub enum TokenType {
     GreaterThanOrEqual,    // >=
     LessThan,              // <
     LessThanOrEqual,       // <=
-
-    Concat, // ++
-
-    Plus,     // Add,      // +
-    Minus,    // Subtract, // -
-    Asterisk, // Multiply, // *
-    Slash,    // Divide,   // /
+    Forward,               // >>
+    NamedOperator(String), // :name:
+    Concat,                // ++
+    Plus,                  // +
+    Minus,                 // -
+    Asterisk,              // *
+    Slash,                 // /
 
     UnwrapOr, // ??
     Combine,  // &
-
-    Cast,   // ^ type casting/convert
-    Unwrap, // ?
-
-    Dot, // .
+    Cast,     // ^
+    Unwrap,   // ?
+    Dot,      // .
 
     LeftBracket,  // [
     RightBracket, // ]
@@ -91,6 +85,7 @@ pub enum TokenType {
 
     // 关键字
     Let,
+    Do,
     Match,
     If,
     Then,
@@ -99,12 +94,9 @@ pub enum TokenType {
     Next,
     In,
     Branch,
-    Each,
-    Mix,
     Which,
     Where,
     Only,
-    Within,
     Into,
     Regular,
     Template,
@@ -112,6 +104,7 @@ pub enum TokenType {
     Namespace,
     Use,
     Function,
+    Type,
     Const,
     Enum,
     Struct,
@@ -122,10 +115,9 @@ pub enum TokenType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Token {
-    // pub raw: String,
+pub struct TokenDetail {
     pub location: Location,
-    pub token_type: TokenType,
+    pub token: Token,
 }
 
 impl fmt::Display for Location {
@@ -138,119 +130,109 @@ impl fmt::Display for Location {
     }
 }
 
-impl fmt::Display for TokenType {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            // TokenType::EOF => write!(f, "EOF"),
-            TokenType::NewLine => write!(f, "\n"),
+            Token::NewLine => write!(f, "\n"),
+            Token::Identifier(value) => write!(f, "{}", value),
 
-            TokenType::Identifier(value) => write!(f, "{}", value),
+            Token::Integer(value) => write!(f, "{}", value),
+            Token::Float(value) => write!(f, "{}", value),
+            Token::Imaginary(value) => write!(f, "{}i", value),
+            Token::Bit(bit_width, value) => write!(f, "{}d{}", bit_width, value),
+            Token::Boolean(value) => write!(f, "{}", value),
+            Token::Char(value) => write!(f, "'{}'", value),
+            Token::String(value) => write!(f, "\"{}\"", value),
+            Token::TemplateString(value) => write!(f, "`{}`", value),
+            Token::HashString(value) => write!(f, "#{}", value),
 
-            TokenType::Integer(value) => write!(f, "{}", value),
-            TokenType::Float(value) => write!(f, "{}", value),
-            TokenType::Bit(bit_width, value) => write!(f, "{}d{}", bit_width, value),
-            TokenType::Imaginary(value) => write!(f, "{}i", value),
-            TokenType::Boolean(value) => write!(f, "{}", value),
-            TokenType::Char(value) => write!(f, "'{}'", value),
-            TokenType::String(value) => write!(f, "\"{}\"", value),
-            TokenType::TemplateString(value) => write!(f, "`{}`", value),
-            TokenType::HashString(value) => write!(f, "#{}", value),
-            // TokenType::Regexp(value) => write!(f, "{}", value),
+            Token::LeftBrace => write!(f, "{{"),  // {
+            Token::RightBrace => write!(f, "}}"), // }
 
-            TokenType::LeftBrace => write!(f, "{{"),  // {
-            TokenType::RightBrace => write!(f, "}}"), // }
+            Token::Assign => write!(f, "="),   // =
+            Token::Pipe => write!(f, "|"),     // |
+            Token::LogicOr => write!(f, "||"),    // ||
+            Token::LogicAnd => write!(f, "&&"),   // &&
+            Token::Equal => write!(f, "=="),      // ==
+            Token::NotEqual => write!(f, "!="),   // !=
+            Token::GreaterThan => write!(f, ">"), // >
+            Token::GreaterThanOrEqual => write!(f, ">="), // >=
+            Token::LessThan => write!(f, "<"),    // <
+            Token::LessThanOrEqual => write!(f, "<="), // <=
+            Token::Forward => write!(f, ">>"), // >>
+            Token::NamedOperator(value) => write!(f, ":{}:", value),
+            Token::Concat => write!(f, "++"), // ++
+            Token::Plus /* Add */ => write!(f, "+"),      // +
+            Token::Minus /* Subtract */ => write!(f, "-"), // -
+            Token::Asterisk /* Multiply */ => write!(f, "*"), // *
+            Token::Slash /* Divide */ => write!(f, "/"),   // /
 
-            TokenType::Assign => write!(f, "="),   // =
-            TokenType::Forward => write!(f, ">>"), // >>
-            TokenType::Pipe => write!(f, "|"),     // |
+            Token::UnwrapOr => write!(f, "??"), // ??
+            Token::Combine => write!(f, "&"),   // &
+            Token::Cast => write!(f, "^"), // ^
+            Token::Unwrap => write!(f, "?"), // ?
+            Token::Dot => write!(f, "."), // .
 
-            TokenType::NamedOperator(value) => write!(f, ":{}:", value),
-            TokenType::LogicOr => write!(f, "||"),    // ||
-            TokenType::LogicAnd => write!(f, "&&"),   // &&
-            TokenType::Equal => write!(f, "=="),      // ==
-            TokenType::NotEqual => write!(f, "!="),   // !=
-            TokenType::GreaterThan => write!(f, ">"), // >
-            TokenType::GreaterThanOrEqual => write!(f, ">="), // >=
-            TokenType::LessThan => write!(f, "<"),    // <
-            TokenType::LessThanOrEqual => write!(f, "<="), // <=
+            Token::LeftBracket => write!(f, "["),  // [
+            Token::RightBracket => write!(f, "]"), // ]
 
-            TokenType::Concat => write!(f, "++"), // ++
+            Token::Arrow => write!(f, "=>"), // =>
 
-            TokenType::Plus /* Add */ => write!(f, "+"),      // +
-            TokenType::Minus /* Subtract */ => write!(f, "-"), // -
-            TokenType::Asterisk /* Multiply */ => write!(f, "*"), // *
-            TokenType::Slash /* Divide */ => write!(f, "/"),   // /
+            Token::Exclamation => write!(f, "!"), // !
 
-            TokenType::UnwrapOr => write!(f, "??"), // ??
-            TokenType::Combine => write!(f, "&"),   // &
-
-            TokenType::Cast => write!(f, "^"), // ^ type casting/convert
-            TokenType::Unwrap => write!(f, "?"), // ?
-
-            TokenType::Dot => write!(f, "."), // .
-
-            TokenType::LeftBracket => write!(f, "["),  // [
-            TokenType::RightBracket => write!(f, "]"), // ]
-
-            TokenType::Arrow => write!(f, "=>"), // =>
-
-            TokenType::Exclamation => write!(f, "!"), // !
-
-            TokenType::LeftParen => write!(f, "("),  // (
-            TokenType::RightParen => write!(f, ")"), // )
+            Token::LeftParen => write!(f, "("),  // (
+            Token::RightParen => write!(f, ")"), // )
 
             // 其他符号
-            TokenType::Hash => write!(f, "#"),       // #
-            TokenType::Range => write!(f, ".."),     // ..
-            TokenType::Ellipsis => write!(f, "..."), // ...
-            TokenType::Separator => write!(f, "::"), // ::
-            TokenType::Colon => write!(f, ":"),      // :
-            TokenType::Comma => write!(f, ","),      // ,
+            Token::Hash => write!(f, "#"),       // #
+            Token::Range => write!(f, ".."),     // ..
+            Token::Ellipsis => write!(f, "..."), // ...
+            Token::Separator => write!(f, "::"), // ::
+            Token::Colon => write!(f, ":"),      // :
+            Token::Comma => write!(f, ","),      // ,
 
             // 关键字
-            TokenType::Let => write!(f, "let"),
-            TokenType::Match => write!(f, "match"),
-            TokenType::If => write!(f, "if"),
-            TokenType::Then => write!(f, "then"),
-            TokenType::Else => write!(f, "else"),
-            TokenType::For => write!(f, "for"),
-            TokenType::Next => write!(f, "next"),
-            TokenType::In => write!(f, "in"),
-            TokenType::Branch => write!(f, "branch"),
-            TokenType::Each => write!(f, "each"),
-            TokenType::Mix => write!(f, "mix"),
-            TokenType::Which => write!(f, "which"),
-            TokenType::Where => write!(f, "where"),
-            TokenType::Only => write!(f, "only"),
-            TokenType::Within => write!(f, "within"),
-            TokenType::Into => write!(f, "into"),
-            TokenType::Regular => write!(f, "regular"),
-            TokenType::Template => write!(f, "template"),
-            TokenType::To => write!(f, "to"),
-            TokenType::Namespace => write!(f, "namespace"),
-            TokenType::Use => write!(f, "use"),
-            TokenType::Function => write!(f, "function"),
-            TokenType::Const => write!(f, "const"),
-            TokenType::Enum => write!(f, "enum"),
-            TokenType::Struct => write!(f, "struct"),
-            TokenType::Union => write!(f, "union"),
-            TokenType::Trait => write!(f, "trait"),
-            TokenType::Impl => write!(f, "impl"),
-            TokenType::Alias => write!(f, "alias"),
-
+            Token::Let => write!(f, "let"),
+            Token::Do => write!(f, "do"),
+            Token::Match => write!(f, "match"),
+            Token::If => write!(f, "if"),
+            Token::Then => write!(f, "then"),
+            Token::Else => write!(f, "else"),
+            Token::For => write!(f, "for"),
+            Token::Next => write!(f, "next"),
+            Token::In => write!(f, "in"),
+            Token::Branch => write!(f, "branch"),
+            Token::Which => write!(f, "which"),
+            Token::Where => write!(f, "where"),
+            Token::Only => write!(f, "only"),
+            Token::Into => write!(f, "into"),
+            Token::Regular => write!(f, "regular"),
+            Token::Template => write!(f, "template"),
+            Token::To => write!(f, "to"),
+            Token::Namespace => write!(f, "namespace"),
+            Token::Use => write!(f, "use"),
+            Token::Function => write!(f, "function"),
+            Token::Type => write!(f, "type"),
+            Token::Const => write!(f, "const"),
+            Token::Enum => write!(f, "enum"),
+            Token::Struct => write!(f, "struct"),
+            Token::Union => write!(f, "union"),
+            Token::Trait => write!(f, "trait"),
+            Token::Impl => write!(f, "impl"),
+            Token::Alias => write!(f, "alias"),
         }
     }
 }
 
-impl fmt::Display for Token {
+impl fmt::Display for TokenDetail {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} - {}", self.location, self.token_type)
+        write!(f, "{} - {}", self.location, self.token)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Location, Token, TokenType};
+    use super::{Location, Token, TokenDetail};
 
     #[test]
     fn test_location_display() {
@@ -286,45 +268,45 @@ mod tests {
     }
 
     #[test]
-    fn test_token_type_display() {
-        let tt1 = TokenType::Identifier("foo".to_string());
-        let tt2 = TokenType::If;
+    fn test_token_display() {
+        let tt1 = Token::Identifier("foo".to_string());
+        let tt2 = Token::If;
 
         assert_eq!(tt1.to_string(), "foo");
         assert_eq!(tt2.to_string(), "if");
     }
 
     #[test]
-    fn test_token_type_eq() {
-        let tt1 = TokenType::Identifier("foo".to_string());
-        let tt2 = TokenType::String("foo".to_string());
-        let tt3 = TokenType::Identifier("foo".to_string());
+    fn test_token_eq() {
+        let tt1 = Token::Identifier("foo".to_string());
+        let tt2 = Token::String("foo".to_string());
+        let tt3 = Token::Identifier("foo".to_string());
 
         assert_ne!(tt1, tt2);
         assert_eq!(tt1, tt3);
 
-        assert_ne!(TokenType::Let, TokenType::For);
-        assert_eq!(TokenType::Let, TokenType::Let);
+        assert_ne!(Token::Let, Token::For);
+        assert_eq!(Token::Let, Token::Let);
     }
 
     #[test]
-    fn test_token_display() {
-        let tk1 = Token {
+    fn test_token_detail_display() {
+        let tk1 = TokenDetail {
             location: Location {
                 file_id: 1,
                 start: 2,
                 end: 3,
             },
-            token_type: TokenType::Plus, // Add,
+            token: Token::Plus, // Add,
         };
 
-        let tk2 = Token {
+        let tk2 = TokenDetail {
             location: Location {
                 file_id: 1,
                 start: 2,
                 end: 3,
             },
-            token_type: TokenType::Minus, // Subtract,
+            token: Token::Minus, // Subtract,
         };
 
         assert_eq!(tk1.to_string(), "file id: 1, start: 2, end: 3 - +");

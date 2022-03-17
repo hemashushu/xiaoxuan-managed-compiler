@@ -10,230 +10,265 @@ use std::char;
 use crate::error::Error;
 use crate::token::Location;
 use crate::token::Token;
-use crate::token::TokenType;
+use crate::token::TokenDetail;
 
-pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
-    let vec_char: Vec<char> = program.chars().collect();
+pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
+    let vec_char: Vec<char> = text.chars().collect();
 
     let mut chars = &vec_char[..];
-    let mut tokens: Vec<Token> = vec![];
+    let mut token_details: Vec<TokenDetail> = vec![];
 
     loop {
         match chars.split_first() {
             Some((first, rest)) => {
                 chars = match *first {
                     ' ' | '\t' => {
-                        // skip whitespace
+                        // whitespace
                         rest
                     }
 
                     '/' => {
-                        if match_char('/', rest) {
-                            // lex comment
-                            let post_rest = lex_comment(rest); // "//..."
+                        if is_char('/', rest) {
+                            // comment
+                            let post_rest = lex_comment(rest);
                             post_rest
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::Slash)); // "/"
+                            // `/`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Slash));
                             rest
                         }
                     }
 
-                    // new line
                     '\n' | '\r' | ';' => {
+                        // new line
                         let post_rest = lex_new_line(rest);
-                        add_token(&mut tokens, new_token(TokenType::NewLine)); // "\n"
+                        add_token_detail(&mut token_details, new_token_detail(Token::NewLine));
                         post_rest
                     }
 
-                    // 符号
                     '{' => {
-                        add_token(&mut tokens, new_token(TokenType::LeftBrace)); // "{"
+                        add_token_detail(&mut token_details, new_token_detail(Token::LeftBrace));
                         rest
                     }
                     '}' => {
-                        add_token(&mut tokens, new_token(TokenType::RightBrace)); // "}"
+                        add_token_detail(&mut token_details, new_token_detail(Token::RightBrace));
                         rest
                     }
                     '=' => {
-                        if match_char('=', rest) {
-                            add_token(&mut tokens, new_token(TokenType::Equal)); // "=="
+                        if is_char('=', rest) {
+                            // `==`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Equal));
                             move_forword(rest, 1)
-                        } else if match_char('>', rest) {
-                            add_token(&mut tokens, new_token(TokenType::Arrow)); // "=>"
+                        } else if is_char('>', rest) {
+                            // `=>`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Arrow));
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::Assign)); // "="
+                            // `=`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Assign));
                             rest
                         }
                     }
                     '>' => {
-                        if match_char('>', rest) {
-                            add_token(&mut tokens, new_token(TokenType::Forward)); // ">>"
+                        if is_char('>', rest) {
+                            // `>>`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Forward));
                             move_forword(rest, 1)
-                        } else if match_char('=', rest) {
-                            add_token(&mut tokens, new_token(TokenType::GreaterThanOrEqual)); // ">="
+                        } else if is_char('=', rest) {
+                            // `>=`
+                            add_token_detail(
+                                &mut token_details,
+                                new_token_detail(Token::GreaterThanOrEqual),
+                            );
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::GreaterThan)); // ">"
+                            // `>`
+                            add_token_detail(
+                                &mut token_details,
+                                new_token_detail(Token::GreaterThan),
+                            );
                             rest
                         }
                     }
                     '|' => {
-                        if match_char('|', rest) {
-                            add_token(&mut tokens, new_token(TokenType::LogicOr)); // "||"
+                        if is_char('|', rest) {
+                            // `||`
+                            add_token_detail(&mut token_details, new_token_detail(Token::LogicOr));
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::Pipe)); // "|"
+                            // `|`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Pipe));
                             rest
                         }
                     }
                     '&' => {
-                        if match_char('&', rest) {
-                            add_token(&mut tokens, new_token(TokenType::LogicAnd)); // "&&"
+                        if is_char('&', rest) {
+                            // `&&`
+                            add_token_detail(&mut token_details, new_token_detail(Token::LogicAnd));
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::Combine)); // "&"
+                            // `&`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Combine));
                             rest
                         }
                     }
                     '!' => {
-                        if match_char('=', rest) {
-                            add_token(&mut tokens, new_token(TokenType::NotEqual)); // "!="
+                        if is_char('=', rest) {
+                            // `!=`
+                            add_token_detail(&mut token_details, new_token_detail(Token::NotEqual));
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::Exclamation)); // "!"
+                            // `!`
+                            add_token_detail(
+                                &mut token_details,
+                                new_token_detail(Token::Exclamation),
+                            );
                             rest
                         }
                     }
                     '<' => {
-                        if match_char('=', rest) {
-                            add_token(&mut tokens, new_token(TokenType::LessThanOrEqual)); // "<="
+                        if is_char('=', rest) {
+                            // `<=`
+                            add_token_detail(
+                                &mut token_details,
+                                new_token_detail(Token::LessThanOrEqual),
+                            );
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::LessThan)); // "<"
+                            // `<`
+                            add_token_detail(&mut token_details, new_token_detail(Token::LessThan));
                             rest
                         }
                     }
                     '+' => {
-                        if match_char('+', rest) {
-                            add_token(&mut tokens, new_token(TokenType::Concat)); // "++"
+                        if is_char('+', rest) {
+                            // `++`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Concat));
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::Plus)); // "+"
+                            // `+`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Plus));
                             rest
                         }
                     }
                     '-' => {
-                        add_token(&mut tokens, new_token(TokenType::Minus)); // "-"
+                        add_token_detail(&mut token_details, new_token_detail(Token::Minus));
                         rest
                     }
                     '*' => {
-                        add_token(&mut tokens, new_token(TokenType::Asterisk)); // "*"
+                        add_token_detail(&mut token_details, new_token_detail(Token::Asterisk));
                         rest
                     }
                     '?' => {
-                        if match_char('?', rest) {
-                            add_token(&mut tokens, new_token(TokenType::UnwrapOr)); // "??"
+                        if is_char('?', rest) {
+                            // `??`
+                            add_token_detail(&mut token_details, new_token_detail(Token::UnwrapOr));
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::Unwrap)); // "?"
+                            // `?`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Unwrap));
                             rest
                         }
                     }
                     '^' => {
-                        add_token(&mut tokens, new_token(TokenType::Cast)); // "^"
+                        add_token_detail(&mut token_details, new_token_detail(Token::Cast));
                         rest
                     }
                     '.' => {
-                        if match_chars(['.', '.'], rest) {
-                            add_token(&mut tokens, new_token(TokenType::Ellipsis)); // "..."
+                        if is_chars(['.', '.'], rest) {
+                            // `...`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Ellipsis));
                             move_forword(rest, 2)
-                        } else if match_char('.', rest) {
-                            add_token(&mut tokens, new_token(TokenType::Range)); // ".."
+                        } else if is_char('.', rest) {
+                            // `..`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Range));
                             move_forword(rest, 1)
                         } else {
-                            add_token(&mut tokens, new_token(TokenType::Dot)); // "."
+                            // `.`
+                            add_token_detail(&mut token_details, new_token_detail(Token::Dot));
                             rest
                         }
                     }
                     '[' => {
-                        add_token(&mut tokens, new_token(TokenType::LeftBracket)); // "["
+                        add_token_detail(&mut token_details, new_token_detail(Token::LeftBracket));
                         rest
                     }
                     ']' => {
-                        add_token(&mut tokens, new_token(TokenType::RightBracket)); // "]"
+                        add_token_detail(&mut token_details, new_token_detail(Token::RightBracket));
                         rest
                     }
                     '(' => {
-                        add_token(&mut tokens, new_token(TokenType::LeftParen)); // "("
+                        add_token_detail(&mut token_details, new_token_detail(Token::LeftParen));
                         rest
                     }
                     ')' => {
-                        add_token(&mut tokens, new_token(TokenType::RightParen)); // ")"
+                        add_token_detail(&mut token_details, new_token_detail(Token::RightParen));
                         rest
                     }
 
                     ',' => {
-                        add_token(&mut tokens, new_token(TokenType::Comma)); // ","
+                        add_token_detail(&mut token_details, new_token_detail(Token::Comma));
                         rest
                     }
 
-                    // 带符号的字面量
                     '\'' => {
-                        // 字符 Char
-                        let (token, post_rest) = lex_char(rest)?;
-                        add_token(&mut tokens, token);
+                        // `'char'`
+                        let (token_detail, post_rest) = lex_char(rest)?;
+                        add_token_detail(&mut token_details, token_detail);
                         post_rest
                     }
 
                     '"' => {
-                        // 字符串 String
-                        let (token, post_rest) = lex_string(rest)?;
-                        add_token(&mut tokens, token);
+                        // `"string"`
+                        let (token_detail, post_rest) = lex_string(rest)?;
+                        add_token_detail(&mut token_details, token_detail);
                         post_rest
                     }
 
                     '`' => {
-                        // 模板字符串
-                        let (token, post_rest) = lex_template_string(rest)?;
-                        add_token(&mut tokens, token);
+                        // `template string`
+                        let (token_detail, post_rest) = lex_template_string(rest)?;
+                        add_token_detail(&mut token_details, token_detail);
                         post_rest
                     }
 
                     '0' => {
-                        if match_char('x', rest) {
-                            // `十六进制` 整数
-                            todo!()
-                            // let (token, post_rest) = lex_16_radix_integer(rest)?;
-                            // add_token(&mut tokens, token);
-                            // post_rest
-                        } else if match_char('b', rest) {
-                            // `二进制` 整数
-                            todo!()
-                            // let (token, post_rest) = lex_2_radix_integer(rest)?;
-                            // add_token(&mut tokens, token);
-                            // post_rest
-                        } else if match_char('.', rest) {
-                            // `0.` 整数部分为 0 的浮点数
-                            todo!()
-                            // let (token, post_rest) = lex_zero_point_float(rest)?;
-                            // add_token(&mut tokens, token);
-                            // post_rest
+                        if is_char('x', rest) {
+                            // `0x...`， 十六进制整数
+                            let (token_detail, post_rest) = lex_16_radix_integer(rest)?;
+                            add_token_detail(&mut token_details, token_detail);
+                            post_rest
+                        } else if is_char('b', rest) {
+                            // `0b...`， 二进制整数
+                            let (token_detail, post_rest) = lex_2_radix_integer(rest)?;
+                            add_token_detail(&mut token_details, token_detail);
+                            post_rest
+                        } else if is_char('.', rest) {
+                            // `0.xx`， 整数部分为 0 的浮点数
+                            let (token_detail, post_rest) = lex_zero_point_float(rest)?;
+                            add_token_detail(&mut token_details, token_detail);
+                            post_rest
                         } else {
                             match rest.first() {
                                 Some(second_char) => {
                                     if is_letter(*second_char) {
-                                        // 数字 0 开头的符号不是合法的标识符
+                                        // 数字 0 开头的符号（不是合法的标识符，所以抛出错误）
                                         return Err(Error::LexerError("invalid identifier"));
                                     } else {
                                         // 普通整数 0
-                                        add_token(&mut tokens, new_token(TokenType::Integer(0))); // "0"
+                                        add_token_detail(
+                                            &mut token_details,
+                                            new_token_detail(Token::Integer(0)),
+                                        );
                                         rest
                                     }
                                 }
                                 None => {
                                     // 普通整数 0
-                                    add_token(&mut tokens, new_token(TokenType::Integer(0))); // "0"
+                                    add_token_detail(
+                                        &mut token_details,
+                                        new_token_detail(Token::Integer(0)),
+                                    );
                                     rest
                                 }
                             }
@@ -244,18 +279,22 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
                         match rest.first() {
                             Some(second_char) => {
                                 if is_valid_first_letter_of_identifier(*second_char) {
-                                    // 哈希字符串
-                                    let (token, post_rest) = lex_hash_string(rest)?;
-                                    add_token(&mut tokens, token);
+                                    // `#hash_string`
+                                    let (token_detail, post_rest) = lex_hash_string(rest)?;
+                                    add_token_detail(&mut token_details, token_detail);
                                     post_rest
                                 } else {
-                                    // 普通 # 符号
-                                    add_token(&mut tokens, new_token(TokenType::Hash)); // "#"
+                                    // `#`
+                                    add_token_detail(
+                                        &mut token_details,
+                                        new_token_detail(Token::Hash),
+                                    );
                                     rest
                                 }
                             }
                             None => {
-                                add_token(&mut tokens, new_token(TokenType::Hash)); // "#"
+                                // `#`
+                                add_token_detail(&mut token_details, new_token_detail(Token::Hash));
                                 rest
                             }
                         }
@@ -265,49 +304,61 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
                         match rest.first() {
                             Some(second_char) => {
                                 if *second_char == ':' {
-                                    // 命名空间路径的分隔符
-                                    add_token(&mut tokens, new_token(TokenType::Separator)); // "::"
+                                    // `::`
+                                    add_token_detail(
+                                        &mut token_details,
+                                        new_token_detail(Token::Separator),
+                                    );
                                     move_forword(rest, 1)
                                 } else if is_valid_first_letter_of_identifier(*second_char) {
                                     match lex_named_operator(rest) {
-                                        Ok((token, post_rest)) => {
-                                            // 解析为命名操作符
-                                            add_token(&mut tokens, token);
+                                        Ok((token_detail, post_rest)) => {
+                                            // `:name_operator:`
+                                            add_token_detail(&mut token_details, token_detail);
                                             post_rest
                                         }
                                         Err(_) => {
-                                            // 解析为命名操作符失败，将 `:` 符号作为普通的冒号
-                                            add_token(&mut tokens, new_token(TokenType::Colon)); // ":"
+                                            // `:`
+                                            add_token_detail(
+                                                &mut token_details,
+                                                new_token_detail(Token::Colon),
+                                            ); // ":"
                                             rest
                                         }
                                     }
                                 } else {
-                                    // 普通的冒号
-                                    add_token(&mut tokens, new_token(TokenType::Colon)); // ":"
+                                    // `:`
+                                    add_token_detail(
+                                        &mut token_details,
+                                        new_token_detail(Token::Colon),
+                                    );
                                     rest
                                 }
                             }
                             None => {
-                                // 普通的冒号
-                                add_token(&mut tokens, new_token(TokenType::Colon)); // ":"
+                                // `:`
+                                add_token_detail(
+                                    &mut token_details,
+                                    new_token_detail(Token::Colon),
+                                );
                                 rest
                             }
                         }
                     }
 
-                    // 整数、浮点数、比特数、标识符、关键字等
                     _ => {
                         if is_none_zero_number(*first) {
                             // 整数、浮点数或者比特数
-                            let (token, post_rest) = lex_number(chars)?;
-                            add_token(&mut tokens, token);
+                            let (token_detail, post_rest) = lex_number(chars)?;
+                            add_token_detail(&mut token_details, token_detail);
                             post_rest
                         } else if is_valid_first_letter_of_identifier(*first) {
                             // 标识符或者关键字
-                            let (token, post_rest) = lex_identifier_or_keyword(chars)?;
-                            add_token(&mut tokens, token);
+                            let (token_detail, post_rest) = lex_identifier_or_keyword(chars)?;
+                            add_token_detail(&mut token_details, token_detail);
                             post_rest
                         } else {
+                            // 未预料的符号
                             return Err(Error::LexerError("unexpected char"));
                         }
                     }
@@ -317,16 +368,45 @@ pub fn tokenize(program: &str) -> Result<Vec<Token>, Error> {
         };
     }
 
-    Ok(tokens)
+    Ok(token_details)
 }
 
 fn lex_comment(source_chars: &[char]) -> &[char] {
-    // 行注释，跳过所有字符直到行尾（'\n' 或者 '\r\n'）
-    // 注意要保留换行符到返回的字符数组（rest）中
-    match source_chars.iter().position(|c| *c == '\n') {
-        Some(index) => &source_chars[index..],
-        None => &source_chars[source_chars.len()..],
+    // 行注释
+    // 跳过所有字符直到行尾（`\n`、`\r\n` 或者 `\r`）
+
+    let mut chars = source_chars;
+    let mut end_pos: usize = 0;
+
+    loop {
+        chars = match chars.split_first() {
+            Some((first, rest)) => match *first {
+                '\r' => {
+                    if is_char('\n', rest) {
+                        // `\r\n`
+                        end_pos += 1;
+                        break;
+                    } else {
+                        // `\r`
+                        break;
+                    }
+                }
+                '\n' => {
+                    break;
+                }
+                _ => {
+                    end_pos += 1;
+                    rest
+                }
+            },
+            None => {
+                break;
+            }
+        }
     }
+
+    // 注意要保留换行符到返回的字符数组（rest）中，以便产生一个 Token::NewLine
+    &source_chars[end_pos..]
 }
 
 fn lex_new_line(source_chars: &[char]) -> &[char] {
@@ -346,6 +426,9 @@ fn lex_new_line(source_chars: &[char]) -> &[char] {
                     end_pos += 1;
                     rest
                 }
+                // todo:: 跳过行注释
+                // todo:: 跳过块注释
+                // todo:: 跳过文档注释
                 _ => {
                     break;
                 }
@@ -359,8 +442,10 @@ fn lex_new_line(source_chars: &[char]) -> &[char] {
     move_forword(source_chars, end_pos)
 }
 
-fn lex_char(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+fn lex_char(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    // 字符字面量
     // 查找 `字符字面量` 的结束字符 `'`，但不包括 `\'`
+    //
     // e.g.
     // 'a'
     // '\n'
@@ -377,7 +462,7 @@ fn lex_char(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
             Some((first, rest)) => {
                 chars = match *first {
                     '\\' => {
-                        if match_char('\'', rest) {
+                        if is_char('\'', rest) {
                             // 找到了 '\''
                             end_pos += 2;
                             move_forword(rest, 1)
@@ -413,11 +498,13 @@ fn lex_char(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
     // 剩余的字符应该从 `'` 位置之后开始
 
     let rest = move_forword(source_chars, end_pos + 1);
-    Ok((new_token(TokenType::Char(value_chars[0])), rest))
+    Ok((new_token_detail(Token::Char(value_chars[0])), rest))
 }
 
-fn lex_string(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+fn lex_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    // 字符串字面量
     // 查找 `字符串字面量` 的结束字符 `"`，但不包括 `\"`
+    //
     // e.g.
     // "foo bar"
     //  ^-------- 当前所在的位置
@@ -430,7 +517,7 @@ fn lex_string(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
             Some((first, rest)) => {
                 chars = match *first {
                     '\\' => {
-                        if match_char('"', rest) {
+                        if is_char('"', rest) {
                             // 找到了 '"'
                             end_pos += 2;
                             move_forword(rest, 1)
@@ -464,11 +551,13 @@ fn lex_string(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
     // 当前 end_pos 处于字符 `"` 位置
     // 剩余的字符应该从 `"` 位置之后开始
     let rest = move_forword(source_chars, end_pos + 1);
-    Ok((new_token(TokenType::String(value)), rest))
+    Ok((new_token_detail(Token::String(value)), rest))
 }
 
-fn lex_template_string(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+fn lex_template_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    // 模板字符串字面量
     // 查找 `模板字符串字面量` 的结束字符 '`'，但不包括 '`'
+    //
     // e.g.
     // `foo bar`
     //  ^-------- 当前所在的位置
@@ -481,7 +570,7 @@ fn lex_template_string(source_chars: &[char]) -> Result<(Token, &[char]), Error>
             Some((first, rest)) => {
                 chars = match *first {
                     '\\' => {
-                        if match_char('`', rest) {
+                        if is_char('`', rest) {
                             // 找到了 '`'
                             end_pos += 2;
                             move_forword(rest, 1)
@@ -517,11 +606,13 @@ fn lex_template_string(source_chars: &[char]) -> Result<(Token, &[char]), Error>
     // 当前 end_pos 处于字符 '`' 位置
     // 剩余的字符应该从 '`' 位置之后开始
     let rest = move_forword(source_chars, end_pos + 1);
-    Ok((new_token(TokenType::TemplateString(value)), rest))
+    Ok((new_token_detail(Token::TemplateString(value)), rest))
 }
 
-fn lex_hash_string(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+fn lex_hash_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    // 哈希字符串
     // 查找连续的字符
+    //
     // e.g.
     // #foo_bar
     //  ^-------- 当前所在的位置
@@ -529,8 +620,7 @@ fn lex_hash_string(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
     let mut chars = source_chars;
     let mut end_pos: usize = 0;
 
-    // 注：
-    // 第一个字符已经验证过是合法的标识符首个字符
+    // 注：第一个字符已经验证过是合法的标识符首个字符，无需再检查
 
     loop {
         chars = match chars.split_first() {
@@ -553,11 +643,13 @@ fn lex_hash_string(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
     // 当前 end_pos 处于标识符的最后一个字符位置
     // 剩余的字符应该从标识符位置之后开始，即跳过 end_pos 个字符即可。
     let rest = move_forword(source_chars, end_pos);
-    Ok((new_token(TokenType::HashString(value)), rest))
+    Ok((new_token_detail(Token::HashString(value)), rest))
 }
 
-fn lex_named_operator(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+fn lex_named_operator(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    // 命名操作符
     // 查找连续的字符，以及结束的 `:` 符号
+    //
     // e.g.
     // :foo_bar:
     //  ^-------- 当前所在的位置
@@ -565,8 +657,7 @@ fn lex_named_operator(source_chars: &[char]) -> Result<(Token, &[char]), Error> 
     let mut chars = source_chars;
     let mut end_pos: usize = 0;
 
-    // 注：
-    // 第一个字符已经验证过是合法的标识符首个字符
+    // 注：第一个字符已经验证过是合法的标识符首个字符，无需再检查
 
     loop {
         chars = match chars.split_first() {
@@ -596,13 +687,25 @@ fn lex_named_operator(source_chars: &[char]) -> Result<(Token, &[char]), Error> 
     // 当前 end_pos 处于字符 `:` 位置
     // 剩余的字符应该从 `:` 位置之后开始
     let rest = move_forword(source_chars, end_pos + 1);
-    Ok((new_token(TokenType::NamedOperator(value)), rest))
+    Ok((new_token_detail(Token::NamedOperator(value)), rest))
 }
 
-fn lex_number(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+fn lex_16_radix_integer(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    todo!()
+}
+
+fn lex_2_radix_integer(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    todo!()
+}
+
+fn lex_zero_point_float(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    todo!()
+}
+
+fn lex_number(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
     // 整数、浮点数或者比特数
-    //
     // 查找连续的数字
+    //
     // e.g.
     // 123
     // 1_234
@@ -617,8 +720,7 @@ fn lex_number(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
     let mut chars = source_chars;
     let mut end_pos: usize = 0;
 
-    // 注：
-    // 第一个字符已经验证过是合法的标识符首个数字
+    // 注：第一个字符已经验证过是合法的标识符首个数字，无需再检查
 
     loop {
         chars = match chars.split_first() {
@@ -669,41 +771,41 @@ fn lex_number(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
     // 剩余的字符应该从标识符位置之后开始，即跳过 end_pos 个字符即可。
     let rest = move_forword(source_chars, end_pos);
 
-    Ok((new_token(TokenType::Integer(value)), rest))
+    Ok((new_token_detail(Token::Integer(value)), rest))
 }
 
 fn continue_lex_float_number<'a>(
     previous_chars: &'a [char],
     remain_chars: &'a [char],
-) -> Result<(Token, &'a [char]), Error> {
+) -> Result<(TokenDetail, &'a [char]), Error> {
     todo!()
 }
 
 fn continue_lex_imaginary_number<'a>(
     previous_chars: &'a [char],
     remain_chars: &'a [char],
-) -> Result<(Token, &'a [char]), Error> {
+) -> Result<(TokenDetail, &'a [char]), Error> {
     todo!()
 }
 
 fn continue_lex_bit_number<'a>(
     previous_chars: &'a [char],
     remain_chars: &'a [char],
-) -> Result<(Token, &'a [char]), Error> {
+) -> Result<(TokenDetail, &'a [char]), Error> {
     todo!()
 }
 
 fn continue_lex_float_number_exponent<'a>(
     previous_chars: &'a [char],
     remain_chars: &'a [char],
-) -> Result<(Token, &'a [char]), Error> {
+) -> Result<(TokenDetail, &'a [char]), Error> {
     todo!()
 }
 
-fn lex_identifier_or_keyword(source_chars: &[char]) -> Result<(Token, &[char]), Error> {
+fn lex_identifier_or_keyword(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
     // 标识符或者关键字
-    //
     // 查找连续的字符
+    //
     // e.g.
     // foo_bar
     // ^-------- 当前所在的位置
@@ -711,8 +813,7 @@ fn lex_identifier_or_keyword(source_chars: &[char]) -> Result<(Token, &[char]), 
     let mut chars = source_chars;
     let mut end_pos: usize = 0;
 
-    // 注：
-    // 第一个字符已经验证过是合法的标识符首个字符
+    // 注：第一个字符已经验证过是合法的标识符首个字符，无需再检查
 
     loop {
         chars = match chars.split_first() {
@@ -741,8 +842,8 @@ fn lex_identifier_or_keyword(source_chars: &[char]) -> Result<(Token, &[char]), 
     let rest = move_forword(source_chars, end_pos);
 
     match lookup_keyword(&value) {
-        Some(token_type) => Ok((new_token(token_type), rest)),
-        None => Ok((new_token(TokenType::Identifier(value)), rest)),
+        Some(token) => Ok((new_token_detail(token), rest)),
+        None => Ok((new_token_detail(Token::Identifier(value)), rest)),
     }
 }
 
@@ -769,40 +870,25 @@ fn is_letter(c: char) -> bool {
     }
 }
 
-fn add_token(tokens: &mut Vec<Token>, token: Token) -> &mut Vec<Token> {
-    tokens.push(token);
-    tokens
-}
-
-fn new_token(token_type: TokenType) -> Token {
-    Token {
-        location: Location {
-            file_id: 0,
-            start: 0,
-            end: 0,
-        },
-        token_type,
-    }
-}
-
-fn match_char(expectd: char, chars: &[char]) -> bool {
+fn is_char(expectd: char, chars: &[char]) -> bool {
     match chars.first() {
         Some(first_char) => *first_char == expectd,
         None => false,
     }
 }
 
-fn match_chars(expected: [char; 2], chars: &[char]) -> bool {
+fn is_chars(expected: [char; 2], chars: &[char]) -> bool {
     match chars.split_first() {
         Some((first, rest)) => {
-            if *first == expected[0] {
-                match rest.first() {
-                    Some(second) => *second == expected[1],
-                    None => false,
-                }
-            } else {
-                false
-            }
+            // if *first == expected[0] {
+            //     match rest.first() {
+            //         Some(second) => *second == expected[1],
+            //         None => false,
+            //     }
+            // } else {
+            //     false
+            // }
+            (*first == expected[0]) && is_char(expected[1], rest)
         }
         None => false,
     }
@@ -812,85 +898,108 @@ fn move_forword(chars: &[char], count: usize) -> &[char] {
     &chars[count..]
 }
 
+fn add_token_detail(
+    token_details: &mut Vec<TokenDetail>,
+    token_detail: TokenDetail,
+) -> &mut Vec<TokenDetail> {
+    token_details.push(token_detail);
+    token_details
+}
+
+fn new_token_detail(token: Token) -> TokenDetail {
+    TokenDetail {
+        location: new_location(),
+        token,
+    }
+}
+
+fn new_location() -> Location {
+    // todo::
+    // Location 各成员值应该由参数传入
+    Location {
+        file_id: 0,
+        start: 0,
+        end: 0,
+    }
+}
+
 // 用于检测字符是关键字还是标识符
-fn lookup_keyword(name: &str) -> Option<TokenType> {
+fn lookup_keyword(name: &str) -> Option<Token> {
     match name {
-        "let" => Some(TokenType::Let),
-        "match" => Some(TokenType::Match),
-        "if" => Some(TokenType::If),
-        "then" => Some(TokenType::Then),
-        "else" => Some(TokenType::Else),
-        "for" => Some(TokenType::For),
-        "next" => Some(TokenType::Next),
-        "in" => Some(TokenType::In),
-        "branch" => Some(TokenType::Branch),
-        "each" => Some(TokenType::Each),
-        "mix" => Some(TokenType::Mix),
-        "which" => Some(TokenType::Which),
-        "where" => Some(TokenType::Where),
-        "only" => Some(TokenType::Only),
-        "within" => Some(TokenType::Within),
-        "into" => Some(TokenType::Into),
-        "regular" => Some(TokenType::Regular),
-        "template" => Some(TokenType::Template),
-        "to" => Some(TokenType::To),
-        "namespace" => Some(TokenType::Namespace),
-        "use" => Some(TokenType::Use),
-        "function" => Some(TokenType::Function),
-        "const" => Some(TokenType::Const),
-        "enum" => Some(TokenType::Enum),
-        "struct" => Some(TokenType::Struct),
-        "union" => Some(TokenType::Union),
-        "trait" => Some(TokenType::Trait),
-        "impl" => Some(TokenType::Impl),
-        "alias" => Some(TokenType::Alias),
+        "let" => Some(Token::Let),
+        "do" => Some(Token::Do),
+        "match" => Some(Token::Match),
+        "if" => Some(Token::If),
+        "then" => Some(Token::Then),
+        "else" => Some(Token::Else),
+        "for" => Some(Token::For),
+        "next" => Some(Token::Next),
+        "in" => Some(Token::In),
+        "branch" => Some(Token::Branch),
+        "which" => Some(Token::Which),
+        "where" => Some(Token::Where),
+        "only" => Some(Token::Only),
+        "into" => Some(Token::Into),
+        "regular" => Some(Token::Regular),
+        "template" => Some(Token::Template),
+        "to" => Some(Token::To),
+        "namespace" => Some(Token::Namespace),
+        "use" => Some(Token::Use),
+        "function" => Some(Token::Function),
+        "const" => Some(Token::Const),
+        "enum" => Some(Token::Enum),
+        "struct" => Some(Token::Struct),
+        "union" => Some(Token::Union),
+        "trait" => Some(Token::Trait),
+        "impl" => Some(Token::Impl),
+        "alias" => Some(Token::Alias),
         _ => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::token::Token;
+    use crate::token::TokenDetail;
 
     use super::tokenize;
 
-    fn tokens_to_string(tokens: &[Token]) -> Vec<String> {
-        let strings: Vec<String> = tokens.iter().map(|t| t.token_type.to_string()).collect();
+    fn token_details_to_string(token_details: &[TokenDetail]) -> Vec<String> {
+        let strings: Vec<String> = token_details.iter().map(|t| t.token.to_string()).collect();
         strings
     }
 
     #[test]
     fn test_whitespace() {
-        let tokens = tokenize(" \t").unwrap();
-        assert_eq!(tokens.len(), 0);
+        let token_details = tokenize(" \t").unwrap();
+        assert_eq!(token_details.len(), 0);
     }
 
     #[test]
     fn test_comment() {
         let tokens1 = tokenize("/").unwrap();
-        assert_eq!(tokens_to_string(&tokens1), vec!["/"]);
+        assert_eq!(token_details_to_string(&tokens1), vec!["/"]);
 
         let tokens2 = tokenize("/ // comment").unwrap();
-        assert_eq!(tokens_to_string(&tokens2), vec!["/"]);
+        assert_eq!(token_details_to_string(&tokens2), vec!["/"]);
 
         let tokens3 = tokenize("/ // comment\n/").unwrap();
-        assert_eq!(tokens_to_string(&tokens3), vec!["/", "\n", "/"]);
+        assert_eq!(token_details_to_string(&tokens3), vec!["/", "\n", "/"]);
     }
 
     #[test]
     fn test_new_line() {
         let tokens1 = tokenize("\n \r\n").unwrap();
-        assert_eq!(tokens_to_string(&tokens1), vec!["\n"]);
+        assert_eq!(token_details_to_string(&tokens1), vec!["\n"]);
 
         let tokens2 = tokenize("; \n").unwrap();
-        assert_eq!(tokens_to_string(&tokens2), vec!["\n"]);
+        assert_eq!(token_details_to_string(&tokens2), vec!["\n"]);
     }
 
     #[test]
     fn test_punctuation_marks() {
         let tokens1 = tokenize("{ } = >> | || && == != > >= < <= ++ + - * /").unwrap();
         assert_eq!(
-            tokens_to_string(&tokens1),
+            token_details_to_string(&tokens1),
             vec![
                 "{", "}", "=", ">>", "|", "||", "&&", "==", "!=", ">", ">=", "<", "<=", "++", "+",
                 "-", "*", "/",
@@ -899,7 +1008,7 @@ mod tests {
 
         let tokens2 = tokenize("?? & ^ ? . [ ] => ! ( ) # .. ... ,").unwrap();
         assert_eq!(
-            tokens_to_string(&tokens2),
+            token_details_to_string(&tokens2),
             vec!["??", "&", "^", "?", ".", "[", "]", "=>", "!", "(", ")", "#", "..", "...", ",",]
         );
     }
@@ -907,7 +1016,7 @@ mod tests {
     #[test]
     fn test_char_literal() {
         let tokens1 = tokenize("'a' 'b'").unwrap();
-        assert_eq!(tokens_to_string(&tokens1), vec!["'a'", "'b'"]);
+        assert_eq!(token_details_to_string(&tokens1), vec!["'a'", "'b'"]);
         // todo:: 测试转义字符
     }
 
@@ -915,7 +1024,7 @@ mod tests {
     fn test_string_literal() {
         let tokens1 = tokenize(r#""foo" "b\"ar\"" "y&x""#).unwrap();
         assert_eq!(
-            tokens_to_string(&tokens1),
+            token_details_to_string(&tokens1),
             vec!["\"foo\"", "\"b\\\"ar\\\"\"", "\"y&x\""]
         );
         // todo:: 测试转义字符
@@ -924,7 +1033,10 @@ mod tests {
     #[test]
     fn test_template_string_literal() {
         let tokens1 = tokenize(r#" `foo` `b'a"r` "#).unwrap();
-        assert_eq!(tokens_to_string(&tokens1), vec![r#"`foo`"#, r#"`b'a"r`"#]);
+        assert_eq!(
+            token_details_to_string(&tokens1),
+            vec![r#"`foo`"#, r#"`b'a"r`"#]
+        );
         // todo:: 测试转义字符
     }
 
@@ -932,7 +1044,7 @@ mod tests {
     fn test_hash() {
         // 测试 `井号` 以及 `哈希字符串`，比如 `#`, `#foo`
         let tokens1 = tokenize("# #foo #bar").unwrap();
-        assert_eq!(tokens_to_string(&tokens1), vec!["#", "#foo", "#bar"]);
+        assert_eq!(token_details_to_string(&tokens1), vec!["#", "#foo", "#bar"]);
     }
 
     #[test]
@@ -940,7 +1052,7 @@ mod tests {
         // 测试 `冒号`、`命名空间路径分隔符`、`命名操作符`，比如 `:`，`::`，`:foo: :bar:`
         let tokens1 = tokenize(": :: :\"value\" :foo: :bar:").unwrap();
         assert_eq!(
-            tokens_to_string(&tokens1),
+            token_details_to_string(&tokens1),
             vec![":", "::", ":", "\"value\"", ":foo:", ":bar:"]
         );
     }
@@ -948,14 +1060,17 @@ mod tests {
     #[test]
     fn test_integer_number() {
         let tokens1 = tokenize("1 100 1_234 1_2_3").unwrap();
-        assert_eq!(tokens_to_string(&tokens1), vec!["1", "100", "1234", "123"]);
+        assert_eq!(
+            token_details_to_string(&tokens1),
+            vec!["1", "100", "1234", "123"]
+        );
     }
 
     #[test]
     fn test_identifier() {
         let tokens1 = tokenize("a ab a_b a123 _ _a a_").unwrap();
         assert_eq!(
-            tokens_to_string(&tokens1),
+            token_details_to_string(&tokens1),
             vec!["a", "ab", "a_b", "a123", "_", "_a", "a_"]
         );
     }
@@ -964,7 +1079,7 @@ mod tests {
     fn test_keywords() {
         let tokens1 = tokenize("let match if then else trait").unwrap();
         assert_eq!(
-            tokens_to_string(&tokens1),
+            token_details_to_string(&tokens1),
             vec!["let", "match", "if", "then", "else", "trait"]
         );
     }

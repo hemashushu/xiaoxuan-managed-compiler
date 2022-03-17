@@ -25,8 +25,8 @@ $ cargo run --bin lexer scripts/01-base-expression.xuan"
     }
 
     let file_path = &args[1];
-    let program = fs::read_to_string(file_path).expect("read file error");
-    let result = lexer::tokenize(&program).expect("tokenize error");
+    let program = fs::read_to_string(file_path).unwrap();
+    let result = lexer::tokenize(&program).unwrap();
 
     for token in result {
         println!("{:?}", token);
