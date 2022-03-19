@@ -50,7 +50,7 @@ impl Display for Node {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    EmptyStatement,
+    EmptyStatement, // 当一个程序的有效源码是空的时候，解析而得的语法树就只有一个 EmptyStatement
     FunctionDeclaration(FunctionDeclaration),
     Expression(Expression),
 }
@@ -142,6 +142,7 @@ pub enum Expression {
 
     // primary expression
     Identifier(Identifier),
+    PrefixIdentifier(PrefixIdentifier),
     Literal(Literal),
 }
 
@@ -266,10 +267,15 @@ pub struct ConstructorExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier {
-    pub dirs: Vec<Identifier>,
+    pub dirs: Vec<String>,
     pub name: String,
-    // pub is_prefix: bool, // 是否函数的前置调用格式，即 `name!`
     // pub generic_type: Identifier
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrefixIdentifier {
+    pub identifier: Identifier,
     pub range: Range,
 }
 
@@ -279,9 +285,9 @@ impl Display for Identifier {
         if self.dirs.len() > 0 {
             let path = self
                 .dirs
-                .iter()
-                .map(|d| d.name.clone())
-                .collect::<Vec<String>>()
+                // .iter()
+                // .map(|d| d.name.clone())
+                // .collect::<Vec<String>>()
                 .join("::");
             full_path.push_str(&path);
             full_path.push_str("::");
@@ -362,9 +368,20 @@ impl Display for Expression {
             }
             Expression::UnaryExpression(UnaryExpression {
                 operator, operand, ..
-            }) => {
-                write!(f, "({} {})", operator, operand)
-            }
+            }) => match operator {
+                Token::Cast => {
+                    write!(f, "{}^", operand)
+                }
+                Token::Minus => {
+                    write!(f, "-{}", operand)
+                }
+                Token::Unwrap => {
+                    write!(f, "{}?", operand)
+                }
+                _ => {
+                    panic!("unexpected unary operator")
+                }
+            },
             Expression::FunctionCallExpression(FunctionCallExpression {
                 callee,
                 arguments,
@@ -394,6 +411,9 @@ impl Display for Expression {
             }
             Expression::Identifier(i) => {
                 write!(f, "{}", i)
+            }
+            Expression::PrefixIdentifier(pi) => {
+                write!(f, "!{}", pi.identifier)
             }
             Expression::Literal(i) => {
                 write!(f, "{}", i)
@@ -645,7 +665,7 @@ pub struct Range {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{Expression, GeneralString, Identifier, NamedOperator},
+        ast::{Expression, GeneralString, Identifier, NamedOperator, PrefixIdentifier},
         token::Token,
     };
 
@@ -716,26 +736,42 @@ mod tests {
 
         let e2 = Expression::Identifier(Identifier {
             dirs: vec![
-                Identifier {
-                    dirs: vec![],
-                    name: "User".to_string(),
-                    range: new_range(),
-                },
-                Identifier {
-                    dirs: vec![Identifier {
-                        dirs: vec![],
-                        name: "User".to_string(),
-                        range: new_range(),
-                    }],
-                    name: "Address".to_string(),
-                    range: new_range(),
-                },
+                // Identifier {
+                //     dirs: vec![],
+                //     name: "User".to_string(),
+                //     range: new_range(),
+                // },
+                // Identifier {
+                //     dirs: vec![Identifier {
+                //         dirs: vec![],
+                //         name: "User".to_string(),
+                //         range: new_range(),
+                //     }],
+                //     name: "Address".to_string(),
+                //     range: new_range(),
+                // },
+                "User".to_string(),
+                "Address".to_string(),
             ],
             name: "City".to_string(),
             range: new_range(),
         });
 
         assert_eq!(e2.to_string(), "User::Address::City");
+    }
+
+    #[test]
+    fn test_display_expression_prefix_identifier() {
+        let e1 = Expression::PrefixIdentifier(PrefixIdentifier {
+            identifier: Identifier {
+                dirs: vec![],
+                name: "len".to_string(),
+                range: new_range(),
+            },
+            range: new_range(),
+        });
+
+        assert_eq!(e1.to_string(), "!len");
     }
 
     #[test]

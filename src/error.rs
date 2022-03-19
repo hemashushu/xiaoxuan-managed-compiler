@@ -8,6 +8,6 @@
 
 #[derive(Debug)]
 pub enum Error {
-    LexerError(&'static str),
-    ParserError(&'static str),
+    LexerError(String),
+    ParserError(String),
 }

@@ -27,23 +27,33 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                         rest
                     }
 
+                    '\r' => {
+                        // new line
+                        if is_char('\n', rest) {
+                            add_token_detail(&mut token_details, new_token_detail(Token::NewLine));
+                            move_forword(rest, 1)
+                        } else {
+                            add_token_detail(&mut token_details, new_token_detail(Token::NewLine));
+                            rest
+                        }
+                    }
+
+                    '\n' | ';' => {
+                        // new line
+                        add_token_detail(&mut token_details, new_token_detail(Token::NewLine));
+                        rest
+                    }
+
                     '/' => {
                         if is_char('/', rest) {
                             // comment
-                            let post_rest = lex_comment(rest);
+                            let post_rest = skip_comment(rest);
                             post_rest
                         } else {
                             // `/`
                             add_token_detail(&mut token_details, new_token_detail(Token::Slash));
                             rest
                         }
-                    }
-
-                    '\n' | '\r' | ';' => {
-                        // new line
-                        let post_rest = lex_new_line(rest);
-                        add_token_detail(&mut token_details, new_token_detail(Token::NewLine));
-                        post_rest
                     }
 
                     '{' => {
@@ -251,9 +261,11 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                         } else {
                             match rest.first() {
                                 Some(second_char) => {
-                                    if is_letter(*second_char) {
+                                    if is_valid_letter_of_identifier_or_keyword(*second_char) {
                                         // 数字 0 开头的符号（不是合法的标识符，所以抛出错误）
-                                        return Err(Error::LexerError("invalid identifier"));
+                                        return Err(Error::LexerError(
+                                            "invalid identifier".to_string(),
+                                        ));
                                     } else {
                                         // 普通整数 0
                                         add_token_detail(
@@ -278,7 +290,7 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                     '#' => {
                         match rest.first() {
                             Some(second_char) => {
-                                if is_valid_first_letter_of_identifier(*second_char) {
+                                if is_valid_first_letter_of_identifier_or_keyword(*second_char) {
                                     // `#hash_string`
                                     let (token_detail, post_rest) = lex_hash_string(rest)?;
                                     add_token_detail(&mut token_details, token_detail);
@@ -310,7 +322,9 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                                         new_token_detail(Token::Separator),
                                     );
                                     move_forword(rest, 1)
-                                } else if is_valid_first_letter_of_identifier(*second_char) {
+                                } else if is_valid_first_letter_of_identifier_or_keyword(
+                                    *second_char,
+                                ) {
                                     match lex_named_operator(rest) {
                                         Ok((token_detail, post_rest)) => {
                                             // `:name_operator:`
@@ -352,14 +366,14 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                             let (token_detail, post_rest) = lex_number(chars)?;
                             add_token_detail(&mut token_details, token_detail);
                             post_rest
-                        } else if is_valid_first_letter_of_identifier(*first) {
+                        } else if is_valid_first_letter_of_identifier_or_keyword(*first) {
                             // 标识符或者关键字
                             let (token_detail, post_rest) = lex_identifier_or_keyword(chars)?;
                             add_token_detail(&mut token_details, token_detail);
                             post_rest
                         } else {
                             // 未预料的符号
-                            return Err(Error::LexerError("unexpected char"));
+                            return Err(Error::LexerError("unexpected char".to_string()));
                         }
                     }
                 };
@@ -371,7 +385,7 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
     Ok(token_details)
 }
 
-fn lex_comment(source_chars: &[char]) -> &[char] {
+fn skip_comment(source_chars: &[char]) -> &[char] {
     // 行注释
     // 跳过所有字符直到行尾（`\n`、`\r\n` 或者 `\r`）
 
@@ -407,39 +421,6 @@ fn lex_comment(source_chars: &[char]) -> &[char] {
 
     // 注意要保留换行符到返回的字符数组（rest）中，以便产生一个 Token::NewLine
     &source_chars[end_pos..]
-}
-
-fn lex_new_line(source_chars: &[char]) -> &[char] {
-    let mut chars = source_chars;
-    let mut end_pos: usize = 0;
-
-    loop {
-        chars = match chars.split_first() {
-            Some((first, rest)) => match *first {
-                '\n' | '\r' | ';' => {
-                    // ';' 符号视为换行符
-                    end_pos += 1;
-                    rest
-                }
-                ' ' | '\t' => {
-                    // 跳过行与行之间的空白
-                    end_pos += 1;
-                    rest
-                }
-                // todo:: 跳过行注释
-                // todo:: 跳过块注释
-                // todo:: 跳过文档注释
-                _ => {
-                    break;
-                }
-            },
-            None => {
-                break;
-            }
-        }
-    }
-
-    move_forword(source_chars, end_pos)
 }
 
 fn lex_char(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
@@ -484,7 +465,9 @@ fn lex_char(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
             }
             None => {
                 // 到了末尾仍未找到结束字符
-                return Err(Error::LexerError("expected char literal ending mark"));
+                return Err(Error::LexerError(
+                    "expected char literal ending mark".to_string(),
+                ));
             }
         }
     }
@@ -538,7 +521,9 @@ fn lex_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
             }
             None => {
                 // 到了末尾仍未找到结束字符
-                return Err(Error::LexerError("expected string literal ending mark"));
+                return Err(Error::LexerError(
+                    "expected string literal ending mark".to_string(),
+                ));
             }
         }
     }
@@ -592,7 +577,7 @@ fn lex_template_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), 
             None => {
                 // 到了末尾仍未找到结束字符
                 return Err(Error::LexerError(
-                    "expected template string literal ending mark",
+                    "expected template string literal ending mark".to_string(),
                 ));
             }
         }
@@ -624,7 +609,7 @@ fn lex_hash_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Erro
 
     loop {
         chars = match chars.split_first() {
-            Some((first, rest)) if is_letter(*first) => {
+            Some((first, rest)) if is_valid_letter_of_identifier_or_keyword(*first) => {
                 end_pos += 1;
                 rest
             }
@@ -665,18 +650,20 @@ fn lex_named_operator(source_chars: &[char]) -> Result<(TokenDetail, &[char]), E
                 if *first == ':' {
                     // 已找到结束符
                     break;
-                } else if is_letter(*first) {
+                } else if is_valid_letter_of_identifier_or_keyword(*first) {
                     // 仍在有效标识符字符之中
                     end_pos += 1;
                     rest
                 } else {
                     // 遇到无效的标识符字符
-                    return Err(Error::LexerError("invalid identifier letter"));
+                    return Err(Error::LexerError("invalid identifier letter".to_string()));
                 }
             }
             None => {
                 // 到了末尾仍未找到结束字符
-                return Err(Error::LexerError("expected named operator ending mark"));
+                return Err(Error::LexerError(
+                    "expected named operator ending mark".to_string(),
+                ));
             }
         }
     }
@@ -765,7 +752,7 @@ fn lex_number(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
     // 将字符串转换为数字
     let value: i64 = value_string
         .parse()
-        .map_err(|_| Error::LexerError("invalid integer number"))?;
+        .map_err(|_| Error::LexerError("invalid integer number".to_string()))?;
 
     // 当前 end_pos 处于标识符的最后一个字符位置
     // 剩余的字符应该从标识符位置之后开始，即跳过 end_pos 个字符即可。
@@ -818,7 +805,7 @@ fn lex_identifier_or_keyword(source_chars: &[char]) -> Result<(TokenDetail, &[ch
     loop {
         chars = match chars.split_first() {
             Some((first, rest)) => {
-                if is_letter(*first) {
+                if is_valid_letter_of_identifier_or_keyword(*first) {
                     // 仍在有效标识符字符之中
                     end_pos += 1;
                     rest
@@ -854,31 +841,31 @@ fn is_none_zero_number(c: char) -> bool {
     }
 }
 
-// 可以作为标识符第一个文字的文字
-fn is_valid_first_letter_of_identifier(c: char) -> bool {
+// 可以作为标识符或者关键字的首位的文字
+fn is_valid_first_letter_of_identifier_or_keyword(c: char) -> bool {
     match c {
         'a'..='z' | 'A'..='Z' | '_' => true,
         _ => false,
     }
 }
 
-// 所有合法的文字（数字、字母、中文文字等）
-fn is_letter(c: char) -> bool {
+// 可以作为标识符或者关键字的文字（数字、字母、中文文字等）
+fn is_valid_letter_of_identifier_or_keyword(c: char) -> bool {
     match c {
         'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => true,
         _ => false,
     }
 }
 
-fn is_char(expectd: char, chars: &[char]) -> bool {
-    match chars.first() {
-        Some(first_char) => *first_char == expectd,
+fn is_char(expected: char, source_chars: &[char]) -> bool {
+    match source_chars.first() {
+        Some(first_char) => *first_char == expected,
         None => false,
     }
 }
 
-fn is_chars(expected: [char; 2], chars: &[char]) -> bool {
-    match chars.split_first() {
+fn is_chars(expected: [char; 2], source_chars: &[char]) -> bool {
+    match source_chars.split_first() {
         Some((first, rest)) => {
             // if *first == expected[0] {
             //     match rest.first() {
@@ -894,8 +881,8 @@ fn is_chars(expected: [char; 2], chars: &[char]) -> bool {
     }
 }
 
-fn move_forword(chars: &[char], count: usize) -> &[char] {
-    &chars[count..]
+fn move_forword(source_chars: &[char], count: usize) -> &[char] {
+    &source_chars[count..]
 }
 
 fn add_token_detail(
@@ -989,10 +976,10 @@ mod tests {
     #[test]
     fn test_new_line() {
         let tokens1 = tokenize("\n \r\n").unwrap();
-        assert_eq!(token_details_to_string(&tokens1), vec!["\n"]);
+        assert_eq!(token_details_to_string(&tokens1), vec!["\n", "\n"]);
 
         let tokens2 = tokenize("; \n").unwrap();
-        assert_eq!(token_details_to_string(&tokens2), vec!["\n"]);
+        assert_eq!(token_details_to_string(&tokens2), vec!["\n", "\n"]);
     }
 
     #[test]
