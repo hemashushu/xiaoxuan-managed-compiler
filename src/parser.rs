@@ -7,7 +7,8 @@
  */
 use crate::{
     ast::{
-        BinaryExpression, BlockExpression, Expression, Identifier, Integer, Literal, Node,
+        BinaryExpression, Bit, BlockExpression, Boolean, Char, Complex, Ellipsis, Expression,
+        Float, GeneralString, HashString, Identifier, Integer, Literal, NamedOperator, Node,
         PrefixIdentifier, Program, Range, Statement, UnaryExpression,
     },
     error::Error,
@@ -163,7 +164,7 @@ fn parse_expression(
 }
 
 // DoStatement
-//  : 'do' BlockStatement
+//  : 'do' ExpressionBlock
 //  ;
 fn parse_do_expression(
     source_token_details: &[TokenDetail],
@@ -176,13 +177,13 @@ fn parse_do_expression(
     // do 关键字后面允许换行
     token_details = skip_new_lines(token_details);
 
-    parse_block_expression(token_details)
+    parse_expression_block(token_details)
 }
 
-// BlockStatement
+// ExpressionBlock
 //  : '{' StatementList '}'
 //  ;
-fn parse_block_expression(
+fn parse_expression_block(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // 解析隠式表达式块 `{...}`
@@ -223,16 +224,14 @@ fn parse_block_expression(
 fn parse_expression_block_or_single_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // 解析 `do {...}`, `{...}` 或者 `...`
+    // 解析 `{...}` 或者 `...`
     //
     // 解析优先级：
-    // 1. 解析 `do` 表达式，即显式表达式块（如果存在的话）
-    // 2. 解析 `{...}` 表达式块，即隠式表达式块（如果存在的话）
-    // 3. 作为普通的表达式解析
+    // 1. 解析 `{...}` 表达式块，即隠式表达式块（如果存在的话）
+    // 32 作为普通的表达式解析
     match source_token_details.first() {
         Some(first) => match first.token {
-            Token::Do => parse_do_expression(source_token_details),
-            Token::LeftBrace => parse_block_expression(source_token_details),
+            Token::LeftBrace => parse_expression_block(source_token_details),
             _ => parse_expression(source_token_details),
         },
         None => Err(Error::ParserError(
@@ -654,7 +653,7 @@ fn parse_function_call_expression(
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // foo()
     // todo::
-    parse_member_expression(source_token_details)
+    parse_member_or_slice_expression(source_token_details)
 }
 
 // * MemberExpression
@@ -662,7 +661,7 @@ fn parse_function_call_expression(
 // *  | MemberExpression '.' Identifier
 // *  | MemberExpression '[' Expression ']'
 
-fn parse_member_expression(
+fn parse_member_or_slice_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // object.property, object["foo"]
@@ -692,6 +691,10 @@ fn parse_primary_expression(
                 // 函数的前置调用
                 parse_prefix_identifier(source_token_details)
             }
+            // Token::Ellipsis => {
+            //     // 展开操作符
+            //     parse_ellipsis(source_token_details)
+            // }
             Token::Identifier(_) => parse_identifier(source_token_details),
             _ => {
                 let (literal, post_rest) = parse_literal(source_token_details)?;
@@ -704,6 +707,38 @@ fn parse_primary_expression(
     }
 }
 
+fn parse_ellipsis(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    let mut token_details = source_token_details;
+    token_details = consume_token(&Token::Ellipsis, token_details)?;
+
+    if let Some((
+        TokenDetail {
+            token: Token::Identifier(name),
+            ..
+        },
+        rest,
+    )) = token_details.split_first()
+    {
+        Ok((
+            Expression::Ellipsis(Ellipsis {
+                name: Some(name.clone()),
+                range: new_range(),
+            }),
+            rest,
+        ))
+    } else {
+        Ok((
+            Expression::Ellipsis(Ellipsis {
+                name: None,
+                range: new_range(),
+            }),
+            token_details,
+        ))
+    }
+}
+
 fn parse_prefix_identifier(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
@@ -711,7 +746,7 @@ fn parse_prefix_identifier(
     let mut token_details = source_token_details;
     token_details = consume_token(&Token::Exclamation, token_details)?;
 
-    let (identifier, post_rest) = parse_identifier_object(token_details)?;
+    let (identifier, post_rest) = continue_parse_identifier(token_details)?;
     token_details = post_rest;
 
     Ok((
@@ -731,13 +766,13 @@ fn parse_identifier(
     // One::Two::Three::Name
     let mut token_details = source_token_details;
 
-    let (identifier, post_rest) = parse_identifier_object(token_details)?;
+    let (identifier, post_rest) = continue_parse_identifier(token_details)?;
     token_details = post_rest;
 
     Ok((Expression::Identifier(identifier), token_details))
 }
 
-fn parse_identifier_object(
+fn continue_parse_identifier(
     source_token_details: &[TokenDetail],
 ) -> Result<(Identifier, &[TokenDetail]), Error> {
     // identifier
@@ -834,26 +869,153 @@ fn parse_identifier_object(
 fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
     // literal
     match source_token_details.split_first() {
-        Some((first, rest)) => match first.token {
-            Token::Integer(v) => Ok((
-                Literal::Integer(Integer {
-                    value: v,
+        Some((first, rest)) => match &first.token {
+            Token::Integer(v) => match continue_parse_imaginary(rest) {
+                // 整数或复数
+                Ok((f, post_rest)) => Ok((
+                    Literal::Complex(Complex {
+                        real: *v as f64,
+                        imaginary: f,
+                        range: new_range(),
+                    }),
+                    post_rest,
+                )),
+                _ => Ok((
+                    Literal::Integer(Integer {
+                        value: *v,
+                        range: new_range(),
+                    }),
+                    rest,
+                )),
+            },
+            Token::Float(v) => match continue_parse_imaginary(rest) {
+                // 浮点数或复数
+                Ok((f, post_rest)) => Ok((
+                    Literal::Complex(Complex {
+                        real: *v,
+                        imaginary: f,
+                        range: new_range(),
+                    }),
+                    post_rest,
+                )),
+                _ => Ok((
+                    Literal::Float(Float {
+                        value: *v,
+                        range: new_range(),
+                    }),
+                    rest,
+                )),
+            },
+            Token::Imaginary(v) => {
+                // 只有单独虚部的复数
+                Ok((
+                    Literal::Complex(Complex {
+                        real: 0f64,
+                        imaginary: *v,
+                        range: new_range(),
+                    }),
+                    rest,
+                ))
+            }
+            Token::Bit(bit_width, bytes) => Ok((
+                Literal::Bit(Bit {
+                    bit_width: *bit_width,
+                    bytes: bytes.clone(),
                     range: new_range(),
                 }),
                 rest,
             )),
-            _ => {
+            Token::Boolean(v) => Ok((
+                Literal::Boolean(Boolean {
+                    value: *v,
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::Char(v) => Ok((
+                Literal::Char(Char {
+                    value: *v,
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::GeneralString(v) => Ok((
+                Literal::GeneralString(GeneralString {
+                    value: v.clone(),
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::TemplateString(v) => {
+                // todo::
+                // 这里需要重新 tokenize 模板字符串里面的占位符表达式，
+                // 然后重新解析这些表达式
                 todo!()
             }
+            Token::HashString(v) => Ok((
+                Literal::HashString(HashString {
+                    value: v.clone(),
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::NamedOperator(v) => Ok((
+                Literal::NamedOperator(NamedOperator {
+                    value: v.clone(),
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::LeftBracket => parse_list(source_token_details),
+            Token::LeftParen => parse_tuple_or_parenthesized(source_token_details),
+            Token::LeftBrace => parse_map(source_token_details),
+            _ => Err(Error::ParserError("unexpected literal".to_string())),
         },
         None => Err(Error::ParserError("expected literal".to_string())),
     }
 }
 
-fn parse_parenthesized(
+fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
+    // list
+    //
+    // e.g.
+    // [123, 345, 567,]
+    // [1..10]
+    // [1,3..10]
+    todo!()
+}
+
+fn parse_tuple_or_parenthesized(
     source_token_details: &[TokenDetail],
-) -> Result<(Expression, &[TokenDetail]), Error> {
-    // parenthesized
+) -> Result<(Literal, &[TokenDetail]), Error> {
+    // tuple or parenthesized
+    //
+    // e.g.
+    //
+    // tuple:
+    //
+    // ()
+    // (one,)
+    // (one, two, )
+    // (one, two, ...)
+    //
+    // parenthesized:
+    //
+    // (expression)
+
+    let mut token_details = source_token_details;
+
+    token_details = consume_token(&Token::LeftParen, token_details)?;
+    token_details = skip_new_lines(token_details); // 左括号后面允许换行
+
+    loop {}
+}
+
+fn parse_map(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
+    // map
+    //
+    // e.g.
+    // {name: value, name, expression, ...}
     todo!()
 }
 
@@ -861,21 +1023,17 @@ fn parse_parenthesized(
 // 在解析一个statement 之前，或者 expression 之间，需要消除这些空白的前导空行
 fn skip_new_lines(source_token_details: &[TokenDetail]) -> &[TokenDetail] {
     let mut token_details = source_token_details;
-    let mut count: usize = 0;
 
     loop {
         token_details = match token_details.split_first() {
-            Some((first, rest)) if first.token == Token::NewLine => {
-                count += 1;
-                rest
-            }
+            Some((first, rest)) if first.token == Token::NewLine => rest,
             _ => {
                 break;
             }
         }
     }
 
-    move_forword(source_token_details, count)
+    token_details
 }
 
 fn is_token(expected: &Token, source_token_details: &[TokenDetail]) -> bool {
@@ -890,15 +1048,23 @@ fn is_token_ignore_new_lines(expected: &Token, source_token_details: &[TokenDeta
     is_token(expected, token_details)
 }
 
-// fn is_token_identifier(source_token_details: &[TokenDetail]) -> bool {
-//     match source_token_details.first() {
-//         Some(TokenDetail {
-//             token: Token::Identifier(_),
-//             ..
-//         }) => true,
-//         _ => false,
-//     }
-// }
+fn continue_parse_imaginary(
+    source_token_details: &[TokenDetail],
+) -> Result<(f64, &[TokenDetail]), ()> {
+    match source_token_details.split_first() {
+        Some((first, rest)) if first.token == Token::Plus => match rest.split_first() {
+            Some((
+                TokenDetail {
+                    token: Token::Imaginary(f),
+                    ..
+                },
+                post_rest,
+            )) => Ok((*f, post_rest)),
+            _ => Err(()),
+        },
+        _ => Err(()),
+    }
+}
 
 fn consume_token<'a>(
     expected: &Token,
@@ -916,10 +1082,6 @@ fn consume_token_ignore_new_lines<'a>(
 ) -> Result<&'a [TokenDetail], Error> {
     let token_details = skip_new_lines(source_token_details);
     consume_token(expected, token_details)
-}
-
-fn move_forword(source_token_details: &[TokenDetail], count: usize) -> &[TokenDetail] {
-    &source_token_details[count..]
 }
 
 fn consume_new_line_token_if_exists(
@@ -953,8 +1115,8 @@ fn new_range() -> Range {
 mod tests {
     use crate::{
         ast::{
-            BinaryExpression, Expression, Identifier, Integer, Literal, Node, PrefixIdentifier,
-            Program, Statement,
+            BinaryExpression, Complex, Ellipsis, Expression, Identifier, Integer, List, Literal,
+            Node, PrefixIdentifier, Program, Statement,
         },
         error::Error,
         lexer,
@@ -989,6 +1151,65 @@ mod tests {
     }
 
     #[test]
+    fn test_float_literal() {
+        let a1 = parse_from_string("3.14").unwrap();
+        assert_eq!(a1.to_string(), "3.14\n");
+
+        let a2 = parse_from_string("3.14e2").unwrap();
+        assert_eq!(a2.to_string(), "314\n");
+
+        let a3 = parse_from_string("3.14e-1").unwrap();
+        assert_eq!(a3.to_string(), "0.314\n");
+    }
+
+    #[test]
+    fn test_complex_literal() {
+        let a1 = parse_from_string("3+4i").unwrap();
+        assert_eq!(
+            a1,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Literal(
+                    Literal::Complex(Complex {
+                        real: 3.0,
+                        imaginary: 4.0,
+                        range: new_range()
+                    })
+                ))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a1.to_string(), "3+4i\n");
+
+        let a2 = parse_from_string("0+2i").unwrap();
+        assert_eq!(a2.to_string(), "0+2i\n");
+
+        let a3 = parse_from_string("5i").unwrap();
+        assert_eq!(a3.to_string(), "0+5i\n");
+
+        let a4 = parse_from_string("1.414+2.718i").unwrap();
+        assert_eq!(a4.to_string(), "1.414+2.718i\n");
+
+        let a5 = parse_from_string("3.14i").unwrap();
+        assert_eq!(a5.to_string(), "0+3.14i\n");
+
+        let a6 = parse_from_string("3.14e2i").unwrap();
+        assert_eq!(a6.to_string(), "0+314i\n");
+
+        let a7 = parse_from_string("3.14e-1i").unwrap();
+        assert_eq!(a7.to_string(), "0+0.314i\n");
+    }
+
+    #[test]
+    fn test_bit_literal() {
+        // todo::
+        //         let a1 = parse_from_string("16'x08cd").unwrap();
+        //         assert_eq!(a1.to_string(), "16'x08cd\n");
+        //
+        //         let a2 = parse_from_string("8'b10000001").unwrap();
+        //         assert_eq!(a2.to_string(), "8'x81\n");
+    }
+
+    #[test]
     fn test_additive_expression() {
         let a1 = parse_from_string("1+2").unwrap();
         assert_eq!(
@@ -1016,6 +1237,12 @@ mod tests {
 
         let a2 = parse_from_string("1+2+3").unwrap();
         assert_eq!(a2.to_string(), "((1 + 2) + 3)\n");
+
+        let a3 = parse_from_string("1.414+1.732").unwrap();
+        assert_eq!(a3.to_string(), "(1.414 + 1.732)\n");
+
+        let a4 = parse_from_string("3+4i+9i").unwrap();
+        assert_eq!(a4.to_string(), "(3+4i + 0+9i)\n");
     }
 
     #[test]
@@ -1095,10 +1322,13 @@ mod tests {
 
         let a3 = parse_from_string("foo::bar::baz").unwrap();
         assert_eq!(a3.to_string(), "foo::bar::baz\n");
+    }
 
-        let a4 = parse_from_string("!foo").unwrap();
+    #[test]
+    fn test_prefix_identifier() {
+        let a1 = parse_from_string("!foo").unwrap();
         assert_eq!(
-            a4,
+            a1,
             Node::Program(Program {
                 body: vec![Statement::Expression(Expression::PrefixIdentifier(
                     PrefixIdentifier {
@@ -1113,9 +1343,33 @@ mod tests {
                 range: new_range()
             })
         );
-        assert_eq!(a4.to_string(), "!foo\n");
+        assert_eq!(a1.to_string(), "!foo\n");
 
-        let a5 = parse_from_string("!foo::bar").unwrap();
-        assert_eq!(a5.to_string(), "!foo::bar\n");
+        let a2 = parse_from_string("!foo::bar").unwrap();
+        assert_eq!(a2.to_string(), "!foo::bar\n");
+    }
+
+    #[test]
+    fn test_ellipsis() {
+        // todo::
+        // let a1 = parse_from_string("[a, ...]").unwrap();
+        // assert_eq!(
+        //     a1,
+        //     Node::Program(Program {
+        //         body: vec![Statement::Expression(Expression::Literal(Literal::List(
+        //             List {
+        //                 elements: vec![],
+        //                 is_array: false,
+        //                 range: new_range()
+        //             }
+        //         )))],
+        //         range: new_range()
+        //     })
+        // );
+        // assert_eq!(a1.to_string(), "[a, ...]\n");
+
+        // todo::
+        // let a2 = parse_from_string("[a, ...foo]").unwrap();
+        // assert_eq!(a2.to_string(), "[a, ...foo]\n");
     }
 }

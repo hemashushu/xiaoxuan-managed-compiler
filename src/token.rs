@@ -6,6 +6,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 use core::fmt;
+use std::fmt::Write;
 
 // 记录 Token 在源文件中的位置
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,10 +25,10 @@ pub enum Token {
     Integer(i64),           // 123, 1_001, 0xab, 0b1001
     Float(f64),             // 3.14, 1.6e-23,
     Imaginary(f64),         // 3i, 9.9i
-    Bit(u8, i64),           // 4'b1010, 8'xff, 8'd10
+    Bit(usize, Vec<u8>),    // 4'b1010, 8'xff, 8'd10
     Boolean(bool),          // true, false
     Char(char),             // 'a', '\x41', '\u{6587}'
-    String(String),         // "foo"
+    GeneralString(String),  // "foo"
     TemplateString(String), // `foo`
     HashString(String),     // #foo
 
@@ -77,7 +78,7 @@ pub enum Token {
 
     // 其他符号
     Hash,      // #
-    Range,     // ..
+    Interval,  // ..
     Ellipsis,  // ...
     Separator, // ::
     Colon,     // :
@@ -139,10 +140,16 @@ impl fmt::Display for Token {
             Token::Integer(value) => write!(f, "{}", value),
             Token::Float(value) => write!(f, "{}", value),
             Token::Imaginary(value) => write!(f, "{}i", value),
-            Token::Bit(bit_width, value) => write!(f, "{}d{}", bit_width, value),
+            Token::Bit(bit_width, bytes) => {
+                let mut hex = String::new();
+                for byte in bytes {
+                    write!(hex, "{:02x}", byte)?;
+                }
+                write!(f, "{}'x{}", bit_width, hex)
+            },
             Token::Boolean(value) => write!(f, "{}", value),
             Token::Char(value) => write!(f, "'{}'", value),
-            Token::String(value) => write!(f, "\"{}\"", value),
+            Token::GeneralString(value) => write!(f, "\"{}\"", value),
             Token::TemplateString(value) => write!(f, "`{}`", value),
             Token::HashString(value) => write!(f, "#{}", value),
 
@@ -185,7 +192,7 @@ impl fmt::Display for Token {
 
             // 其他符号
             Token::Hash => write!(f, "#"),       // #
-            Token::Range => write!(f, ".."),     // ..
+            Token::Interval => write!(f, ".."),     // ..
             Token::Ellipsis => write!(f, "..."), // ...
             Token::Separator => write!(f, "::"), // ::
             Token::Colon => write!(f, ":"),      // :
@@ -271,15 +278,17 @@ mod tests {
     fn test_token_display() {
         let tt1 = Token::Identifier("foo".to_string());
         let tt2 = Token::If;
+        let tt3 = Token::Bit(8, vec![0xab, 0x4]);
 
         assert_eq!(tt1.to_string(), "foo");
         assert_eq!(tt2.to_string(), "if");
+        assert_eq!(tt3.to_string(), "8'xab04")
     }
 
     #[test]
     fn test_token_eq() {
         let tt1 = Token::Identifier("foo".to_string());
-        let tt2 = Token::String("foo".to_string());
+        let tt2 = Token::GeneralString("foo".to_string());
         let tt3 = Token::Identifier("foo".to_string());
 
         assert_ne!(tt1, tt2);

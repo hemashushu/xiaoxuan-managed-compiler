@@ -191,7 +191,7 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                             move_forword(rest, 2)
                         } else if is_char('.', rest) {
                             // `..`
-                            add_token_detail(&mut token_details, new_token_detail(Token::Range));
+                            add_token_detail(&mut token_details, new_token_detail(Token::Interval));
                             move_forword(rest, 1)
                         } else {
                             // `.`
@@ -536,7 +536,7 @@ fn lex_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
     // 当前 end_pos 处于字符 `"` 位置
     // 剩余的字符应该从 `"` 位置之后开始
     let rest = move_forword(source_chars, end_pos + 1);
-    Ok((new_token_detail(Token::String(value)), rest))
+    Ok((new_token_detail(Token::GeneralString(value)), rest))
 }
 
 fn lex_template_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
@@ -719,16 +719,22 @@ fn lex_number(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
                         rest
                     }
                     '.' => {
-                        return continue_lex_float_number(&source_chars[..end_pos], rest);
+                        return continue_lex_float_number(source_chars[..end_pos].to_vec(), rest);
                     }
                     '\'' => {
-                        return continue_lex_bit_number(&source_chars[..end_pos], rest);
+                        return continue_lex_bit_number(source_chars[..end_pos].to_vec(), rest);
                     }
                     'i' => {
-                        return continue_lex_imaginary_number(&source_chars[..end_pos], rest);
+                        return continue_lex_imaginary_number(
+                            source_chars[..end_pos].to_vec(),
+                            rest,
+                        );
                     }
                     'e' => {
-                        return continue_lex_float_number_exponent(&source_chars[..end_pos], rest);
+                        return continue_lex_float_number_exponent(
+                            source_chars[..end_pos].to_vec(),
+                            rest,
+                        );
                     }
                     _ => {
                         // 遇到了一个非数字
@@ -754,39 +760,201 @@ fn lex_number(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
         .parse()
         .map_err(|_| Error::LexerError("invalid integer number".to_string()))?;
 
-    // 当前 end_pos 处于标识符的最后一个字符位置
-    // 剩余的字符应该从标识符位置之后开始，即跳过 end_pos 个字符即可。
+    // 当前 end_pos 处于标识符的最后一个数字位置
+    // 剩余的字符应该从数字位置之后开始，即跳过 end_pos 个字符即可。
     let rest = move_forword(source_chars, end_pos);
 
     Ok((new_token_detail(Token::Integer(value)), rest))
 }
 
-fn continue_lex_float_number<'a>(
-    previous_chars: &'a [char],
-    remain_chars: &'a [char],
-) -> Result<(TokenDetail, &'a [char]), Error> {
+fn extend_vec_with_with_separator_and_char_slice(
+    mut left: Vec<char>,
+    separator: char,
+    right: &[char],
+) -> Vec<char> {
+    left.push(separator);
+    left.extend_from_slice(right);
+    left
+}
+
+fn continue_lex_float_number(
+    previous_chars: Vec<char>,
+    remain_chars: &[char],
+) -> Result<(TokenDetail, &[char]), Error> {
+    // 继续解析小数点后面部分
+    // 123.456
+    // ___ ___ remain_chars
+    //   |____ previous_chars
+
+    let mut chars = remain_chars;
+    let mut end_pos: usize = 0;
+
+    loop {
+        chars = match chars.split_first() {
+            Some((first, rest)) => {
+                match *first {
+                    '0'..='9' | '_' => {
+                        // 仍在有效的数字之中
+                        end_pos += 1;
+                        rest
+                    }
+                    '.' => return Err(Error::LexerError("invalid float number".to_string())),
+                    '\'' => return Err(Error::LexerError("invalid bit number".to_string())),
+                    'i' => {
+                        let extend_chars = extend_vec_with_with_separator_and_char_slice(
+                            previous_chars,
+                            '.',
+                            &remain_chars[..end_pos],
+                        );
+                        return continue_lex_imaginary_number(extend_chars, rest);
+                    }
+                    'e' => {
+                        let extend_chars = extend_vec_with_with_separator_and_char_slice(
+                            previous_chars,
+                            '.',
+                            &remain_chars[..end_pos],
+                        );
+                        return continue_lex_float_number_exponent(extend_chars, rest);
+                    }
+                    _ => {
+                        // 遇到了一个非数字
+                        break;
+                    }
+                }
+            }
+            None => {
+                // 到了末尾
+                break;
+            }
+        }
+    }
+
+    let value_chars = extend_vec_with_with_separator_and_char_slice(
+        previous_chars,
+        '.',
+        &remain_chars[..end_pos],
+    );
+
+    let value_string = value_chars
+        .iter()
+        .filter(|c| **c != '_') // 移除字符串当中的下划线
+        .collect::<String>();
+
+    // 将字符串转换为数字
+    let value: f64 = value_string
+        .parse()
+        .map_err(|_| Error::LexerError("invalid float number".to_string()))?;
+
+    // 当前 end_pos 处于数字的最后一个字符位置
+    // 剩余的字符应该从数字位置之后开始，即跳过 end_pos 个字符即可。
+    let rest = move_forword(remain_chars, end_pos);
+
+    Ok((new_token_detail(Token::Float(value)), rest))
+}
+
+fn continue_lex_imaginary_number(
+    previous_chars: Vec<char>,
+    remain_chars: &[char],
+) -> Result<(TokenDetail, &[char]), Error> {
+    // 解析虚数部分
+    // 123i...
+    // ___ ___ remain_chars
+    //   |____ previous_chars
+
+    let value_string = previous_chars
+        .iter()
+        .filter(|c| **c != '_') // 移除字符串当中的下划线
+        .collect::<String>();
+
+    // 将字符串转换为数字
+    let value: f64 = value_string
+        .parse()
+        .map_err(|_| Error::LexerError("invalid float number".to_string()))?;
+
+    Ok((new_token_detail(Token::Imaginary(value)), remain_chars))
+}
+
+fn continue_lex_bit_number(
+    previous_chars: Vec<char>,
+    remain_chars: &[char],
+) -> Result<(TokenDetail, &[char]), Error> {
     todo!()
 }
 
-fn continue_lex_imaginary_number<'a>(
-    previous_chars: &'a [char],
-    remain_chars: &'a [char],
-) -> Result<(TokenDetail, &'a [char]), Error> {
-    todo!()
-}
+fn continue_lex_float_number_exponent(
+    previous_chars: Vec<char>,
+    remain_chars: &[char],
+) -> Result<(TokenDetail, &[char]), Error> {
+    // 继续解析 e 后面部分
+    // 123e-30
+    // ___ ___ remain_chars
+    //   |____ previous_chars
 
-fn continue_lex_bit_number<'a>(
-    previous_chars: &'a [char],
-    remain_chars: &'a [char],
-) -> Result<(TokenDetail, &'a [char]), Error> {
-    todo!()
-}
+    let mut chars = remain_chars;
+    let mut end_pos: usize = 0;
 
-fn continue_lex_float_number_exponent<'a>(
-    previous_chars: &'a [char],
-    remain_chars: &'a [char],
-) -> Result<(TokenDetail, &'a [char]), Error> {
-    todo!()
+    loop {
+        chars = match chars.split_first() {
+            Some((first, rest)) => {
+                match *first {
+                    '-' => {
+                        if end_pos == 0 {
+                            end_pos += 1;
+                            rest
+                        } else {
+                            return Err(Error::LexerError("invalid exponent number".to_string()));
+                        }
+                    }
+                    '0'..='9' | '_' => {
+                        // 仍在有效的数字之中
+                        end_pos += 1;
+                        rest
+                    }
+                    '.' => return Err(Error::LexerError("invalid float number".to_string())),
+                    '\'' => return Err(Error::LexerError("invalid bit number".to_string())),
+                    'i' => {
+                        let extend_chars = extend_vec_with_with_separator_and_char_slice(
+                            previous_chars,
+                            'e',
+                            &remain_chars[..end_pos],
+                        );
+                        return continue_lex_imaginary_number(extend_chars, rest);
+                    }
+                    'e' => return Err(Error::LexerError("invalid exponent number".to_string())),
+                    _ => {
+                        // 遇到了一个非数字
+                        break;
+                    }
+                }
+            }
+            None => {
+                // 到了末尾
+                break;
+            }
+        }
+    }
+
+    let value_chars = extend_vec_with_with_separator_and_char_slice(
+        previous_chars,
+        'e',
+        &remain_chars[..end_pos],
+    );
+
+    let value_string = value_chars
+        .iter()
+        .filter(|c| **c != '_') // 移除字符串当中的下划线
+        .collect::<String>();
+
+    // 将字符串转换为数字
+    let value: f64 = value_string
+        .parse()
+        .map_err(|_| Error::LexerError("invalid float number".to_string()))?;
+
+    // 当前 end_pos 处于数字的最后一个字符位置
+    // 剩余的字符应该从数字位置之后开始，即跳过 end_pos 个字符即可。
+    let rest = move_forword(remain_chars, end_pos);
+
+    Ok((new_token_detail(Token::Float(value)), rest))
 }
 
 fn lex_identifier_or_keyword(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
@@ -946,7 +1114,10 @@ fn lookup_keyword(name: &str) -> Option<Token> {
 
 #[cfg(test)]
 mod tests {
-    use crate::token::TokenDetail;
+    use crate::{
+        lexer::new_location,
+        token::{Token, TokenDetail},
+    };
 
     use super::tokenize;
 
@@ -998,6 +1169,69 @@ mod tests {
             token_details_to_string(&tokens2),
             vec!["??", "&", "^", "?", ".", "[", "]", "=>", "!", "(", ")", "#", "..", "...", ",",]
         );
+    }
+
+    #[test]
+    fn test_integer_literal() {
+        let tokens1 = tokenize("123").unwrap();
+        assert_eq!(
+            tokens1,
+            vec![TokenDetail {
+                token: Token::Integer(123),
+                location: new_location()
+            }]
+        );
+        assert_eq!(token_details_to_string(&tokens1), vec!["123"]);
+
+        // todo::
+        // 测试 16 进制和 2 进制表示法的整数
+    }
+
+    #[test]
+    fn test_float_literal() {
+        let tokens1 = tokenize("3.14").unwrap();
+        assert_eq!(
+            tokens1,
+            vec![TokenDetail {
+                token: Token::Float(3.14),
+                location: new_location()
+            }]
+        );
+        assert_eq!(token_details_to_string(&tokens1), vec!["3.14"]);
+
+        let tokens2 = tokenize("5e2").unwrap();
+        assert_eq!(token_details_to_string(&tokens2), vec!["500"]);
+
+        let tokens3 = tokenize("1.6e2").unwrap();
+        assert_eq!(token_details_to_string(&tokens3), vec!["160"]);
+
+        let tokens4 = tokenize("1.6e-2").unwrap();
+        assert_eq!(token_details_to_string(&tokens4), vec!["0.016"]);
+    }
+
+    #[test]
+    fn test_imaginary_literal() {
+        let tokens1 = tokenize("5i").unwrap();
+        assert_eq!(
+            tokens1,
+            vec![TokenDetail {
+                token: Token::Imaginary(5.0),
+                location: new_location()
+            }]
+        );
+        assert_eq!(token_details_to_string(&tokens1), vec!["5i"]);
+
+        let tokens2 = tokenize("3.14i").unwrap();
+        assert_eq!(token_details_to_string(&tokens2), vec!["3.14i"]);
+
+        let tokens3 = tokenize("5e2i").unwrap();
+        assert_eq!(token_details_to_string(&tokens3), vec!["500i"]);
+
+        let tokens4 = tokenize("1.6e2i").unwrap();
+        assert_eq!(token_details_to_string(&tokens4), vec!["160i"]);
+
+        let tokens5 = tokenize("1.6e-2i").unwrap();
+        assert_eq!(token_details_to_string(&tokens5), vec!["0.016i"]);
     }
 
     #[test]

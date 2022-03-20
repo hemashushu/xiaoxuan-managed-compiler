@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-use std::fmt::Display;
+use std::fmt::{Display, Write};
 
 use crate::token::Token;
 
@@ -73,7 +73,7 @@ impl Display for Statement {
                 return_type,
                 body,
                 ..
-            }) => match &**body {
+            }) => match body.as_ref() {
                 Expression::BlockExpression(BlockExpression {
                     body: block_expression,
                     ..
@@ -121,6 +121,9 @@ impl Display for Statement {
 //  | MemberExpression
 //  | ConstructorExpression
 //  | Identifier
+//  | PrefixIdentifier
+//  | Interval
+//  | Ellipsis
 //  | Literal
 //  ;
 
@@ -138,11 +141,13 @@ pub enum Expression {
     UnaryExpression(UnaryExpression),
     FunctionCallExpression(FunctionCallExpression),
     MemberExpression(MemberExpression),
+    SliceExpression(SliceExpression),
     ConstructorExpression(ConstructorExpression),
 
     // primary expression
     Identifier(Identifier),
     PrefixIdentifier(PrefixIdentifier),
+    Ellipsis(Ellipsis),
     Literal(Literal),
 }
 
@@ -259,6 +264,15 @@ pub struct MemberExpression {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct SliceExpression {
+    pub object: Box<Expression>,
+    // pub start: Box<Expression>,
+    // pub end: Box<Expression>,
+    pub interval: Interval,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ConstructorExpression {
     pub object: Identifier,
     pub value: Map,
@@ -279,16 +293,17 @@ pub struct PrefixIdentifier {
     pub range: Range,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Ellipsis {
+    pub name: Option<String>,
+    pub range: Range,
+}
+
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut full_path = String::new();
         if self.dirs.len() > 0 {
-            let path = self
-                .dirs
-                // .iter()
-                // .map(|d| d.name.clone())
-                // .collect::<Vec<String>>()
-                .join("::");
+            let path = self.dirs.join("::");
             full_path.push_str(&path);
             full_path.push_str("::");
         }
@@ -406,6 +421,11 @@ impl Display for Expression {
                     write!(f, "{}.{}", object, property)
                 }
             }
+            Expression::SliceExpression(SliceExpression {
+                object, interval, ..
+            }) => {
+                write!(f, "{}[{}]", object, interval)
+            }
             Expression::ConstructorExpression(ConstructorExpression { object, value, .. }) => {
                 write!(f, "{} {}", object, value)
             }
@@ -415,6 +435,10 @@ impl Display for Expression {
             Expression::PrefixIdentifier(pi) => {
                 write!(f, "!{}", pi.identifier)
             }
+            Expression::Ellipsis(Ellipsis { name, .. }) => match name {
+                Some(n) => write!(f, "...{}", n),
+                None => write!(f, "..."),
+            },
             Expression::Literal(i) => {
                 write!(f, "{}", i)
             }
@@ -425,7 +449,7 @@ impl Display for Expression {
 // Literal
 //  : Integer
 //  | Float
-//  | Imaginary
+//  | Complex
 //  | Bit
 //  | Boolean
 //  | Char
@@ -437,13 +461,14 @@ impl Display for Expression {
 //  | Array
 //  | Tuple
 //  | Map
+//  | Interval
 //  ;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     Integer(Integer),
     Float(Float),
-    Imaginary(Imaginary),
+    Complex(Complex),
     Bit(Bit),
     Boolean(Boolean),
     Char(Char),
@@ -454,6 +479,7 @@ pub enum Literal {
     List(List),
     Tuple(Tuple),
     Map(Map),
+    Interval(Interval),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -469,15 +495,16 @@ pub struct Float {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Imaginary {
-    pub value: f64,
+pub struct Complex {
+    pub real: f64,
+    pub imaginary: f64,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Bit {
-    pub width: u8,
-    pub value: i64,
+    pub bit_width: usize,
+    pub bytes: Vec<u8>,
     pub range: Range,
 }
 
@@ -537,6 +564,17 @@ pub struct Map {
     pub range: Range,
 }
 
+// interval
+//
+// e.g.
+// [a..b]
+#[derive(Debug, Clone, PartialEq)]
+pub struct Interval {
+    pub start: Box<Expression>,
+    pub end: Option<Box<Expression>>,
+    pub range: Range,
+}
+
 impl Display for Map {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = self
@@ -556,13 +594,34 @@ impl Display for Map {
     }
 }
 
+impl Display for Interval {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.end.as_ref() {
+            Some(e) => {
+                write!(f, "{}..{}", self.start, e)
+            }
+            None => write!(f, "{}..", self.start),
+        }
+    }
+}
+
 impl Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Literal::Integer(Integer { value, .. }) => write!(f, "{}", value),
             Literal::Float(Float { value, .. }) => write!(f, "{}", value),
-            Literal::Imaginary(Imaginary { value, .. }) => write!(f, "{}i", value),
-            Literal::Bit(Bit { width, value, .. }) => write!(f, "{}'d{}", width, value),
+            Literal::Complex(Complex {
+                real, imaginary, ..
+            }) => write!(f, "{}+{}i", real, imaginary),
+            Literal::Bit(Bit {
+                bit_width, bytes, ..
+            }) => {
+                let mut hex = String::new();
+                for byte in bytes {
+                    write!(hex, "{:02x}", byte)?;
+                }
+                write!(f, "{}'x{}", bit_width, hex)
+            }
             Literal::Boolean(Boolean { value, .. }) => write!(f, "{}", value),
 
             Literal::Char(Char { value, .. }) => write!(f, "'{}'", value),
@@ -611,6 +670,9 @@ impl Display for Literal {
             }
             Literal::Map(m) => {
                 write!(f, "{}", m)
+            }
+            Literal::Interval(i) => {
+                write!(f, "{}", i)
             }
         }
     }
@@ -665,7 +727,9 @@ pub struct Range {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{Expression, GeneralString, Identifier, NamedOperator, PrefixIdentifier},
+        ast::{
+            Bit, Complex, Expression, GeneralString, Identifier, NamedOperator, PrefixIdentifier,
+        },
         token::Token,
     };
 
@@ -690,6 +754,28 @@ mod tests {
         });
 
         assert_eq!(i1.to_string(), "123");
+    }
+
+    #[test]
+    fn test_display_literal_complex() {
+        let i1 = Literal::Complex(Complex {
+            real: 12.0,
+            imaginary: 34.0,
+            range: new_range(),
+        });
+
+        assert_eq!(i1.to_string(), "12+34i");
+    }
+
+    #[test]
+    fn test_display_literal_bit() {
+        let i1 = Literal::Bit(Bit {
+            bit_width: 12,
+            bytes: vec![0xab, 0x8, 0x12],
+            range: new_range(),
+        });
+
+        assert_eq!(i1.to_string(), "12'xab0812");
     }
 
     #[test]
