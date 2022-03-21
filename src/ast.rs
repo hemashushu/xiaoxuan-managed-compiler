@@ -355,6 +355,28 @@ impl Display for Interval {
     }
 }
 
+impl Display for Tuple {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.elements.len() == 0 {
+            write!(f, "()")
+        } else {
+            let text = format_expressions_with_comma(&self.elements);
+            write!(f, "({},)", text)
+        }
+    }
+}
+
+impl Display for List {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.elements.len() == 0 {
+            write!(f, "[]")
+        } else {
+            let text = format_expressions_with_comma(&self.elements);
+            write!(f, "[{},]", text)
+        }
+    }
+}
+
 impl Display for Map {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = self
@@ -524,21 +546,11 @@ impl Display for Expression {
             Expression::Interval(i) => {
                 write!(f, "{}", i)
             }
-            Expression::List(List {
-                //is_array,
-                elements,
-                ..
-            }) => {
-                let text = format_expressions_with_comma(elements);
-                // if *is_array {
-                //     write!(f, "#[{}]", text)
-                // } else {
-                write!(f, "[{}]", text)
-                // }
+            Expression::List(l) => {
+                write!(f, "{}", l)
             }
-            Expression::Tuple(Tuple { elements, .. }) => {
-                let text = format_expressions_with_comma(elements);
-                write!(f, "({})", text)
+            Expression::Tuple(t) => {
+                write!(f, "{}", t)
             }
             Expression::Map(m) => {
                 write!(f, "{}", m)

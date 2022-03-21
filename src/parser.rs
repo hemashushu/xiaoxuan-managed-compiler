@@ -229,11 +229,11 @@ fn continue_parse_expression_block(
         let (expression, post_parse_expression) = parse_expression(post_consume_new_lines)?;
         expressions.push(expression);
 
+        token_details = post_parse_expression;
+
         if is_token_ignore_new_lines(&Token::RightBrace, post_parse_expression) {
             break;
         }
-
-        token_details = post_parse_expression;
     }
 
     let post_consume_token_right_brace =
@@ -1246,8 +1246,8 @@ fn new_range() -> Range {
 mod tests {
     use crate::{
         ast::{
-            BinaryExpression, Complex, Ellipsis, Expression, Identifier, Integer, List, Literal,
-            Node, PrefixIdentifier, Program, Statement,
+            BinaryExpression, Complex, DoExpression, Ellipsis, Expression, Float, Identifier,
+            Integer, List, Literal, Node, PrefixIdentifier, Program, Statement, Tuple,
         },
         error::Error,
         lexer,
@@ -1429,7 +1429,60 @@ mod tests {
 
     #[test]
     fn test_tuple() {
-        // todo::
+        let a1 = parse_from_string("(123,)").unwrap();
+        assert_eq!(
+            a1,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Tuple(Tuple {
+                    elements: vec![Expression::Literal(Literal::Integer(Integer {
+                        value: 123,
+                        range: new_range()
+                    }))],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a1.to_string(), "(123,)\n");
+
+        let a2 = parse_from_string("(123,1.732)").unwrap();
+        assert_eq!(
+            a2,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Tuple(Tuple {
+                    elements: vec![
+                        Expression::Literal(Literal::Integer(Integer {
+                            value: 123,
+                            range: new_range()
+                        })),
+                        Expression::Literal(Literal::Float(Float {
+                            value: 1.732,
+                            range: new_range()
+                        }))
+                    ],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a2.to_string(), "(123, 1.732,)\n");
+
+        let a3 = parse_from_string("(123,1.732,)").unwrap();
+        assert_eq!(a3.to_string(), "(123, 1.732,)\n");
+
+        let a4 = parse_from_string("()").unwrap();
+        assert_eq!(
+            a4,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Tuple(Tuple {
+                    elements: vec![],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a4.to_string(), "()\n");
+
         // let a1 = parse_from_string("[a, ...]").unwrap();
         // assert_eq!(
         //     a1,
@@ -1527,7 +1580,27 @@ mod tests {
 
     #[test]
     fn test_parenthesized_expression() {
-        // todo::
+        let a1 = parse_from_string("(123)").unwrap();
+        assert_eq!(
+            a1,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Literal(
+                    Literal::Integer(Integer {
+                        value: 123,
+                        range: new_range()
+                    })
+                ))],
+                range: new_range()
+            })
+        );
+
+        assert_eq!(a1.to_string(), "123\n");
+
+        let a2 = parse_from_string("(1+2)").unwrap();
+        assert_eq!(a2.to_string(), "(1 + 2)\n");
+
+        let a3 = parse_from_string("(1+2)*3").unwrap();
+        assert_eq!(a3.to_string(), "((1 + 2) * 3)\n");
     }
 
     #[test]
@@ -1542,7 +1615,38 @@ mod tests {
 
     #[test]
     fn test_do_expression() {
-        // todo::
+        let a1 = parse_from_string(
+            "do {
+                123
+                abc
+            }",
+        )
+        .unwrap();
+        assert_eq!(
+            a1,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::DoExpression(
+                    DoExpression {
+                        is_explicit: true,
+                        body: vec![
+                            Expression::Literal(Literal::Integer(Integer {
+                                value: 123,
+                                range: new_range()
+                            })),
+                            Expression::Identifier(Identifier {
+                                dirs: vec![],
+                                name: "abc".to_string(),
+                                range: new_range()
+                            }),
+                        ],
+                        range: new_range()
+                    }
+                ))],
+                range: new_range()
+            })
+        );
+
+        assert_eq!(a1.to_string(), "{\n123\nabc\n}\n");
     }
 
     // statement
