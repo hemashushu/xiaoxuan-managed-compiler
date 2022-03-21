@@ -708,7 +708,16 @@ fn lex_number(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
                         rest
                     }
                     '.' => {
-                        return continue_lex_float_number(source_chars[..end_pos].to_vec(), rest);
+                        if is_char('.', rest) {
+                            // 遇到了范围表达式符号 `..`
+                            break;
+                        } else {
+                            // 遇到了浮点数
+                            return continue_lex_float_number(
+                                source_chars[..end_pos].to_vec(),
+                                rest,
+                            );
+                        }
                     }
                     '\'' => {
                         return continue_lex_bit_number(source_chars[..end_pos].to_vec(), rest);
@@ -899,7 +908,15 @@ fn continue_lex_float_number_exponent(
                         end_pos += 1;
                         rest
                     }
-                    '.' => return Err(Error::LexerError("invalid float number".to_string())),
+                    '.' => {
+                        if is_char('.', rest) {
+                            // 遇到了范围表达式符号 `..`
+                            break;
+                        } else {
+                            // 不支持 "指数值为小数" 的浮点数
+                            return Err(Error::LexerError("unsupport float exponent".to_string()));
+                        }
+                    }
                     '\'' => return Err(Error::LexerError("invalid bit number".to_string())),
                     'i' => {
                         let extend_chars = extend_vec_with_with_separator_and_char_slice(
@@ -1201,6 +1218,10 @@ mod tests {
 
         let tokens4 = tokenize("1.6e-2").unwrap();
         assert_eq!(token_details_to_string(&tokens4), vec!["0.016"]);
+
+        // 测试范围表达式，用于区分浮点数字面量
+        let tokens5 = tokenize("1..10").unwrap();
+        assert_eq!(token_details_to_string(&tokens5), vec!["1", "..", "10"]);
     }
 
     #[test]

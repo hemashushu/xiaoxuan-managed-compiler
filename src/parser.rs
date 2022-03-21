@@ -8,8 +8,8 @@
 use crate::{
     ast::{
         BinaryExpression, Bit, Boolean, Char, Complex, DoExpression, Ellipsis, Expression, Float,
-        GeneralString, HashString, Identifier, Integer, Literal, NamedOperator, Node,
-        PrefixIdentifier, Program, Range, Statement, Tuple, UnaryExpression,
+        GeneralString, HashString, Identifier, Integer, Interval, List, Literal, NamedOperator,
+        Node, PrefixIdentifier, Program, Range, Statement, Tuple, UnaryExpression,
     },
     error::Error,
     token::{Token, TokenDetail},
@@ -984,7 +984,113 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
     // [123, 345, 567,]
     // [1..10]
     // [1,3..10]
-    todo!()
+
+    let mut token_details = source_token_details;
+
+    let mut expressions: Vec<Expression> = vec![];
+    let mut is_expected_end = false;
+
+    token_details = consume_token(&Token::LeftBracket, token_details)?; // 消除左中括号
+    token_details = skip_new_lines(token_details); // 左中括号后面允许换行
+
+    loop {
+        token_details = match token_details.first() {
+            Some(first) => {
+                if let TokenDetail {
+                    token: Token::RightBracket,
+                    ..
+                } = first
+                {
+                    // 找到右中括号，退出循环
+                    break;
+                } else {
+                    if is_expected_end {
+                        // 当前只允许右中括号
+                        return Err(Error::ParserError(
+                            "expected the right bracket symbol \"]\"".to_string(),
+                        ));
+                    } else {
+                        // 先检查是否 `展开式`
+                        if let TokenDetail {
+                            token: Token::Ellipsis,
+                            ..
+                        } = first
+                        {
+                            // 当前是 `展开式`
+                            let (ellipsis, post_rest) = continue_parse_ellipsis(token_details)?;
+                            expressions.push(Expression::Ellipsis(ellipsis));
+                            is_expected_end = true; // 设置标记，`展开式` 后面只能允许右中括号
+
+                            // 消除逗号
+                            let post_consume_comma = if is_token(&Token::Comma, post_rest) {
+                                consume_token(&Token::Comma, post_rest)?
+                            } else {
+                                post_rest
+                            };
+
+                            // 消除空行
+                            let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                            post_consume_new_lines
+                        } else {
+                            // 解析普通表达式
+                            let (expression, post_rest) = parse_expression(token_details)?;
+
+                            let post_check_interval = if is_token(&Token::Interval, post_rest) {
+                                // 当前是范围表达式
+                                let (option_end_pression, post_continue_parse_interval) =
+                                    continue_parse_interval(post_rest)?;
+                                let interval_expression = Expression::Interval(Interval {
+                                    start: Box::new(expression),
+                                    end: match option_end_pression {
+                                        Some(end_pression) => Some(Box::new(end_pression)),
+                                        None => None,
+                                    },
+                                    range: new_range(),
+                                });
+
+                                is_expected_end = true; // 设置标记，`范围表达式` 后面只能允许右中括号
+
+                                expressions.push(interval_expression);
+                                post_continue_parse_interval
+                            } else {
+                                // 当前是普通表达式
+                                expressions.push(expression);
+                                post_rest
+                            };
+
+                            // 消除逗号
+                            let post_consume_comma = if is_token(&Token::Comma, post_check_interval)
+                            {
+                                consume_token(&Token::Comma, post_check_interval)?
+                            } else {
+                                post_check_interval
+                            };
+
+                            // 消除空行
+                            let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                            post_consume_new_lines
+                        }
+                    }
+                }
+            }
+            None => {
+                return Err(Error::ParserError(
+                    "expected the right paren symbol \")\"".to_string(),
+                ))
+            }
+        }
+    }
+
+    // 消除右括号
+    token_details = consume_token(&Token::RightBracket, token_details)?;
+
+    Ok((
+        Expression::List(List {
+            elements: expressions,
+            range: new_range(),
+        }),
+        token_details,
+    ))
 }
 
 fn parse_tuple_or_parenthesized(
@@ -1012,7 +1118,7 @@ fn parse_tuple_or_parenthesized(
     let mut is_tuple = false;
     let mut is_expected_end = false;
 
-    token_details = consume_token(&Token::LeftParen, token_details)?;
+    token_details = consume_token(&Token::LeftParen, token_details)?; // 消除左括号
     token_details = skip_new_lines(token_details); // 左括号后面允许换行
 
     loop {
@@ -1044,10 +1150,11 @@ fn parse_tuple_or_parenthesized(
                             is_expected_end = true; // 设置标记，`展开式` 后面只能允许右括号
 
                             // 消除逗号
-                            let mut post_consume_comma = post_rest;
-                            if is_token(&Token::Comma, post_rest) {
-                                post_consume_comma = consume_token(&Token::Comma, post_rest)?;
-                            }
+                            let post_consume_comma = if is_token(&Token::Comma, post_rest) {
+                                consume_token(&Token::Comma, post_rest)?
+                            } else {
+                                post_rest
+                            };
 
                             // 消除空行
                             let post_consume_new_lines = skip_new_lines(post_consume_comma);
@@ -1058,11 +1165,12 @@ fn parse_tuple_or_parenthesized(
                             expressions.push(expression);
 
                             // 消除逗号
-                            let mut post_consume_comma = post_rest;
-                            if is_token(&Token::Comma, post_rest) {
+                            let post_consume_comma = if is_token(&Token::Comma, post_rest) {
                                 is_tuple = true;
-                                post_consume_comma = consume_token(&Token::Comma, post_rest)?;
-                            }
+                                consume_token(&Token::Comma, post_rest)?
+                            } else {
+                                post_rest
+                            };
 
                             // 消除空行
                             let post_consume_new_lines = skip_new_lines(post_consume_comma);
@@ -1111,6 +1219,13 @@ fn parse_tuple_or_parenthesized(
 fn continue_parse_ellipsis(
     source_token_details: &[TokenDetail],
 ) -> Result<(Ellipsis, &[TokenDetail]), Error> {
+    // ...
+    // ..._
+    // ...abc
+    // ^  ^--- identifier
+    // |------ ellipsis，当前处于这个 token
+
+    // 消除省略号 `...`
     let post_consume_token_ellipsis = consume_token(&Token::Ellipsis, source_token_details)?;
 
     if let Some((
@@ -1121,6 +1236,7 @@ fn continue_parse_ellipsis(
         post_consume_token_identifier,
     )) = post_consume_token_ellipsis.split_first()
     {
+        // 省略号 `...` 后面有标识符
         Ok((
             Ellipsis {
                 name: Some(name.clone()),
@@ -1129,6 +1245,7 @@ fn continue_parse_ellipsis(
             post_consume_token_identifier,
         ))
     } else {
+        // 省略号 `...` 后面无标识符
         Ok((
             Ellipsis {
                 name: None,
@@ -1136,6 +1253,37 @@ fn continue_parse_ellipsis(
             },
             post_consume_token_ellipsis,
         ))
+    }
+}
+
+// 解析 `范围表达式`，返回 `end` 部分表达式（如果存在的话）
+fn continue_parse_interval(
+    source_token_details: &[TokenDetail],
+) -> Result<(Option<Expression>, &[TokenDetail]), Error> {
+    // exp1..
+    // exp1..exp2
+    // ^   ^ ^--- expression (可选的)
+    // |   |----- interval 当前处于这个 token
+    // |--------- expression
+
+    // 消除范围符号 ".."
+    let post_consume_token_interval = consume_token(&Token::Interval, source_token_details)?;
+
+    // 范围符号 ".." 后面允许换行
+    let post_new_lines = skip_new_lines(post_consume_token_interval);
+
+    match post_new_lines.first() {
+        Some(TokenDetail { token, .. })
+            if (*token == Token::Comma || *token == Token::RightBracket) =>
+        {
+            // 遇到了逗号或者右中括号，说明当前范围表达式缺省 `end` 部分。
+            Ok((None, post_new_lines))
+        }
+        _ => {
+            // 解析 `end` 部分表达式
+            let (expression, post_end_expression) = parse_expression(post_new_lines)?;
+            Ok((Some(expression), post_end_expression))
+        }
     }
 }
 
@@ -1247,7 +1395,7 @@ mod tests {
     use crate::{
         ast::{
             BinaryExpression, Complex, DoExpression, Ellipsis, Expression, Float, Identifier,
-            Integer, List, Literal, Node, PrefixIdentifier, Program, Statement, Tuple,
+            Integer, Interval, List, Literal, Node, PrefixIdentifier, Program, Statement, Tuple,
         },
         error::Error,
         lexer,
@@ -1445,6 +1593,7 @@ mod tests {
         );
         assert_eq!(a1.to_string(), "(123,)\n");
 
+        // 多个元素
         let a2 = parse_from_string("(123,1.732)").unwrap();
         assert_eq!(
             a2,
@@ -1467,9 +1616,11 @@ mod tests {
         );
         assert_eq!(a2.to_string(), "(123, 1.732,)\n");
 
+        // 元素列表以逗号结尾
         let a3 = parse_from_string("(123,1.732,)").unwrap();
         assert_eq!(a3.to_string(), "(123, 1.732,)\n");
 
+        // 空元组
         let a4 = parse_from_string("()").unwrap();
         assert_eq!(
             a4,
@@ -1483,24 +1634,194 @@ mod tests {
         );
         assert_eq!(a4.to_string(), "()\n");
 
-        // let a1 = parse_from_string("[a, ...]").unwrap();
-        // assert_eq!(
-        //     a1,
-        //     Node::Program(Program {
-        //         body: vec![Statement::Expression(Expression::Literal(Literal::List(
-        //             List {
-        //                 elements: vec![],
-        //                 range: new_range()
-        //             }
-        //         )))],
-        //         range: new_range()
-        //     })
-        // );
-        // assert_eq!(a1.to_string(), "[a, ...]\n");
+        // 带有省略号元素的元组
+        let a5 = parse_from_string("(123,...)").unwrap();
+        assert_eq!(
+            a5,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Tuple(Tuple {
+                    elements: vec![
+                        Expression::Literal(Literal::Integer(Integer {
+                            value: 123,
+                            range: new_range()
+                        })),
+                        Expression::Ellipsis(Ellipsis {
+                            name: None,
+                            range: new_range()
+                        })
+                    ],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a5.to_string(), "(123, ...,)\n");
 
-        // todo::
-        // let a2 = parse_from_string("[a, ...foo]").unwrap();
-        // assert_eq!(a2.to_string(), "[a, ...foo]\n");
+        // 带有省略号标识符元素的元组
+        let a6 = parse_from_string("(123,...abc)").unwrap();
+        assert_eq!(
+            a6,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Tuple(Tuple {
+                    elements: vec![
+                        Expression::Literal(Literal::Integer(Integer {
+                            value: 123,
+                            range: new_range()
+                        })),
+                        Expression::Ellipsis(Ellipsis {
+                            name: Some("abc".to_string()),
+                            range: new_range()
+                        })
+                    ],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a6.to_string(), "(123, ...abc,)\n");
+    }
+
+    #[test]
+    fn test_list() {
+        let a1 = parse_from_string("[123]").unwrap();
+        assert_eq!(
+            a1,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::List(List {
+                    elements: vec![Expression::Literal(Literal::Integer(Integer {
+                        value: 123,
+                        range: new_range()
+                    }))],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a1.to_string(), "[123,]\n");
+
+        // 元素列表以 `逗号` 结尾
+        let a2 = parse_from_string("[123,]").unwrap();
+        assert_eq!(a2.to_string(), "[123,]\n");
+
+        // 多个元素
+        let a3 = parse_from_string("[123,1.732]").unwrap();
+        assert_eq!(
+            a3,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::List(List {
+                    elements: vec![
+                        Expression::Literal(Literal::Integer(Integer {
+                            value: 123,
+                            range: new_range()
+                        })),
+                        Expression::Literal(Literal::Float(Float {
+                            value: 1.732,
+                            range: new_range()
+                        }))
+                    ],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a3.to_string(), "[123, 1.732,]\n");
+
+        // 元素列表以逗号结尾
+        let a4 = parse_from_string("[123,1.732,]").unwrap();
+        assert_eq!(a4.to_string(), "[123, 1.732,]\n");
+
+        // 空列表
+        let a5 = parse_from_string("[]").unwrap();
+        assert_eq!(
+            a5,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::List(List {
+                    elements: vec![],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a5.to_string(), "[]\n");
+
+        // 带有省略号元素的列表
+        let a6 = parse_from_string("[123,...]").unwrap();
+        assert_eq!(
+            a6,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::List(List {
+                    elements: vec![
+                        Expression::Literal(Literal::Integer(Integer {
+                            value: 123,
+                            range: new_range()
+                        })),
+                        Expression::Ellipsis(Ellipsis {
+                            name: None,
+                            range: new_range()
+                        })
+                    ],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a6.to_string(), "[123, ...,]\n");
+
+        // 带有省略号标识符元素的列表
+        let a7 = parse_from_string("[123,...abc]").unwrap();
+        assert_eq!(a7.to_string(), "[123, ...abc,]\n");
+
+        // 范围表达式的列表
+        let a8 = parse_from_string("[1..10]").unwrap();
+        assert_eq!(
+            a8,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::List(List {
+                    elements: vec![Expression::Interval(Interval {
+                        start: Box::new(Expression::Literal(Literal::Integer(Integer {
+                            value: 1,
+                            range: new_range()
+                        }))),
+                        end: Some(Box::new(Expression::Literal(Literal::Integer(Integer {
+                            value: 10,
+                            range: new_range()
+                        })))),
+                        range: new_range()
+                    })],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a8.to_string(), "[1..10,]\n");
+
+        // "省略了范围结束值的范围表达式" 的列表
+        let a9 = parse_from_string("[1..]").unwrap();
+        assert_eq!(
+            a9,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::List(List {
+                    elements: vec![Expression::Interval(Interval {
+                        start: Box::new(Expression::Literal(Literal::Integer(Integer {
+                            value: 1,
+                            range: new_range()
+                        }))),
+                        end: None,
+                        range: new_range()
+                    })],
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a9.to_string(), "[1..,]\n");
+
+        // 带有一个元素以及一个范围表达式的列表
+        let a10 = parse_from_string("[1,3..9,]").unwrap();
+        assert_eq!(a10.to_string(), "[1, 3..9,]\n");
+
+        let a11 = parse_from_string("[1,3..,]").unwrap();
+        assert_eq!(a11.to_string(), "[1, 3..,]\n");
     }
 
     // operating expressions
