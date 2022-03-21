@@ -77,7 +77,7 @@ pub enum Token {
     RightParen, // )
 
     // 其他符号
-    Hash,      // #
+    // Hash,      // #
     Interval,  // ..
     Ellipsis,  // ...
     Separator, // ::
@@ -87,13 +87,16 @@ pub enum Token {
     // 关键字
     Let,
     Do,
+    Join,
     Match,
     If,
     Then,
     Else,
     For,
     Next,
+    Each,
     In,
+    Mix,
     Branch,
     Which,
     Where,
@@ -101,7 +104,7 @@ pub enum Token {
     Into,
     Regular,
     Template,
-    To,
+    As,
     Namespace,
     Use,
     Function,
@@ -191,7 +194,7 @@ impl fmt::Display for Token {
             Token::RightParen => write!(f, ")"), // )
 
             // 其他符号
-            Token::Hash => write!(f, "#"),       // #
+            // Token::Hash => write!(f, "#"),       // #
             Token::Interval => write!(f, ".."),     // ..
             Token::Ellipsis => write!(f, "..."), // ...
             Token::Separator => write!(f, "::"), // ::
@@ -201,13 +204,16 @@ impl fmt::Display for Token {
             // 关键字
             Token::Let => write!(f, "let"),
             Token::Do => write!(f, "do"),
+            Token::Join => write!(f, "join"),
             Token::Match => write!(f, "match"),
             Token::If => write!(f, "if"),
             Token::Then => write!(f, "then"),
             Token::Else => write!(f, "else"),
             Token::For => write!(f, "for"),
             Token::Next => write!(f, "next"),
+            Token::Each => write!(f, "each"),
             Token::In => write!(f, "in"),
+            Token::Mix => write!(f, "mix"),
             Token::Branch => write!(f, "branch"),
             Token::Which => write!(f, "which"),
             Token::Where => write!(f, "where"),
@@ -215,7 +221,7 @@ impl fmt::Display for Token {
             Token::Into => write!(f, "into"),
             Token::Regular => write!(f, "regular"),
             Token::Template => write!(f, "template"),
-            Token::To => write!(f, "to"),
+            Token::As => write!(f, "as"),
             Token::Namespace => write!(f, "namespace"),
             Token::Use => write!(f, "use"),
             Token::Function => write!(f, "function"),
@@ -233,7 +239,7 @@ impl fmt::Display for Token {
 
 impl fmt::Display for TokenDetail {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} - {}", self.location, self.token)
+        write!(f, "[{}] {}", self.location, self.token)
     }
 }
 
@@ -276,13 +282,95 @@ mod tests {
 
     #[test]
     fn test_token_display() {
-        let tt1 = Token::Identifier("foo".to_string());
-        let tt2 = Token::If;
-        let tt3 = Token::Bit(8, vec![0xab, 0x4]);
+        assert_eq!(Token::NewLine.to_string(), "\n");
+        assert_eq!(Token::Identifier("foo".to_string()).to_string(), "foo");
 
-        assert_eq!(tt1.to_string(), "foo");
-        assert_eq!(tt2.to_string(), "if");
-        assert_eq!(tt3.to_string(), "8'xab04")
+        assert_eq!(Token::Integer(123).to_string(), "123");
+        assert_eq!(Token::Float(6.626).to_string(), "6.626");
+        assert_eq!(Token::Imaginary(0.618).to_string(), "0.618i");
+        assert_eq!(Token::Bit(8, vec![0xab, 0x4]).to_string(), "8'xab04");
+        assert_eq!(Token::Boolean(true).to_string(), "true");
+        assert_eq!(Token::Char('a').to_string(), "'a'");
+        assert_eq!(
+            Token::GeneralString("foo".to_string()).to_string(),
+            "\"foo\""
+        );
+        assert_eq!(
+            Token::TemplateString("foo".to_string()).to_string(),
+            "`foo`"
+        );
+        assert_eq!(Token::HashString("foo".to_string()).to_string(), "#foo");
+
+        assert_eq!(Token::NamedOperator("foo".to_string()).to_string(), ":foo:");
+
+        assert_eq!(Token::LeftBrace.to_string(), "{");
+        assert_eq!(Token::RightBrace.to_string(), "}");
+
+        assert_eq!(Token::Assign.to_string(), "=");
+        assert_eq!(Token::Pipe.to_string(), "|");
+        assert_eq!(Token::LogicOr.to_string(), "||");
+        assert_eq!(Token::LogicAnd.to_string(), "&&");
+        assert_eq!(Token::Equal.to_string(), "==");
+        assert_eq!(Token::NotEqual.to_string(), "!=");
+        assert_eq!(Token::GreaterThan.to_string(), ">");
+        assert_eq!(Token::GreaterThanOrEqual.to_string(), ">=");
+        assert_eq!(Token::LessThan.to_string(), "<");
+        assert_eq!(Token::LessThanOrEqual.to_string(), "<=");
+        assert_eq!(Token::Forward.to_string(), ">>");
+        assert_eq!(Token::Concat.to_string(), "++");
+        assert_eq!(Token::Plus.to_string(), "+");
+        assert_eq!(Token::Minus.to_string(), "-");
+        assert_eq!(Token::Asterisk.to_string(), "*");
+        assert_eq!(Token::Slash.to_string(), "/");
+
+        assert_eq!(Token::UnwrapOr.to_string(), "??");
+        assert_eq!(Token::Combine.to_string(), "&");
+        assert_eq!(Token::Cast.to_string(), "^");
+        assert_eq!(Token::Unwrap.to_string(), "?");
+        assert_eq!(Token::Dot.to_string(), ".");
+
+        assert_eq!(Token::LeftBracket.to_string(), "[");
+        assert_eq!(Token::RightBracket.to_string(), "]");
+        assert_eq!(Token::Arrow.to_string(), "=>");
+        assert_eq!(Token::Exclamation.to_string(), "!");
+        assert_eq!(Token::LeftParen.to_string(), "(");
+        assert_eq!(Token::RightParen.to_string(), ")");
+        assert_eq!(Token::Interval.to_string(), "..");
+        assert_eq!(Token::Ellipsis.to_string(), "...");
+        assert_eq!(Token::Separator.to_string(), "::");
+        assert_eq!(Token::Colon.to_string(), ":");
+        assert_eq!(Token::Comma.to_string(), ",");
+
+        assert_eq!(Token::Let.to_string(), "let");
+        assert_eq!(Token::Do.to_string(), "do");
+        assert_eq!(Token::Match.to_string(), "match");
+        assert_eq!(Token::If.to_string(), "if");
+        assert_eq!(Token::Then.to_string(), "then");
+        assert_eq!(Token::Else.to_string(), "else");
+        assert_eq!(Token::For.to_string(), "for");
+        assert_eq!(Token::Next.to_string(), "next");
+        assert_eq!(Token::Each.to_string(), "each");
+        assert_eq!(Token::In.to_string(), "in");
+        assert_eq!(Token::Mix.to_string(), "mix");
+        assert_eq!(Token::Branch.to_string(), "branch");
+        assert_eq!(Token::Which.to_string(), "which");
+        assert_eq!(Token::Where.to_string(), "where");
+        assert_eq!(Token::Only.to_string(), "only");
+        assert_eq!(Token::Into.to_string(), "into");
+        assert_eq!(Token::Regular.to_string(), "regular");
+        assert_eq!(Token::Template.to_string(), "template");
+        assert_eq!(Token::As.to_string(), "as");
+        assert_eq!(Token::Namespace.to_string(), "namespace");
+        assert_eq!(Token::Use.to_string(), "use");
+        assert_eq!(Token::Function.to_string(), "function");
+        assert_eq!(Token::Type.to_string(), "type");
+        assert_eq!(Token::Const.to_string(), "const");
+        assert_eq!(Token::Enum.to_string(), "enum");
+        assert_eq!(Token::Struct.to_string(), "struct");
+        assert_eq!(Token::Union.to_string(), "union");
+        assert_eq!(Token::Trait.to_string(), "trait");
+        assert_eq!(Token::Impl.to_string(), "impl");
+        assert_eq!(Token::Alias.to_string(), "alias");
     }
 
     #[test]
@@ -318,7 +406,7 @@ mod tests {
             token: Token::Minus, // Subtract,
         };
 
-        assert_eq!(tk1.to_string(), "file id: 1, start: 2, end: 3 - +");
+        assert_eq!(tk1.to_string(), "[file id: 1, start: 2, end: 3] +");
         assert_ne!(tk1, tk2);
     }
 }

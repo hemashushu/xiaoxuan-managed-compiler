@@ -289,26 +289,15 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
 
                     '#' => {
                         match rest.first() {
-                            Some(second_char) => {
-                                if is_valid_first_letter_of_identifier_or_keyword(*second_char) {
-                                    // `#hash_string`
-                                    let (token_detail, post_rest) = lex_hash_string(rest)?;
-                                    add_token_detail(&mut token_details, token_detail);
-                                    post_rest
-                                } else {
-                                    // `#`
-                                    add_token_detail(
-                                        &mut token_details,
-                                        new_token_detail(Token::Hash),
-                                    );
-                                    rest
-                                }
+                            Some(second_char)
+                                if is_valid_first_letter_of_identifier_or_keyword(*second_char) =>
+                            {
+                                // `#hash_string`
+                                let (token_detail, post_rest) = lex_hash_string(rest)?;
+                                add_token_detail(&mut token_details, token_detail);
+                                post_rest
                             }
-                            None => {
-                                // `#`
-                                add_token_detail(&mut token_details, new_token_detail(Token::Hash));
-                                rest
-                            }
+                            _ => return Err(Error::LexerError("invalid hash string".to_string())),
                         }
                     }
 
@@ -1081,15 +1070,23 @@ fn new_location() -> Location {
 // 用于检测字符是关键字还是标识符
 fn lookup_keyword(name: &str) -> Option<Token> {
     match name {
+        // 字面量
+        "true" => Some(Token::Boolean(true)),
+        "false" => Some(Token::Boolean(false)),
+
+        // 关键字
         "let" => Some(Token::Let),
         "do" => Some(Token::Do),
+        "join" => Some(Token::Join),
         "match" => Some(Token::Match),
         "if" => Some(Token::If),
         "then" => Some(Token::Then),
         "else" => Some(Token::Else),
         "for" => Some(Token::For),
         "next" => Some(Token::Next),
+        "each" => Some(Token::Each),
         "in" => Some(Token::In),
+        "mix" => Some(Token::Mix),
         "branch" => Some(Token::Branch),
         "which" => Some(Token::Which),
         "where" => Some(Token::Where),
@@ -1097,7 +1094,7 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         "into" => Some(Token::Into),
         "regular" => Some(Token::Regular),
         "template" => Some(Token::Template),
-        "to" => Some(Token::To),
+        "as" => Some(Token::As),
         "namespace" => Some(Token::Namespace),
         "use" => Some(Token::Use),
         "function" => Some(Token::Function),
@@ -1154,20 +1151,11 @@ mod tests {
     }
 
     #[test]
-    fn test_punctuation_marks() {
-        let tokens1 = tokenize("{ } = >> | || && == != > >= < <= ++ + - * /").unwrap();
+    fn test_identifier() {
+        let tokens1 = tokenize("a ab a_b a123 _ _a a_").unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
-            vec![
-                "{", "}", "=", ">>", "|", "||", "&&", "==", "!=", ">", ">=", "<", "<=", "++", "+",
-                "-", "*", "/",
-            ]
-        );
-
-        let tokens2 = tokenize("?? & ^ ? . [ ] => ! ( ) # .. ... ,").unwrap();
-        assert_eq!(
-            token_details_to_string(&tokens2),
-            vec!["??", "&", "^", "?", ".", "[", "]", "=>", "!", "(", ")", "#", "..", "...", ",",]
+            vec!["a", "ab", "a_b", "a123", "_", "_a", "a_"]
         );
     }
 
@@ -1182,6 +1170,12 @@ mod tests {
             }]
         );
         assert_eq!(token_details_to_string(&tokens1), vec!["123"]);
+
+        let tokens2 = tokenize("1 100 1_234 1_2_3").unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens2),
+            vec!["1", "100", "1234", "123"]
+        );
 
         // todo::
         // 测试 16 进制和 2 进制表示法的整数
@@ -1235,6 +1229,27 @@ mod tests {
     }
 
     #[test]
+    fn test_bit_literal() {
+        // todo::
+    }
+
+    #[test]
+    fn test_boolean_literal() {
+        let tokens1 = tokenize("true").unwrap();
+        assert_eq!(
+            tokens1,
+            vec![TokenDetail {
+                token: Token::Boolean(true),
+                location: new_location()
+            }]
+        );
+        assert_eq!(token_details_to_string(&tokens1), vec!["true"]);
+
+        let tokens2 = tokenize("false").unwrap();
+        assert_eq!(token_details_to_string(&tokens2), vec!["false"]);
+    }
+
+    #[test]
     fn test_char_literal() {
         let tokens1 = tokenize("'a' 'b'").unwrap();
         assert_eq!(token_details_to_string(&tokens1), vec!["'a'", "'b'"]);
@@ -1242,66 +1257,99 @@ mod tests {
     }
 
     #[test]
-    fn test_string_literal() {
-        let tokens1 = tokenize(r#""foo" "b\"ar\"" "y&x""#).unwrap();
+    fn test_generall_string_literal() {
+        let tokens1 = tokenize(r#""foo" "b'a`r" "a\"b""#).unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
-            vec!["\"foo\"", "\"b\\\"ar\\\"\"", "\"y&x\""]
+            vec!["\"foo\"", "\"b'a`r\"", "\"a\\\"b\""]
         );
         // todo:: 测试转义字符
     }
 
     #[test]
     fn test_template_string_literal() {
-        let tokens1 = tokenize(r#" `foo` `b'a"r` "#).unwrap();
+        let tokens1 = tokenize(r#" `foo` `b'a"r` `a\`b` `user: {{name}}`"#).unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
-            vec![r#"`foo`"#, r#"`b'a"r`"#]
+            vec!["`foo`", "`b'a\"r`", "`a\\`b`", "`user: {{name}}`"]
         );
         // todo:: 测试转义字符
     }
 
     #[test]
-    fn test_hash() {
-        // 测试 `井号` 以及 `哈希字符串`，比如 `#`, `#foo`
-        let tokens1 = tokenize("# #foo #bar").unwrap();
-        assert_eq!(token_details_to_string(&tokens1), vec!["#", "#foo", "#bar"]);
-    }
-
-    #[test]
-    fn test_colon() {
-        // 测试 `冒号`、`命名空间路径分隔符`、`命名操作符`，比如 `:`，`::`，`:foo: :bar:`
-        let tokens1 = tokenize(": :: :\"value\" :foo: :bar:").unwrap();
+    fn test_hash_string_literal() {
+        let tokens1 = tokenize("\"foo\" #foo #_bar").unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
-            vec![":", "::", ":", "\"value\"", ":foo:", ":bar:"]
+            vec!["\"foo\"", "#foo", "#_bar"]
         );
     }
 
     #[test]
-    fn test_integer_number() {
-        let tokens1 = tokenize("1 100 1_234 1_2_3").unwrap();
-        assert_eq!(
-            token_details_to_string(&tokens1),
-            vec!["1", "100", "1234", "123"]
-        );
+    fn test_named_operator() {
+        let tokens4 = tokenize(":foo: :bar:").unwrap();
+        assert_eq!(token_details_to_string(&tokens4), vec![":foo:", ":bar:"]);
     }
 
     #[test]
-    fn test_identifier() {
-        let tokens1 = tokenize("a ab a_b a123 _ _a a_").unwrap();
+    fn test_symbols_and_operators() {
+        // general punctuations
+        let tokens1 = tokenize("{ } = | || && == != > >= < <= >> ++ + - * /").unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
-            vec!["a", "ab", "a_b", "a123", "_", "_a", "a_"]
+            vec![
+                "{", "}", "=", "|", "||", "&&", "==", "!=", ">", ">=", "<", "<=", ">>", "++", "+",
+                "-", "*", "/",
+            ]
+        );
+
+        let tokens2 = tokenize("?? & ^ ? . [ ] => ! ( ) : :: .. ... ,").unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens2),
+            vec![
+                "??", "&", "^", "?", ".", "[", "]", "=>", "!", "(", ")", ":", "::", "..", "...",
+                ",",
+            ]
         );
     }
 
     #[test]
     fn test_keywords() {
-        let tokens1 = tokenize("let match if then else trait").unwrap();
+        let tokens1 =
+            tokenize("let do join match if then else for next each in mix branch which where")
+                .unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
-            vec!["let", "match", "if", "then", "else", "trait"]
+            vec![
+                "let", "do", "join", "match", "if", "then", "else", "for", "next", "each", "in",
+                "mix", "branch", "which", "where",
+            ]
+        );
+
+        let tokens2 = tokenize("only into regular template as").unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens2),
+            vec!["only", "into", "regular", "template", "as",]
+        );
+
+        let tokens3 =
+            tokenize("namespace use function type const enum struct union trait impl alias")
+                .unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens3),
+            vec![
+                "namespace",
+                "use",
+                "function",
+                "type",
+                "const",
+                "enum",
+                "struct",
+                "union",
+                "trait",
+                "impl",
+                "alias",
+            ]
         );
     }
 }

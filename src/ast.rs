@@ -74,7 +74,7 @@ impl Display for Statement {
                 body,
                 ..
             }) => match body.as_ref() {
-                Expression::BlockExpression(BlockExpression {
+                Expression::DoExpression(DoExpression {
                     body: block_expression,
                     ..
                 }) => {
@@ -109,7 +109,7 @@ impl Display for Statement {
 }
 
 // Expression
-//  : BlockExpression
+//  : DoExpression
 //  | LetExpression
 //  | ForExpression
 //  | BranchExpression
@@ -122,21 +122,25 @@ impl Display for Statement {
 //  | ConstructorExpression
 //  | Identifier
 //  | PrefixIdentifier
-//  | Interval
 //  | Ellipsis
+//  | Interval
+//  | List
+//  | Tuple
+//  | Map
 //  | Literal
 //  ;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    BlockExpression(BlockExpression),
+    // general expressions
+    DoExpression(DoExpression),
     LetExpression(LetExpression),
     ForExpression(ForExpression),
     BranchExpression(BranchExpression),
     MatchExpression(MatchExpression),
     IfExpression(IfExpression),
 
-    // operator with precedence
+    // operating expressions
     BinaryExpression(BinaryExpression),
     UnaryExpression(UnaryExpression),
     FunctionCallExpression(FunctionCallExpression),
@@ -144,16 +148,20 @@ pub enum Expression {
     SliceExpression(SliceExpression),
     ConstructorExpression(ConstructorExpression),
 
-    // primary expression
+    // primary expressions
     Identifier(Identifier),
     PrefixIdentifier(PrefixIdentifier),
     Ellipsis(Ellipsis),
+    Interval(Interval),
+    Tuple(Tuple),
+    List(List),
+    Map(Map),
     Literal(Literal),
 }
 
 // 显式代码块 `do...` 表达式，或者隠式的花括号 `{...}` 代码块
 #[derive(Debug, Clone, PartialEq)]
-pub struct BlockExpression {
+pub struct DoExpression {
     pub is_explicit: bool,
     pub body: Vec<Expression>,
     pub range: Range,
@@ -216,7 +224,7 @@ pub enum MatchCaseAdditionalType {
     Regular,
     Template,
     Into,
-    To,
+    As,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -299,6 +307,80 @@ pub struct Ellipsis {
     pub range: Range,
 }
 
+// interval
+//
+// e.g.
+// [a..b]
+#[derive(Debug, Clone, PartialEq)]
+pub struct Interval {
+    pub start: Box<Expression>,
+    pub end: Option<Box<Expression>>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct List {
+    // pub is_array: bool, // false == 'list', true == 'array'
+    pub elements: Vec<Expression>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tuple {
+    pub elements: Vec<Expression>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Map {
+    pub elements: Vec<MapEntry>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MapEntry {
+    pub key: Box<Expression>,
+    pub value: Option<Box<Expression>>,
+    pub range: Range,
+}
+
+impl Display for Interval {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.end.as_ref() {
+            Some(e) => {
+                write!(f, "{}..{}", self.start, e)
+            }
+            None => write!(f, "{}..", self.start),
+        }
+    }
+}
+
+impl Display for Map {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let text = self
+            .elements
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<String>>()
+            .join(",\n");
+
+        write!(f, "{{{}}}", text)
+    }
+}
+
+impl Display for MapEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.value {
+            Some(v) => {
+                write!(f, "{}: {}", self.key, v)
+            }
+            None => {
+                write!(f, "{}", self.key)
+            }
+        }
+    }
+}
+
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut full_path = String::new();
@@ -315,7 +397,7 @@ impl Display for Identifier {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::BlockExpression(BlockExpression { body, .. }) => {
+            Expression::DoExpression(DoExpression { body, .. }) => {
                 let text = format_expressions_with_new_line(body);
                 write!(f, "{{\n{}\n}}", text)
             }
@@ -439,6 +521,28 @@ impl Display for Expression {
                 Some(n) => write!(f, "...{}", n),
                 None => write!(f, "..."),
             },
+            Expression::Interval(i) => {
+                write!(f, "{}", i)
+            }
+            Expression::List(List {
+                //is_array,
+                elements,
+                ..
+            }) => {
+                let text = format_expressions_with_comma(elements);
+                // if *is_array {
+                //     write!(f, "#[{}]", text)
+                // } else {
+                write!(f, "[{}]", text)
+                // }
+            }
+            Expression::Tuple(Tuple { elements, .. }) => {
+                let text = format_expressions_with_comma(elements);
+                write!(f, "({})", text)
+            }
+            Expression::Map(m) => {
+                write!(f, "{}", m)
+            }
             Expression::Literal(i) => {
                 write!(f, "{}", i)
             }
@@ -457,11 +561,6 @@ impl Display for Expression {
 //  | TemplateString
 //  | HashString
 //  | NamedOperator
-//  | List
-//  | Array
-//  | Tuple
-//  | Map
-//  | Interval
 //  ;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -476,10 +575,6 @@ pub enum Literal {
     TemplateString(TemplateString),
     HashString(HashString),
     NamedOperator(NamedOperator),
-    List(List),
-    Tuple(Tuple),
-    Map(Map),
-    Interval(Interval),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -545,66 +640,6 @@ pub struct NamedOperator {
     pub range: Range,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct List {
-    pub is_array: bool, // false == 'list', true == 'array'
-    pub elements: Vec<Expression>,
-    pub range: Range,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Tuple {
-    pub elements: Vec<Expression>,
-    pub range: Range,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Map {
-    pub elements: Vec<(Expression, Expression)>,
-    pub range: Range,
-}
-
-// interval
-//
-// e.g.
-// [a..b]
-#[derive(Debug, Clone, PartialEq)]
-pub struct Interval {
-    pub start: Box<Expression>,
-    pub end: Option<Box<Expression>>,
-    pub range: Range,
-}
-
-impl Display for Map {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let text = self
-            .elements
-            .iter()
-            .map(|(name, value)| {
-                let mut buf = String::new();
-                buf.push_str(&name.to_string());
-                buf.push_str(": ");
-                buf.push_str(&value.to_string());
-                buf
-            })
-            .collect::<Vec<String>>()
-            .join(", ");
-
-        write!(f, "{{{}}}", text)
-    }
-}
-
-impl Display for Interval {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.end.as_ref() {
-            Some(e) => {
-                write!(f, "{}..{}", self.start, e)
-            }
-            None => write!(f, "{}..", self.start),
-        }
-    }
-}
-
 impl Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -654,26 +689,6 @@ impl Display for Literal {
             }
             Literal::HashString(HashString { value, .. }) => write!(f, "#{}", value),
             Literal::NamedOperator(NamedOperator { value, .. }) => write!(f, ":{}:", value),
-            Literal::List(List {
-                is_array, elements, ..
-            }) => {
-                let text = format_expressions_with_comma(elements);
-                if *is_array {
-                    write!(f, "#[{}]", text)
-                } else {
-                    write!(f, "[{}]", text)
-                }
-            }
-            Literal::Tuple(Tuple { elements, .. }) => {
-                let text = format_expressions_with_comma(elements);
-                write!(f, "({})", text)
-            }
-            Literal::Map(m) => {
-                write!(f, "{}", m)
-            }
-            Literal::Interval(i) => {
-                write!(f, "{}", i)
-            }
         }
     }
 }
@@ -756,6 +771,10 @@ mod tests {
         assert_eq!(i1.to_string(), "123");
     }
 
+    fn test_display_literal_float() {
+        // todo::
+    }
+
     #[test]
     fn test_display_literal_complex() {
         let i1 = Literal::Complex(Complex {
@@ -778,6 +797,14 @@ mod tests {
         assert_eq!(i1.to_string(), "12'xab0812");
     }
 
+    fn test_display_literal_boolean() {
+        // todo::
+    }
+
+    fn test_display_literal_char() {
+        // todo::
+    }
+
     #[test]
     fn test_display_literal_general_string() {
         let i1 = Literal::GeneralString(GeneralString {
@@ -786,6 +813,14 @@ mod tests {
         });
 
         assert_eq!(i1.to_string(), "\"foo\"");
+    }
+
+    fn test_display_literal_template_string() {
+        // todo::
+    }
+
+    fn test_display_literal_hash_string() {
+        // todo::
     }
 
     #[test]
@@ -797,6 +832,8 @@ mod tests {
 
         assert_eq!(i1.to_string(), ":foo:");
     }
+
+    // primary expressions
 
     #[test]
     fn test_display_expression_literal() {
@@ -860,8 +897,76 @@ mod tests {
         assert_eq!(e1.to_string(), "!len");
     }
 
+    fn test_display_expression_ellipsis() {
+        // todo::
+    }
+
+    fn test_display_expression_interval() {
+        // todo::
+    }
+
+    fn test_display_expression_tuple() {
+        // todo::
+    }
+
+    fn test_display_expression_list() {
+        // todo::
+    }
+
+    fn test_display_expression_map() {
+        // todo::
+    }
+
+    // operating expressions
+
+    fn test_display_binary_expression() {
+        // todo::
+    }
+
+    fn test_display_unary_expression() {
+        // todo::
+    }
+
+    fn test_display_function_call_expression() {
+        // todo::
+    }
+
+    fn test_display_member_expression() {
+        // todo::
+    }
+
+    fn test_display_slice_expression() {
+        // todo::
+    }
+
+    fn test_display_constructor_expression() {
+        // todo::
+    }
+
+    // general expressions
+
+    fn test_display_block_expression() {
+        // todo::
+    }
+
+    fn test_display_let_expression() {
+        // todo::
+    }
+
+    fn test_display_for_expression() {
+        // todo::
+    }
+
+    fn test_display_branch_expression() {
+        // todo::
+    }
+
+    fn test_display_match_expression() {
+        // todo::
+    }
+
     #[test]
-    fn test_display_expression_if() {
+    fn test_display_if_expression() {
         let e1 = Expression::IfExpression(IfExpression {
             condition: Box::new(Expression::Literal(Literal::Boolean(Boolean {
                 value: true,
@@ -880,6 +985,8 @@ mod tests {
 
         assert_eq!(e1.to_string(), "if true then 1 else 2")
     }
+
+    // statements
 
     #[test]
     fn test_display_function_declaration_statement() {
@@ -920,6 +1027,8 @@ mod tests {
 
         assert_eq!(s1.to_string(), "function inc (Int a) type Int = (a + 1)\n")
     }
+
+    // nodes
 
     #[test]
     fn test_display_node_program() {

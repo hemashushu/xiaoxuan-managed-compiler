@@ -7,9 +7,9 @@
  */
 use crate::{
     ast::{
-        BinaryExpression, Bit, BlockExpression, Boolean, Char, Complex, Ellipsis, Expression,
-        Float, GeneralString, HashString, Identifier, Integer, Literal, NamedOperator, Node,
-        PrefixIdentifier, Program, Range, Statement, UnaryExpression,
+        BinaryExpression, Bit, Boolean, Char, Complex, DoExpression, Ellipsis, Expression, Float,
+        GeneralString, HashString, Identifier, Integer, Literal, NamedOperator, Node,
+        PrefixIdentifier, Program, Range, Statement, Tuple, UnaryExpression,
     },
     error::Error,
     token::{Token, TokenDetail},
@@ -37,11 +37,11 @@ fn parse_program(source_token_details: &[TokenDetail]) -> Result<Program, Error>
             break;
         }
 
-        let (statement, post_rest) = parse_statement(token_details)?;
+        let (statement, post_parse_statement) = parse_statement(token_details)?;
         statements.push(statement);
 
         // 再解析剩余的 token，直到解析完所有 token 为止
-        token_details = post_rest;
+        token_details = post_parse_statement;
     }
 
     Ok(Program {
@@ -108,9 +108,11 @@ fn parse_expression_statement(
 }
 
 // Expression
-//  : BlockExpression
+//  : DoExpression
+//  | JoinExpression
 //  | LetExpression
 //  | ForExpression
+//  | EachExpression
 //  | BranchExpression
 //  | MatchExpression
 //  | IfExpression
@@ -126,36 +128,43 @@ fn parse_expression_statement(
 fn parse_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    let token_details = source_token_details;
-    if let Some(first) = token_details.first() {
+    if let Some(first) = source_token_details.first() {
         match first.token {
             Token::Do => {
                 // do 表达式
-                parse_do_expression(token_details)
+                parse_do_expression(source_token_details)
+            }
+            Token::Join => {
+                // join 表达式
+                parse_join_expression(source_token_details)
             }
             Token::Let => {
                 // let 表达式
-                parse_let_expression(token_details)
+                parse_let_expression(source_token_details)
             }
             Token::For => {
                 // for 表达式
-                parse_for_expression(token_details)
+                parse_for_expression(source_token_details)
+            }
+            Token::Each => {
+                // each 表达式
+                parse_each_expression(source_token_details)
             }
             Token::Branch => {
                 // branch 表达式
-                parse_branch_expression(token_details)
+                parse_branch_expression(source_token_details)
             }
             Token::Match => {
                 // match 表达式
-                parse_match_expression(token_details)
+                parse_match_expression(source_token_details)
             }
             Token::If => {
                 // if 表达式
-                parse_if_expression(token_details)
+                parse_if_expression(source_token_details)
             }
             _ => {
                 // 二元运算表达式的开始
-                parse_pipe_expression(token_details)
+                parse_pipe_expression(source_token_details)
             }
         }
     } else {
@@ -163,31 +172,47 @@ fn parse_expression(
     }
 }
 
-// DoStatement
+// DoExpression
 //  : 'do' ExpressionBlock
 //  ;
 fn parse_do_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // 解析 do 表达式，`do {...}`，即显式表达式块
-    let mut token_details = source_token_details;
+    // 解析 do 表达式 `do {...}`，do 表达式是一个显式表达式块
 
-    token_details = consume_token(&Token::Do, token_details)?;
+    // 消除 do
+    let post_consume_token_do = consume_token(&Token::Do, source_token_details)?;
 
+    // 消除换行符
     // do 关键字后面允许换行
-    token_details = skip_new_lines(token_details);
+    let post_consume_new_lines = skip_new_lines(post_consume_token_do);
 
-    parse_expression_block(token_details)
+    let (expressions, post_parse_expression_block) =
+        continue_parse_expression_block(post_consume_new_lines)?;
+
+    Ok((
+        Expression::DoExpression(DoExpression {
+            is_explicit: true,
+            body: expressions,
+            range: new_range(),
+        }),
+        post_parse_expression_block,
+    ))
 }
 
 // ExpressionBlock
-//  : '{' StatementList '}'
+//  : '{' ExpressionList '}'
 //  ;
-fn parse_expression_block(
+//
+// ExpressionList
+//  : Expression
+//  | ExpressionList NEW_LINE Expression
+//  ;
+fn continue_parse_expression_block(
     source_token_details: &[TokenDetail],
-) -> Result<(Expression, &[TokenDetail]), Error> {
-    // 解析隠式表达式块 `{...}`
-    // 注意隠式表达式块仅存在某些关键字后面，比如 `do`、`then` 等，而不能单独存在，
+) -> Result<(Vec<Expression>, &[TokenDetail]), Error> {
+    // 解析表达式块 `{...}`（也叫 `隠式 Do 表达式`）
+    // 注意表达式块仅存在某些关键字后面，比如 `join`、`do` 等，而不能单独存在，
     // 当一对花括号单独存在时，会被解析为 Map。
     let mut token_details = source_token_details;
 
@@ -198,46 +223,64 @@ fn parse_expression_block(
     loop {
         // 左花括号 '{' 后面允许换行
         // 表达式之间也是以换行分隔
-        token_details = skip_new_lines(token_details);
-        let (expression, post_rest) = parse_expression(token_details)?;
+        let post_consume_new_lines = skip_new_lines(token_details);
+
+        // 解析表达式
+        let (expression, post_parse_expression) = parse_expression(post_consume_new_lines)?;
         expressions.push(expression);
 
-        token_details = post_rest;
-
-        if is_token_ignore_new_lines(&Token::RightBrace, token_details) {
+        if is_token_ignore_new_lines(&Token::RightBrace, post_parse_expression) {
             break;
         }
+
+        token_details = post_parse_expression;
     }
 
-    token_details = consume_token_ignore_new_lines(&Token::RightBrace, token_details)?;
+    let post_consume_token_right_brace =
+        consume_token_ignore_new_lines(&Token::RightBrace, token_details)?;
 
-    Ok((
-        Expression::BlockExpression(BlockExpression {
-            is_explicit: true,
-            body: expressions,
-            range: new_range(),
-        }),
-        token_details,
-    ))
+    Ok((expressions, post_consume_token_right_brace))
 }
 
-fn parse_expression_block_or_single_expression(
+fn continue_parse_expression_block_or_single_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // 解析 `{...}` 或者 `...`
+    // 在诸如 `if`、`then`、`else` 等关键字后面，即可以是单独一个表达式，
+    // 也可以是一个表达式块。
     //
     // 解析优先级：
-    // 1. 解析 `{...}` 表达式块，即隠式表达式块（如果存在的话）
-    // 32 作为普通的表达式解析
+    // 1. 如果存在 `{...}`，则解析为隠式表达式块
+    // 2. 否则解析为普通的表达式
+
     match source_token_details.first() {
         Some(first) => match first.token {
-            Token::LeftBrace => parse_expression_block(source_token_details),
+            Token::LeftBrace => {
+                let (expressions, post_parse_expression_block) =
+                    continue_parse_expression_block(source_token_details)?;
+
+                Ok((
+                    Expression::DoExpression(DoExpression {
+                        is_explicit: false,
+                        body: expressions,
+                        range: new_range(),
+                    }),
+                    post_parse_expression_block,
+                ))
+            }
             _ => parse_expression(source_token_details),
         },
         None => Err(Error::ParserError(
             "expected an expression or an expression block".to_string(),
         )),
     }
+}
+
+fn parse_join_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // join {...}
+    todo!()
 }
 
 // * VariableStatementInit
@@ -279,7 +322,14 @@ fn parse_let_expression(
 fn parse_for_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // for let ... =/in ... {... next}
+    // for let ... = ... {... next}
+    todo!()
+}
+
+fn parse_each_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // each let ... in ... {...}
     todo!()
 }
 
@@ -321,8 +371,9 @@ fn parse_binary_expression<'a>(
     source_token_details: &'a [TokenDetail],
 ) -> Result<(Expression, &'a [TokenDetail]), Error> {
     let mut token_details = source_token_details;
-    let (mut left, post_rest) = next_parse_function(token_details)?;
-    token_details = post_rest;
+
+    let (mut left, post_parse_left_expression) = next_parse_function(token_details)?;
+    token_details = post_parse_left_expression;
 
     loop {
         let next_token = match token_details.first() {
@@ -341,13 +392,13 @@ fn parse_binary_expression<'a>(
 
         let operator_token = &operator_tokens[index];
 
-        token_details = consume_token(operator_token, token_details)?;
+        // 消除操作符
+        let post_consume_token_operator = consume_token(operator_token, token_details)?;
 
         // 二元运算符后面允许换行
-        token_details = skip_new_lines(token_details);
+        let post_consume_new_lines = skip_new_lines(post_consume_token_operator);
 
-        let (right, post_rest) = next_parse_function(token_details)?;
-        token_details = post_rest;
+        let (right, post_parse_right_expression) = next_parse_function(post_consume_new_lines)?;
 
         let expression = Expression::BinaryExpression(BinaryExpression {
             operator: operator_token.clone(),
@@ -357,6 +408,7 @@ fn parse_binary_expression<'a>(
         });
 
         left = expression;
+        token_details = post_parse_right_expression;
     }
 
     Ok((left, token_details))
@@ -374,17 +426,18 @@ fn parse_right_2_left_binary_expression<'a>(
     source_token_details: &'a [TokenDetail],
 ) -> Result<(Expression, &'a [TokenDetail]), Error> {
     let mut token_details = source_token_details;
-    let (mut left, post_rest) = next_parse_function(token_details)?;
-    token_details = post_rest;
+
+    let (mut left, post_parse_left_expression) = next_parse_function(token_details)?;
+    token_details = post_parse_left_expression;
 
     if is_token(operator_token, token_details) {
-        token_details = consume_token(operator_token, token_details)?;
+        // 消除操作符
+        let post_consume_token_operator = consume_token(operator_token, token_details)?;
 
         // 二元运算符后面允许换行
-        token_details = skip_new_lines(token_details);
+        let pose_consume_new_lines = skip_new_lines(post_consume_token_operator);
 
-        let (right, post_rest) = parse_expression(token_details)?;
-        token_details = post_rest;
+        let (right, post_parse_right_expression) = parse_expression(pose_consume_new_lines)?;
 
         let expression = Expression::BinaryExpression(BinaryExpression {
             operator: operator_token.clone(),
@@ -394,6 +447,7 @@ fn parse_right_2_left_binary_expression<'a>(
         });
 
         left = expression;
+        token_details = post_parse_right_expression;
     }
 
     Ok((left, token_details))
@@ -478,21 +532,22 @@ fn parse_named_operator_expression(
     // 注：
     // 命名操作符无法使用通用的二元运算解析函数 parse_binary_expression
     let mut token_details = source_token_details;
-    let (mut left, post_rest) = parse_concat_expression(token_details)?;
-    token_details = post_rest;
+
+    let (mut left, post_parse_left_expression) = parse_concat_expression(token_details)?;
+    token_details = post_parse_left_expression;
 
     if let Some(TokenDetail {
         token: named_operator_token @ Token::NamedOperator(_),
         ..
     }) = token_details.first()
     {
-        token_details = consume_token(named_operator_token, token_details)?;
+        // 消除操作符
+        let post_consume_token_operator = consume_token(named_operator_token, token_details)?;
 
         // 二元运算符后面允许换行
-        token_details = skip_new_lines(token_details);
+        let pose_consume_new_lines = skip_new_lines(post_consume_token_operator);
 
-        let (right, post_rest) = parse_concat_expression(token_details)?;
-        token_details = post_rest;
+        let (right, post_parse_right_expression) = parse_concat_expression(pose_consume_new_lines)?;
 
         let expression = Expression::BinaryExpression(BinaryExpression {
             operator: named_operator_token.clone(),
@@ -502,6 +557,7 @@ fn parse_named_operator_expression(
         });
 
         left = expression;
+        token_details = post_parse_right_expression;
     }
 
     Ok((left, token_details))
@@ -567,12 +623,10 @@ fn parse_cast_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // 一元运算表达式 object^
-    let mut token_details = source_token_details;
-    let (left, post_rest) = parse_negative_expression(token_details)?;
-    token_details = post_rest;
+    let (left, post_parse_expression) = parse_negative_expression(source_token_details)?;
 
-    if is_token(&Token::Cast, token_details) {
-        token_details = consume_token(&Token::Cast, token_details)?;
+    if is_token(&Token::Cast, post_parse_expression) {
+        let post_consume_token_operator = consume_token(&Token::Cast, post_parse_expression)?;
 
         Ok((
             Expression::UnaryExpression(UnaryExpression {
@@ -580,10 +634,10 @@ fn parse_cast_expression(
                 operand: Box::new(left),
                 range: new_range(),
             }),
-            token_details,
+            post_consume_token_operator,
         ))
     } else {
-        Ok((left, token_details))
+        Ok((left, post_parse_expression))
     }
 }
 
@@ -591,12 +645,9 @@ fn parse_negative_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // 一元运算表达式 -object
-    let mut token_details = source_token_details;
-
-    if is_token(&Token::Minus, token_details) {
-        token_details = consume_token(&Token::Cast, token_details)?;
-        let (left, post_rest) = parse_unwrap_expression(token_details)?;
-        token_details = post_rest;
+    if is_token(&Token::Minus, source_token_details) {
+        let post_consume_token_operator = consume_token(&Token::Cast, source_token_details)?;
+        let (left, post_parse_expression) = parse_unwrap_expression(post_consume_token_operator)?;
 
         Ok((
             Expression::UnaryExpression(UnaryExpression {
@@ -604,7 +655,7 @@ fn parse_negative_expression(
                 operand: Box::new(left),
                 range: new_range(),
             }),
-            token_details,
+            post_parse_expression,
         ))
     } else {
         parse_unwrap_expression(source_token_details)
@@ -615,12 +666,10 @@ fn parse_unwrap_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // 一元运算表达式 object?
-    let mut token_details = source_token_details;
-    let (left, post_rest) = parse_function_call_expression(token_details)?;
-    token_details = post_rest;
+    let (left, post_parse_expression) = parse_function_call_expression(source_token_details)?;
 
-    if is_token(&Token::Unwrap, token_details) {
-        token_details = consume_token(&Token::Unwrap, token_details)?;
+    if is_token(&Token::Unwrap, post_parse_expression) {
+        let post_consume_token_operator = consume_token(&Token::Unwrap, post_parse_expression)?;
 
         Ok((
             Expression::UnaryExpression(UnaryExpression {
@@ -628,10 +677,10 @@ fn parse_unwrap_expression(
                 operand: Box::new(left),
                 range: new_range(),
             }),
-            token_details,
+            post_consume_token_operator,
         ))
     } else {
-        Ok((left, token_details))
+        Ok((left, post_parse_expression))
     }
 }
 
@@ -681,20 +730,24 @@ fn parse_constructor_expression(
     parse_primary_expression(source_token_details)
 }
 
+// PrimaryExpression
+//  : List
+//  | Tuple/Parenthesized
+//  | Map
+//  | Identifier
+//  ;
 fn parse_primary_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // identifier | literal |
     match source_token_details.first() {
         Some(first) => match first.token {
             Token::Exclamation => {
                 // 函数的前置调用
                 parse_prefix_identifier(source_token_details)
             }
-            // Token::Ellipsis => {
-            //     // 展开操作符
-            //     parse_ellipsis(source_token_details)
-            // }
+            Token::LeftBracket => parse_list(source_token_details),
+            Token::LeftParen => parse_tuple_or_parenthesized(source_token_details),
+            Token::LeftBrace => parse_map(source_token_details),
             Token::Identifier(_) => parse_identifier(source_token_details),
             _ => {
                 let (literal, post_rest) = parse_literal(source_token_details)?;
@@ -707,54 +760,21 @@ fn parse_primary_expression(
     }
 }
 
-fn parse_ellipsis(
-    source_token_details: &[TokenDetail],
-) -> Result<(Expression, &[TokenDetail]), Error> {
-    let mut token_details = source_token_details;
-    token_details = consume_token(&Token::Ellipsis, token_details)?;
-
-    if let Some((
-        TokenDetail {
-            token: Token::Identifier(name),
-            ..
-        },
-        rest,
-    )) = token_details.split_first()
-    {
-        Ok((
-            Expression::Ellipsis(Ellipsis {
-                name: Some(name.clone()),
-                range: new_range(),
-            }),
-            rest,
-        ))
-    } else {
-        Ok((
-            Expression::Ellipsis(Ellipsis {
-                name: None,
-                range: new_range(),
-            }),
-            token_details,
-        ))
-    }
-}
-
 fn parse_prefix_identifier(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // prefix identifier
-    let mut token_details = source_token_details;
-    token_details = consume_token(&Token::Exclamation, token_details)?;
+    let post_consume_token_exclamation = consume_token(&Token::Exclamation, source_token_details)?;
 
-    let (identifier, post_rest) = continue_parse_identifier(token_details)?;
-    token_details = post_rest;
+    let (identifier, post_continue_parse_identifier) =
+        continue_parse_identifier(post_consume_token_exclamation)?;
 
     Ok((
         Expression::PrefixIdentifier(PrefixIdentifier {
             identifier: identifier,
             range: new_range(),
         }),
-        token_details,
+        post_continue_parse_identifier,
     ))
 }
 
@@ -764,12 +784,13 @@ fn parse_identifier(
     // identifier
     //
     // One::Two::Three::Name
-    let mut token_details = source_token_details;
+    let (identifier, post_continue_parse_identifier) =
+        continue_parse_identifier(source_token_details)?;
 
-    let (identifier, post_rest) = continue_parse_identifier(token_details)?;
-    token_details = post_rest;
-
-    Ok((Expression::Identifier(identifier), token_details))
+    Ok((
+        Expression::Identifier(identifier),
+        post_continue_parse_identifier,
+    ))
 }
 
 fn continue_parse_identifier(
@@ -797,21 +818,19 @@ fn continue_parse_identifier(
         // 获取其余的 identifier
         loop {
             token_details = match token_details.split_first() {
-                Some((first, post_separator_rest)) if first.token == Token::Separator => {
+                Some((first, post_token_separator)) if first.token == Token::Separator => {
                     // 检测到 namespace path 分隔符 `::`
-                    token_details = post_separator_rest;
-
                     if let Some((
                         TokenDetail {
                             token: Token::Identifier(name),
                             ..
                         },
-                        post_identifier_rest,
-                    )) = token_details.split_first()
+                        post_token_identifier,
+                    )) = post_token_separator.split_first()
                     {
                         // 检测到一个 identifier
                         names.push(name.clone());
-                        post_identifier_rest
+                        post_token_identifier
                     } else {
                         // 在 namespace path 分隔符 `::` 后面必须是一个 identifier
                         return Err(Error::ParserError("expected identifier".to_string()));
@@ -827,16 +846,6 @@ fn continue_parse_identifier(
     if names.len() == 0 {
         Err(Error::ParserError("expected identifier".to_string()))
     } else {
-        //if names.len() == 1 {
-        //     Ok((
-        //         Identifier {
-        //             dirs: vec![],
-        //             name: names[0].clone(),
-        //             range: new_range(),
-        //         },
-        //         token_details,
-        //     ))
-        // } else {
         let len = names.len();
         Ok((
             Identifier {
@@ -860,10 +869,6 @@ fn continue_parse_identifier(
 //  | TemplateString
 //  | HashString
 //  | NamedOperator
-//  | List
-//  | Array
-//  | Tuple/Parenthesized
-//  | Map
 //  ;
 
 fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
@@ -966,16 +971,13 @@ fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[Tok
                 }),
                 rest,
             )),
-            Token::LeftBracket => parse_list(source_token_details),
-            Token::LeftParen => parse_tuple_or_parenthesized(source_token_details),
-            Token::LeftBrace => parse_map(source_token_details),
             _ => Err(Error::ParserError("unexpected literal".to_string())),
         },
         None => Err(Error::ParserError("expected literal".to_string())),
     }
 }
 
-fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
+fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[TokenDetail]), Error> {
     // list
     //
     // e.g.
@@ -987,7 +989,7 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenD
 
 fn parse_tuple_or_parenthesized(
     source_token_details: &[TokenDetail],
-) -> Result<(Literal, &[TokenDetail]), Error> {
+) -> Result<(Expression, &[TokenDetail]), Error> {
     // tuple or parenthesized
     //
     // e.g.
@@ -998,6 +1000,7 @@ fn parse_tuple_or_parenthesized(
     // (one,)
     // (one, two, )
     // (one, two, ...)
+    // (one, two, ...rest)
     //
     // parenthesized:
     //
@@ -1005,13 +1008,138 @@ fn parse_tuple_or_parenthesized(
 
     let mut token_details = source_token_details;
 
+    let mut expressions: Vec<Expression> = vec![];
+    let mut is_tuple = false;
+    let mut is_expected_end = false;
+
     token_details = consume_token(&Token::LeftParen, token_details)?;
     token_details = skip_new_lines(token_details); // 左括号后面允许换行
 
-    loop {}
+    loop {
+        token_details = match token_details.first() {
+            Some(first) => {
+                if let TokenDetail {
+                    token: Token::RightParen,
+                    ..
+                } = first
+                {
+                    // 找到右括号，退出循环
+                    break;
+                } else {
+                    if is_expected_end {
+                        // 当前只允许右括号
+                        return Err(Error::ParserError(
+                            "expected the right paren symbol \")\"".to_string(),
+                        ));
+                    } else {
+                        // 先检查是否 `展开式`
+                        if let TokenDetail {
+                            token: Token::Ellipsis,
+                            ..
+                        } = first
+                        {
+                            // 当前是 `展开式`
+                            let (ellipsis, post_rest) = continue_parse_ellipsis(token_details)?;
+                            expressions.push(Expression::Ellipsis(ellipsis));
+                            is_expected_end = true; // 设置标记，`展开式` 后面只能允许右括号
+
+                            // 消除逗号
+                            let mut post_consume_comma = post_rest;
+                            if is_token(&Token::Comma, post_rest) {
+                                post_consume_comma = consume_token(&Token::Comma, post_rest)?;
+                            }
+
+                            // 消除空行
+                            let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                            post_consume_new_lines
+                        } else {
+                            // 当前是普通表达式
+                            let (expression, post_rest) = parse_expression(token_details)?;
+                            expressions.push(expression);
+
+                            // 消除逗号
+                            let mut post_consume_comma = post_rest;
+                            if is_token(&Token::Comma, post_rest) {
+                                is_tuple = true;
+                                post_consume_comma = consume_token(&Token::Comma, post_rest)?;
+                            }
+
+                            // 消除空行
+                            let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                            post_consume_new_lines
+                        }
+                    }
+                }
+            }
+            None => {
+                return Err(Error::ParserError(
+                    "expected the right paren symbol \")\"".to_string(),
+                ))
+            }
+        }
+    }
+
+    // 消除右括号
+    token_details = consume_token(&Token::RightParen, token_details)?;
+
+    if expressions.len() == 0 {
+        // 空元组
+        Ok((
+            Expression::Tuple(Tuple {
+                elements: vec![],
+                range: new_range(),
+            }),
+            token_details,
+        ))
+    } else {
+        if is_tuple {
+            // 元组
+            Ok((
+                Expression::Tuple(Tuple {
+                    elements: expressions,
+                    range: new_range(),
+                }),
+                token_details,
+            ))
+        } else {
+            // 普通的括号表达式
+            Ok((expressions[0].clone(), token_details))
+        }
+    }
 }
 
-fn parse_map(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
+fn continue_parse_ellipsis(
+    source_token_details: &[TokenDetail],
+) -> Result<(Ellipsis, &[TokenDetail]), Error> {
+    let post_consume_token_ellipsis = consume_token(&Token::Ellipsis, source_token_details)?;
+
+    if let Some((
+        TokenDetail {
+            token: Token::Identifier(name),
+            ..
+        },
+        post_consume_token_identifier,
+    )) = post_consume_token_ellipsis.split_first()
+    {
+        Ok((
+            Ellipsis {
+                name: Some(name.clone()),
+                range: new_range(),
+            },
+            post_consume_token_identifier,
+        ))
+    } else {
+        Ok((
+            Ellipsis {
+                name: None,
+                range: new_range(),
+            },
+            post_consume_token_ellipsis,
+        ))
+    }
+}
+
+fn parse_map(source_token_details: &[TokenDetail]) -> Result<(Expression, &[TokenDetail]), Error> {
     // map
     //
     // e.g.
@@ -1072,7 +1200,10 @@ fn consume_token<'a>(
 ) -> Result<&'a [TokenDetail], Error> {
     match source_token_details.split_first() {
         Some((first, rest)) if &first.token == expected => Ok(rest),
-        _ => Err(Error::ParserError(format!("expected symbol {}", expected))),
+        _ => Err(Error::ParserError(format!(
+            "expected the specified symbol \"{}\"",
+            expected
+        ))),
     }
 }
 
@@ -1093,7 +1224,7 @@ fn consume_new_line_token_if_exists(
                 Ok(rest)
             } else {
                 Err(Error::ParserError(
-                    "expected line ending symbol".to_string(),
+                    "expected the new-line symbol".to_string(),
                 ))
             }
         }
@@ -1130,6 +1261,8 @@ mod tests {
         let token_details = lexer::tokenize(text)?;
         parse(&token_details)
     }
+
+    // literal
 
     #[test]
     fn test_integer_literal() {
@@ -1209,8 +1342,118 @@ mod tests {
         //         assert_eq!(a2.to_string(), "8'x81\n");
     }
 
+    fn test_boolean_literal() {
+        // todo::
+    }
+
+    fn test_char_literal() {
+        // todo::
+    }
+
+    fn test_general_string_literal() {
+        // todo::
+    }
+
+    fn test_template_string_literal() {
+        // todo::
+    }
+
+    fn test_hash_string_literal() {
+        // todo::
+    }
+
+    fn test_named_operator_string_literal() {
+        // todo::
+    }
+
+    // primary expressions
+
     #[test]
-    fn test_additive_expression() {
+    fn test_identifier() {
+        let a1 = parse_from_string("foo").unwrap();
+        assert_eq!(
+            a1,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Identifier(Identifier {
+                    dirs: vec![],
+                    name: "foo".to_string(),
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a1.to_string(), "foo\n");
+
+        let a2 = parse_from_string("foo::bar").unwrap();
+        assert_eq!(
+            a2,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::Identifier(Identifier {
+                    dirs: vec!["foo".to_string()],
+                    name: "bar".to_string(),
+                    range: new_range()
+                }))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a2.to_string(), "foo::bar\n");
+
+        let a3 = parse_from_string("foo::bar::baz").unwrap();
+        assert_eq!(a3.to_string(), "foo::bar::baz\n");
+    }
+
+    #[test]
+    fn test_prefix_identifier() {
+        let a1 = parse_from_string("!foo").unwrap();
+        assert_eq!(
+            a1,
+            Node::Program(Program {
+                body: vec![Statement::Expression(Expression::PrefixIdentifier(
+                    PrefixIdentifier {
+                        identifier: Identifier {
+                            dirs: vec![],
+                            name: "foo".to_string(),
+                            range: new_range()
+                        },
+                        range: new_range()
+                    }
+                ))],
+                range: new_range()
+            })
+        );
+        assert_eq!(a1.to_string(), "!foo\n");
+
+        let a2 = parse_from_string("!foo::bar").unwrap();
+        assert_eq!(a2.to_string(), "!foo::bar\n");
+    }
+
+    #[test]
+    fn test_tuple() {
+        // todo::
+        // let a1 = parse_from_string("[a, ...]").unwrap();
+        // assert_eq!(
+        //     a1,
+        //     Node::Program(Program {
+        //         body: vec![Statement::Expression(Expression::Literal(Literal::List(
+        //             List {
+        //                 elements: vec![],
+        //                 range: new_range()
+        //             }
+        //         )))],
+        //         range: new_range()
+        //     })
+        // );
+        // assert_eq!(a1.to_string(), "[a, ...]\n");
+
+        // todo::
+        // let a2 = parse_from_string("[a, ...foo]").unwrap();
+        // assert_eq!(a2.to_string(), "[a, ...foo]\n");
+    }
+
+    // operating expressions
+
+    #[test]
+    fn test_binary_expression_additive() {
         let a1 = parse_from_string("1+2").unwrap();
         assert_eq!(
             a1,
@@ -1283,6 +1526,11 @@ mod tests {
     }
 
     #[test]
+    fn test_parenthesized_expression() {
+        // todo::
+    }
+
+    #[test]
     fn test_binary_expression_associativitye() {
         // 从结合方向
         // 操作符 `&` 从右向左结合
@@ -1290,86 +1538,16 @@ mod tests {
         assert_eq!(a1.to_string(), "(1 & (2 & 3))\n");
     }
 
+    // genernal expression
+
     #[test]
-    fn test_identifier() {
-        let a1 = parse_from_string("foo").unwrap();
-        assert_eq!(
-            a1,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Identifier(Identifier {
-                    dirs: vec![],
-                    name: "foo".to_string(),
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a1.to_string(), "foo\n");
-
-        let a2 = parse_from_string("foo::bar").unwrap();
-        assert_eq!(
-            a2,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Identifier(Identifier {
-                    dirs: vec!["foo".to_string()],
-                    name: "bar".to_string(),
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a2.to_string(), "foo::bar\n");
-
-        let a3 = parse_from_string("foo::bar::baz").unwrap();
-        assert_eq!(a3.to_string(), "foo::bar::baz\n");
+    fn test_do_expression() {
+        // todo::
     }
 
-    #[test]
-    fn test_prefix_identifier() {
-        let a1 = parse_from_string("!foo").unwrap();
-        assert_eq!(
-            a1,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::PrefixIdentifier(
-                    PrefixIdentifier {
-                        identifier: Identifier {
-                            dirs: vec![],
-                            name: "foo".to_string(),
-                            range: new_range()
-                        },
-                        range: new_range()
-                    }
-                ))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a1.to_string(), "!foo\n");
+    // statement
 
-        let a2 = parse_from_string("!foo::bar").unwrap();
-        assert_eq!(a2.to_string(), "!foo::bar\n");
-    }
-
-    #[test]
-    fn test_ellipsis() {
+    fn test_if_expression() {
         // todo::
-        // let a1 = parse_from_string("[a, ...]").unwrap();
-        // assert_eq!(
-        //     a1,
-        //     Node::Program(Program {
-        //         body: vec![Statement::Expression(Expression::Literal(Literal::List(
-        //             List {
-        //                 elements: vec![],
-        //                 is_array: false,
-        //                 range: new_range()
-        //             }
-        //         )))],
-        //         range: new_range()
-        //     })
-        // );
-        // assert_eq!(a1.to_string(), "[a, ...]\n");
-
-        // todo::
-        // let a2 = parse_from_string("[a, ...foo]").unwrap();
-        // assert_eq!(a2.to_string(), "[a, ...foo]\n");
     }
 }
