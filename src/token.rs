@@ -70,7 +70,7 @@ pub enum Token {
     LeftBracket,  // [
     RightBracket, // ]
 
-    Arrow, // =>
+    // Arrow, // =>
 
     Exclamation, // !
 
@@ -89,9 +89,9 @@ pub enum Token {
     // 关键字
     Do,
     Join,
-    // To,
 
     Let,
+    Fn,
 
     If,
     Then,
@@ -200,7 +200,7 @@ impl fmt::Display for Token {
             Token::LeftBracket => write!(f, "["),  // [
             Token::RightBracket => write!(f, "]"), // ]
 
-            Token::Arrow => write!(f, "=>"), // =>
+            // Token::Arrow => write!(f, "=>"), // =>
 
             Token::Exclamation => write!(f, "!"), // !
 
@@ -219,9 +219,9 @@ impl fmt::Display for Token {
             // 关键字
             Token::Do => write!(f, "do"),
             Token::Join => write!(f, "join"),
-            // Token::To => write!(f, "to"),
 
             Token::Let => write!(f, "let"),
+            Token::Fn => write!(f, "fn"),
 
             Token::If => write!(f, "if"),
             Token::Then => write!(f, "then"),
@@ -358,7 +358,7 @@ mod tests {
 
         assert_eq!(Token::LeftBracket.to_string(), "[");
         assert_eq!(Token::RightBracket.to_string(), "]");
-        assert_eq!(Token::Arrow.to_string(), "=>");
+        // assert_eq!(Token::Arrow.to_string(), "=>");
         assert_eq!(Token::Exclamation.to_string(), "!");
         assert_eq!(Token::LeftParen.to_string(), "(");
         assert_eq!(Token::RightParen.to_string(), ")");
@@ -376,6 +376,7 @@ mod tests {
         // assert_eq!(Token::To.to_string(), "to");
 
         assert_eq!(Token::Let.to_string(), "let");
+        assert_eq!(Token::Fn.to_string(), "fn");
 
         assert_eq!(Token::If.to_string(), "if");
         assert_eq!(Token::Then.to_string(), "then");

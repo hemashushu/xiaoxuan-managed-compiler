@@ -39,7 +39,6 @@ impl Display for Node {
 }
 
 // Statement
-//  : EmptyStatement
 //  | FunctionDeclaration
 //  | NamespaceStatement
 //  | UseStatement
@@ -54,7 +53,6 @@ impl Display for Node {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    EmptyStatement, // 当一个程序的有效源码是空的时候，解析而得的语法树就只有一个 EmptyStatement
     FunctionDeclaration(FunctionDeclaration),
     NamespaceStatement(NamespaceStatement),
     UseStatement(UseStatement),
@@ -67,6 +65,7 @@ pub enum Statement {
     Expression(Expression),
 }
 
+// 普通函数的定义语句
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
     pub name: String,
@@ -130,7 +129,7 @@ impl Display for FunctionDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         todo!()
         //         match self.body.as_ref() {
-        //             Expression::ExpressionBlock(ExpressionBlock {
+        //             Expression::BlockExpression(BlockExpression {
         //                 body: block_expression,
         //                 ..
         //             }) => {
@@ -138,7 +137,7 @@ impl Display for FunctionDeclaration {
         //                     f,
         //                     "function {} ({}) type {} {}\n",
         //                     self.name,
-        //                     format_params(&self.params),
+        //                     format_parameters(&self.params),
         //                     self.return_type,
         //                     format_expressions_with_new_line(block_expression)
         //                 )
@@ -148,7 +147,7 @@ impl Display for FunctionDeclaration {
         //                     f,
         //                     "function {} ({}) type {} = {}\n",
         //                     self.name,
-        //                     format_params(&self.params),
+        //                     format_parameters(&self.params),
         //                     self.return_type,
         //                     self.body
         //                 )
@@ -166,9 +165,6 @@ impl Display for Statement {
         //             Statement::Expression(expression) => {
         //                 write!(f, "{}\n", expression)
         //             }
-        //             Statement::EmptyStatement => {
-        //                 write!(f, "")
-        //             }
         //         }
     }
 }
@@ -176,7 +172,7 @@ impl Display for Statement {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     // general expressions
-    ExpressionBlock(ExpressionBlock), // `表达式块` 本身也是 `表达式` 其中的一种
+    BlockExpression(BlockExpression), // `表达式块` 本身也是 `表达式` 其中的一种
     JoinExpression(JoinExpression),
     LetExpression(LetExpression),
 
@@ -195,6 +191,7 @@ pub enum Expression {
     ConstructorExpression(ConstructorExpression),
 
     // primary expressions
+    AnonymousFunction(AnonymousFunction),
     Identifier(Identifier),
     PrefixIdentifier(PrefixIdentifier),
     Ellipsis(Ellipsis),
@@ -206,7 +203,7 @@ pub enum Expression {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ExpressionBlock {
+pub struct BlockExpression {
     // 用于标记是 `do 表达式` 还是 `隠式 do 表达式`。
     //
     // `隠式 do 表达式` 是指省略了 `do` 关键字，
@@ -219,14 +216,12 @@ pub struct ExpressionBlock {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct JoinExpression {
-    pub to: Option<Box<Expression>>,
     pub body: Vec<Expression>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LetExpression {
-    pub is_match: bool, // false == '=', true == 'match'
     pub object: Box<Expression>,
     pub value: Box<Expression>,
     pub range: Range,
@@ -274,6 +269,7 @@ pub struct BranchCase {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchExpression {
+    pub object: Box<Expression>,
     pub cases: Vec<MatchCase>,
     pub default: Option<Box<Expression>>,
     pub where_exp: Option<Box<Expression>>,
@@ -282,7 +278,7 @@ pub struct MatchExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchCase {
-    pub condition: Box<Expression>,
+    pub condition: Option<Box<Expression>>,
     pub body: Box<Expression>,
     pub where_exp: Option<Box<Expression>>,
     pub variable: Option<String>, // @ 变量名称
@@ -294,7 +290,7 @@ pub struct MatchCase {
 pub enum MatchCaseAdditional {
     Only(Expression),             // 附加条件，一个返回 Boolean 值的表达式
     In(Expression),               // 实现了 `Exist` 特性的对象，比如 `Range` 或者 `List`
-    Into(String, String),         // 类型名称和标识符名称
+    Into(Identifier, String),     // 类型名称和标识符名称
     Regular(String, Vec<String>), // 正则表达式字符串字面量，以及变量名列表
     Template(String),             // 带有占位符的字符串字面量
 }
@@ -321,6 +317,10 @@ pub struct FunctionCallExpression {
     pub range: Range,
 }
 
+// 函数调用时的参数（实参， argument）
+//
+// e.g.
+// some_func(value1, value2, name1=name_value1, name2=name_value2)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Argument {
     pub name: Option<String>,
@@ -343,6 +343,7 @@ pub struct SliceExpression {
     pub range: Range,
 }
 
+// 使用花括号方式的结构体实例化表达式
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstructorExpression {
     pub object: Identifier,
@@ -350,11 +351,26 @@ pub struct ConstructorExpression {
     pub range: Range,
 }
 
-// identifier 是局部变量名称或者函数名称
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnonymousFunction {
+    pub parameters: Vec<AnonymousParameter>,
+    pub return_data_type: Option<DataType>,
+    pub body: Box<Expression>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnonymousParameter {
+    pub data_type: Option<DataType>, // 匿名函数的数据类型允许省略
+    pub name: String,
+    pub range: Range,
+}
+
+// identifier 是局部变量名称或者函数名称（包含名称空间路径）
 //
-// identifier 不包括
-// - `let 表达式` 的左值，左值是一个表达式
-// - 函数参数列表里的 `参数`
+// 注意
+// - `let 表达式` 的左值是一个表达式，而不是 identifier
+// - 函数参数列表里的参数（形参，parameter）也不是 identifier
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier {
     pub dirs: Vec<String>,
@@ -382,7 +398,7 @@ pub struct Ellipsis {
 // `0..=9`
 #[derive(Debug, Clone, PartialEq)]
 pub struct Interval {
-    pub is_inclusive: bool, // `..` 不包括 `to`，`..=` 包括 `to`
+    pub is_inclusive: bool, // false == `..`（不包括 `to`）， true == `..=` （包括 `to`）
     pub from: Box<Expression>,
     pub to: Option<Box<Expression>>,
     pub range: Range,
@@ -392,7 +408,7 @@ pub struct Interval {
 //
 // e.g.
 // `sign (Int x, Int y) type Int`
-// `sign<T, E> (T x, E y) type T`
+// `sign <T, E> (T x, E y) type T`
 // `sign (T a, String s) which {T: Int}`
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sign {
@@ -403,14 +419,20 @@ pub struct Sign {
     pub range: Range,
 }
 
+// 数据类型包括了：
+// - 纯数据的类型，如基本数据类型、用户自定义类型（结构体和联合体）
+// - 特性（trait）
+// - 函数类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
-    Sign(Sign),
     Identifier,
+    Sign(Sign),
 }
 
-// 普通函数参数
-// 不包括模式函数的参数，模式函数的参数是一个表达式
+// 普通函数的参数
+//
+// 注意：
+// 模式函数的参数是一个表达式，模式函数的参数不能使用这个 Parameter
 #[derive(Debug, Clone, PartialEq)]
 pub struct Parameter {
     pub data_type: DataType,
@@ -418,6 +440,10 @@ pub struct Parameter {
     pub range: Range,
 }
 
+// 函数数据类型的补充说明从属表达式
+//
+// e.g.
+//
 #[derive(Debug, Clone, PartialEq)]
 pub struct WhichEntry {
     pub is_limit: bool, // false == 一般的类型说明，true == 泛型类型约束
@@ -451,6 +477,112 @@ pub struct MapEntry {
     pub range: Range,
 }
 
+impl Display for Sign {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for DataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for BranchExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut body_lines = Vec::<String>::new();
+
+        for c in &self.cases {
+            body_lines.push(format!("{}", c));
+        }
+
+        if let Some(e) = &self.default {
+            body_lines.push(format!("default: {}", e));
+        }
+
+        let body_text = body_lines.join("\n");
+
+        if let Some(w) = &self.where_exp {
+            write!(f, "branch where {} {{\n{}\n}}", w, body_text)
+        } else {
+            write!(f, "branch {{\n{}\n}}", body_text)
+        }
+    }
+}
+
+impl Display for BranchCase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut head_line_fragments = Vec::<String>::new();
+
+        head_line_fragments.push(format!("{}", &self.condition));
+
+        if let Some(e) = &self.where_exp {
+            head_line_fragments.push(format!("where {}", e));
+        }
+
+        let head_text = head_line_fragments.join(" ");
+        write!(f, "{}: {}", head_text, &self.body)
+    }
+}
+
+impl Display for MatchExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut body_lines = Vec::<String>::new();
+
+        for c in &self.cases {
+            body_lines.push(format!("{}", c));
+        }
+
+        if let Some(e) = &self.default {
+            body_lines.push(format!("default: {}", e));
+        }
+
+        let body_text = body_lines.join("\n");
+
+        if let Some(w) = &self.where_exp {
+            write!(
+                f,
+                "match {} where {} {{\n{}\n}}",
+                &self.object, w, body_text
+            )
+        } else {
+            write!(f, "match {} {{\n{}\n}}", &self.object, body_text)
+        }
+    }
+}
+
+impl Display for MatchCase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut first_line_fragments = Vec::<String>::new();
+
+        if let Some(v) = &self.variable {
+            first_line_fragments.push(format!("{} @", v));
+        }
+
+        if let Some(e) = &self.condition {
+            first_line_fragments.push(format!("{}", e));
+        }
+
+        if let Some(e) = &self.where_exp {
+            first_line_fragments.push(format!("where {}", e));
+        }
+
+        let first_line_text = first_line_fragments.join(" ");
+
+        let mut additional_lines = Vec::<String>::new();
+
+        for a in &self.additionals {
+            additional_lines.push(format!("{}", a));
+        }
+
+        let additional_text = additional_lines.join("\n");
+
+        let head_text = vec![first_line_text, additional_text].join("\n");
+        write!(f, "{}: {}", head_text, &self.body)
+    }
+}
+
 impl Display for MatchCaseAdditional {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -458,7 +590,16 @@ impl Display for MatchCaseAdditional {
                 write!(f, "only {}", e)
             }
             MatchCaseAdditional::In(e) => {
-                write!(f, "only {}", e)
+                write!(f, "in {}", e)
+            }
+            MatchCaseAdditional::Into(t, n) => {
+                write!(f, "into {} {}", t, n)
+            }
+            MatchCaseAdditional::Regular(s, names) => {
+                write!(f, "regular {} ({})", s, names.join(", "))
+            }
+            MatchCaseAdditional::Template(s) => {
+                write!(f, "template {}", s)
             }
         }
     }
@@ -467,11 +608,10 @@ impl Display for MatchCaseAdditional {
 impl Display for Interval {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let operator = if self.is_inclusive { "..=" } else { ".." };
-        match self.to.as_ref() {
-            Some(to_exp) => {
-                write!(f, "{}{}{}", self.from, operator, to_exp)
-            }
-            None => write!(f, "{}{}", self.from, operator),
+        if let Some(t) = &self.to {
+            write!(f, "{}{}{}", self.from, operator, t)
+        } else {
+            write!(f, "{}{}", self.from, operator)
         }
     }
 }
@@ -524,39 +664,50 @@ impl Display for MapEntry {
     }
 }
 
+impl Display for AnonymousFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut full_path = String::new();
+        let mut fullname = String::new();
+
+        // 命名空间路径
         if self.dirs.len() > 0 {
             let path = self.dirs.join("::");
-            full_path.push_str(&path);
-            full_path.push_str("::");
+            fullname.push_str(&path);
+            fullname.push_str("::");
         }
-        full_path.push_str(&self.name);
-        write!(f, "{}", full_path)
+
+        // 名称
+        fullname.push_str(&self.name);
+
+        // 泛型代号
+        if self.generic_names.len() > 0 {
+            let generic = self.generic_names.join(", ");
+            fullname.push_str("<");
+            fullname.push_str(&generic);
+            fullname.push_str(">");
+        }
+
+        write!(f, "{}", fullname)
     }
 }
 
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::ExpressionBlock(ExpressionBlock { body, .. }) => {
-                let text = format_expressions_with_new_line(body);
-                write!(f, "{{\n{}\n}}", text)
+            Expression::BlockExpression(BlockExpression { body, .. }) => {
+                write!(f, "{{\n{}\n}}", format_expressions_with_new_line(body))
             }
-            Expression::JoinExpression(JoinExpression { to, body, .. }) => match to {
-                Some(to_exp) => {
-                    write!(
-                        f,
-                        "join to {} {{\n{}\n}}",
-                        to_exp,
-                        format_expressions_with_new_line(body)
-                    )
-                }
-                None => {
-                    write!(f, "join {{\n{}\n}}", format_expressions_with_new_line(body))
-                }
-            },
+            Expression::JoinExpression(JoinExpression { body, .. }) => {
+                write!(f, "join {{\n{}\n}}", format_expressions_with_new_line(body))
+            }
+            Expression::LetExpression(LetExpression { object, value, .. }) => {
+                write!(f, "let {} = {}", object, value)
+            }
             Expression::IfExpression(IfExpression {
                 condition,
                 consequent,
@@ -570,18 +721,6 @@ impl Display for Expression {
                     write!(f, "if {} then {}", condition, consequent)
                 }
             },
-            Expression::LetExpression(LetExpression {
-                is_match,
-                object,
-                value,
-                ..
-            }) => {
-                if *is_match {
-                    write!(f, "let {} match {}", object, value)
-                } else {
-                    write!(f, "let {} = {}", object, value)
-                }
-            }
             Expression::ForExpression(ForExpression {
                 object,
                 value,
@@ -598,18 +737,12 @@ impl Display for Expression {
             }) => {
                 write!(f, "each let {} in {} {}", object, value, body)
             }
-            Expression::BranchExpression(BranchExpression { cases, default, .. }) => {
-                todo!()
+            Expression::BranchExpression(e) => {
+                write!(f, "{}", e)
             }
-            Expression::MatchExpression(MatchExpression {
-                additional,
-                cases,
-                default,
-                ..
-            }) => {
-                todo!()
+            Expression::MatchExpression(e) => {
+                write!(f, "{}", e)
             }
-
             Expression::BinaryExpression(BinaryExpression {
                 operator,
                 left,
@@ -639,12 +772,7 @@ impl Display for Expression {
                 arguments,
                 ..
             }) => {
-                write!(
-                    f,
-                    "{} ({})",
-                    callee,
-                    format_expressions_with_comma(arguments)
-                )
+                write!(f, "{} ({})", callee, format_arguments(arguments))
             }
             Expression::MemberExpression(MemberExpression {
                 is_computed,
@@ -666,6 +794,9 @@ impl Display for Expression {
             Expression::ConstructorExpression(ConstructorExpression { object, value, .. }) => {
                 write!(f, "{} {}", object, value)
             }
+            Expression::AnonymousFunction(l) => {
+                write!(f, "{}", l)
+            }
             Expression::Identifier(i) => {
                 write!(f, "{}", i)
             }
@@ -679,11 +810,11 @@ impl Display for Expression {
             Expression::Interval(i) => {
                 write!(f, "{}", i)
             }
-            Expression::List(l) => {
-                write!(f, "{}", l)
-            }
             Expression::Tuple(t) => {
                 write!(f, "{}", t)
+            }
+            Expression::List(l) => {
+                write!(f, "{}", l)
             }
             Expression::Map(m) => {
                 write!(f, "{}", m)
@@ -827,19 +958,43 @@ fn format_statements(statements: &[Statement]) -> String {
         .join("")
 }
 
-// fn format_params(params: &[(Identifier, Expression)]) -> String {
-//     params
-//         .iter()
-//         .map(|(id, exp)| {
-//             let mut buf = String::new();
-//             buf.push_str(&id.to_string());
-//             buf.push_str(" ");
-//             buf.push_str(&exp.to_string());
-//             buf
-//         })
-//         .collect::<Vec<String>>()
-//         .join(", ")
-// }
+fn format_parameters(parameters: &[Parameter]) -> String {
+    parameters
+        .iter()
+        .map(|p| format!("{} {}", p.data_type, p.name))
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
+fn format_anonymous_parameters(parameters: &[AnonymousParameter]) -> String {
+    parameters
+        .iter()
+        .map(|p| match &p.data_type {
+            Some(dt) => {
+                format!("{} {}", dt, p.name)
+            }
+            None => {
+                format!("{}", p.name)
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
+fn format_arguments(arguments: &[Argument]) -> String {
+    arguments
+        .iter()
+        .map(|a| match &a.name {
+            Some(n) => {
+                format!("{}={}", n, a.value)
+            }
+            None => {
+                format!("{}", a.value)
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(", ")
+}
 
 fn format_expressions_with_comma(expressions: &[Expression]) -> String {
     expressions
@@ -877,6 +1032,8 @@ pub struct Range {
     pub end: usize,     // 结束位置（不包括）
 }
 
+// 这里仅测试 `字面量` 和 `基本表达式`
+// 其他类型节点的测试放在 parser.rs
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -995,6 +1152,7 @@ mod tests {
         let e1 = Expression::Identifier(Identifier {
             dirs: vec![],
             name: "User".to_string(),
+            generic_names: vec![],
             range: new_range(),
         });
 
@@ -1020,6 +1178,7 @@ mod tests {
                 "Address".to_string(),
             ],
             name: "City".to_string(),
+            generic_names: vec![],
             range: new_range(),
         });
 
@@ -1032,6 +1191,7 @@ mod tests {
             identifier: Identifier {
                 dirs: vec![],
                 name: "len".to_string(),
+                generic_names: vec![],
                 range: new_range(),
             },
             range: new_range(),
@@ -1063,144 +1223,5 @@ mod tests {
     #[test]
     fn test_display_expression_map() {
         // todo::
-    }
-
-    // operating expressions
-
-    #[test]
-    fn test_display_binary_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_unary_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_function_call_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_member_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_slice_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_constructor_expression() {
-        // todo::
-    }
-
-    // general expressions
-
-    #[test]
-    fn test_display_block_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_let_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_for_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_branch_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_match_expression() {
-        // todo::
-    }
-
-    #[test]
-    fn test_display_if_expression() {
-        let e1 = Expression::IfExpression(IfExpression {
-            condition: Box::new(Expression::Literal(Literal::Boolean(Boolean {
-                value: true,
-                range: new_range(),
-            }))),
-            consequent: Box::new(Expression::Literal(Literal::Integer(Integer {
-                value: 1,
-                range: new_range(),
-            }))),
-            alternate: Some(Box::new(Expression::Literal(Literal::Integer(Integer {
-                value: 2,
-                range: new_range(),
-            })))),
-            range: new_range(),
-        });
-
-        assert_eq!(e1.to_string(), "if true then 1 else 2")
-    }
-
-    // statements
-
-    #[test]
-    fn test_display_function_declaration_statement() {
-        let s1 = Statement::FunctionDeclaration(FunctionDeclaration {
-            name: "inc".to_string(),
-            params: vec![(
-                Identifier {
-                    dirs: vec![],
-                    name: "Int".to_string(),
-                    range: new_range(),
-                },
-                Expression::Identifier(Identifier {
-                    dirs: vec![],
-                    name: "a".to_string(),
-                    range: new_range(),
-                }),
-            )],
-            return_type: Identifier {
-                dirs: vec![],
-                name: "Int".to_string(),
-                range: new_range(),
-            },
-            body: Box::new(Expression::BinaryExpression(BinaryExpression {
-                operator: Token::Plus,
-                left: Box::new(Expression::Identifier(Identifier {
-                    dirs: vec![],
-                    name: "a".to_string(),
-                    range: new_range(),
-                })),
-                right: Box::new(Expression::Literal(Literal::Integer(Integer {
-                    value: 1,
-                    range: new_range(),
-                }))),
-                range: new_range(),
-            })),
-            range: new_range(),
-        });
-
-        assert_eq!(s1.to_string(), "function inc (Int a) type Int = (a + 1)\n")
-    }
-
-    // nodes
-
-    #[test]
-    fn test_display_node_program() {
-        let p1 = Node::Program(Program {
-            body: vec![Statement::Expression(Expression::Literal(
-                Literal::Integer(Integer {
-                    value: 123,
-                    range: new_range(),
-                }),
-            ))],
-            range: new_range(),
-        });
-
-        assert_eq!(p1.to_string(), "123\n");
     }
 }

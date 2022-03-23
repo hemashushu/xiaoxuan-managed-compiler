@@ -7,9 +7,9 @@
  */
 use crate::{
     ast::{
-        BinaryExpression, Bit, Boolean, Char, Complex, ExpressionBlock, Ellipsis, Expression, Float,
-        GeneralString, HashString, Identifier, Integer, Interval, List, Literal, NamedOperator,
-        Node, PrefixIdentifier, Program, Range, Statement, Tuple, UnaryExpression,
+        BinaryExpression, Bit, BlockExpression, Boolean, Char, Complex, Ellipsis, Expression,
+        Float, GeneralString, HashString, Identifier, Integer, Interval, List, Literal,
+        NamedOperator, Node, PrefixIdentifier, Program, Range, Statement, Tuple, UnaryExpression,
     },
     error::Error,
     token::{Token, TokenDetail},
@@ -33,11 +33,14 @@ fn parse_program(source_token_details: &[TokenDetail]) -> Result<Program, Error>
     let mut statements = Vec::<Statement>::new();
 
     loop {
-        if token_details.len() == 0 {
+        // 消除前导的空行
+        let post_new_lines = skip_new_lines(source_token_details);
+
+        if post_new_lines.first() == None {
             break;
         }
 
-        let (statement, post_parse_statement) = parse_statement(token_details)?;
+        let (statement, post_parse_statement) = parse_statement(post_new_lines)?;
         statements.push(statement);
 
         // 再解析剩余的 token，直到解析完所有 token 为止
@@ -51,30 +54,22 @@ fn parse_program(source_token_details: &[TokenDetail]) -> Result<Program, Error>
 }
 
 // Statement
-//  : EmptyStatement
-//  | FunctionDeclaration
+//  : FunctionDeclaration
 //  | Expression
 //  ;
 fn parse_statement(
     source_token_details: &[TokenDetail],
 ) -> Result<(Statement, &[TokenDetail]), Error> {
-    // 消除前导的空行
-    let token_details = skip_new_lines(source_token_details);
-
-    if let Some(first) = token_details.first() {
-        match first.token {
-            Token::Function => {
-                // 函数声明语句
-                parse_function_declaration(source_token_details)
-            }
-            _ => {
-                // 表达式语句
-                parse_expression_statement(source_token_details)
-            }
+    let first = &source_token_details[0];
+    match first.token {
+        Token::Function => {
+            // 函数声明语句
+            parse_function_declaration(source_token_details)
         }
-    } else {
-        // 当一个程序的有效源码是空的时候，解析而得的语法树就只有一个 EmptyStatement
-        Ok((Statement::EmptyStatement, source_token_details))
+        _ => {
+            // 表达式语句
+            parse_expression_statement(source_token_details)
+        }
     }
 }
 
@@ -108,7 +103,7 @@ fn parse_expression_statement(
 }
 
 // Expression
-//  : ExpressionBlock
+//  : BlockExpression
 //  |
 //  | LetExpression
 //  | ForExpression
@@ -177,8 +172,8 @@ fn parse_expression(
     }
 }
 
-// ExpressionBlock
-//  : 'do' ExpressionBlock
+// BlockExpression
+//  : 'do' BlockExpression
 //  ;
 fn parse_do_expression(
     source_token_details: &[TokenDetail],
@@ -196,7 +191,7 @@ fn parse_do_expression(
         continue_parse_expression_block(post_consume_new_lines)?;
 
     Ok((
-        Expression::ExpressionBlock(ExpressionBlock {
+        Expression::BlockExpression(BlockExpression {
             is_explicit: true,
             body: expressions,
             range: new_range(),
@@ -205,7 +200,7 @@ fn parse_do_expression(
     ))
 }
 
-// ExpressionBlock
+// BlockExpression
 //  : '{' ExpressionList '}'
 //  ;
 //
@@ -265,7 +260,7 @@ fn continue_parse_expression_block_or_single_expression(
                     continue_parse_expression_block(source_token_details)?;
 
                 Ok((
-                    Expression::ExpressionBlock(ExpressionBlock {
+                    Expression::BlockExpression(BlockExpression {
                         is_explicit: false,
                         body: expressions,
                         range: new_range(),
@@ -856,6 +851,7 @@ fn continue_parse_identifier(
             Identifier {
                 dirs: names[..len - 1].iter().map(|n| n.clone()).collect(),
                 name: names[len - 1].clone(),
+                generic_names: vec![],
                 range: new_range(),
             },
             token_details,
@@ -875,7 +871,6 @@ fn continue_parse_identifier(
 //  | HashString
 //  | NamedOperator
 //  ;
-
 
 fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
     // literal
@@ -989,6 +984,7 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
     // e.g.
     // [123, 345, 567,]
     // [1..10]
+    // [1..=9]
     // [1,3..10]
 
     let mut token_details = source_token_details;
@@ -1041,14 +1037,21 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
                             // 解析普通表达式
                             let (expression, post_rest) = parse_expression(token_details)?;
 
-                            let post_check_interval = if is_token(&Token::Interval, post_rest) {
+                            let post_check_interval = if is_token(&Token::Interval, post_rest)
+                                || is_token(&Token::IntervalInclusive, post_rest)
+                            {
                                 // 当前是范围表达式
-                                let (option_end_pression, post_continue_parse_interval) =
-                                    continue_parse_interval(post_rest)?;
+                                let (
+                                    is_inclusive,
+                                    optional_end_expression,
+                                    post_continue_parse_interval,
+                                ) = continue_parse_interval(post_rest)?;
+
                                 let interval_expression = Expression::Interval(Interval {
-                                    start: Box::new(expression),
-                                    end: match option_end_pression {
-                                        Some(end_pression) => Some(Box::new(end_pression)),
+                                    is_inclusive,
+                                    from: Box::new(expression),
+                                    to: match optional_end_expression {
+                                        Some(end_expression) => Some(Box::new(end_expression)),
                                         None => None,
                                     },
                                     range: new_range(),
@@ -1262,18 +1265,28 @@ fn continue_parse_ellipsis(
     }
 }
 
-// 解析 `范围表达式`，返回 `end` 部分表达式（如果存在的话）
+// 解析 `范围表达式`
+// 返回 (`end` 是否闭区间, `end` 部分表达式, 剩余的 token)
 fn continue_parse_interval(
     source_token_details: &[TokenDetail],
-) -> Result<(Option<Expression>, &[TokenDetail]), Error> {
+) -> Result<(bool, Option<Expression>, &[TokenDetail]), Error> {
+    // exp1..=
+    // exp1..=exp2
     // exp1..
     // exp1..exp2
     // ^   ^ ^--- expression (可选的)
     // |   |----- interval 当前处于这个 token
     // |--------- expression
 
+    let is_inclusive = is_token(&Token::IntervalInclusive, source_token_details);
+    let operator_token = if is_inclusive {
+        Token::IntervalInclusive
+    } else {
+        Token::Interval
+    };
+
     // 消除范围符号 ".."
-    let post_consume_token_interval = consume_token(&Token::Interval, source_token_details)?;
+    let post_consume_token_interval = consume_token(&operator_token, source_token_details)?;
 
     // 范围符号 ".." 后面允许换行
     let post_new_lines = skip_new_lines(post_consume_token_interval);
@@ -1283,12 +1296,12 @@ fn continue_parse_interval(
             if (*token == Token::Comma || *token == Token::RightBracket) =>
         {
             // 遇到了逗号或者右中括号，说明当前范围表达式缺省 `end` 部分。
-            Ok((None, post_new_lines))
+            Ok((is_inclusive, None, post_new_lines))
         }
         _ => {
             // 解析 `end` 部分表达式
-            let (expression, post_end_expression) = parse_expression(post_new_lines)?;
-            Ok((Some(expression), post_end_expression))
+            let (end_expression, post_end_expression) = parse_expression(post_new_lines)?;
+            Ok((is_inclusive, Some(end_expression), post_end_expression))
         }
     }
 }
@@ -1400,7 +1413,7 @@ fn new_range() -> Range {
 mod tests {
     use crate::{
         ast::{
-            BinaryExpression, Complex, ExpressionBlock, Ellipsis, Expression, Float, Identifier,
+            BinaryExpression, BlockExpression, Complex, Ellipsis, Expression, Float, Identifier,
             Integer, Interval, List, Literal, Node, PrefixIdentifier, Program, Statement, Tuple,
         },
         error::Error,
@@ -1537,6 +1550,7 @@ mod tests {
                 body: vec![Statement::Expression(Expression::Identifier(Identifier {
                     dirs: vec![],
                     name: "foo".to_string(),
+                    generic_names: vec![],
                     range: new_range()
                 }))],
                 range: new_range()
@@ -1551,6 +1565,7 @@ mod tests {
                 body: vec![Statement::Expression(Expression::Identifier(Identifier {
                     dirs: vec!["foo".to_string()],
                     name: "bar".to_string(),
+                    generic_names: vec![],
                     range: new_range()
                 }))],
                 range: new_range()
@@ -1573,6 +1588,7 @@ mod tests {
                         identifier: Identifier {
                             dirs: vec![],
                             name: "foo".to_string(),
+                            generic_names: vec![],
                             range: new_range()
                         },
                         range: new_range()
@@ -1790,11 +1806,12 @@ mod tests {
             Node::Program(Program {
                 body: vec![Statement::Expression(Expression::List(List {
                     elements: vec![Expression::Interval(Interval {
-                        start: Box::new(Expression::Literal(Literal::Integer(Integer {
+                        is_inclusive: false,
+                        from: Box::new(Expression::Literal(Literal::Integer(Integer {
                             value: 1,
                             range: new_range()
                         }))),
-                        end: Some(Box::new(Expression::Literal(Literal::Integer(Integer {
+                        to: Some(Box::new(Expression::Literal(Literal::Integer(Integer {
                             value: 10,
                             range: new_range()
                         })))),
@@ -1814,11 +1831,12 @@ mod tests {
             Node::Program(Program {
                 body: vec![Statement::Expression(Expression::List(List {
                     elements: vec![Expression::Interval(Interval {
-                        start: Box::new(Expression::Literal(Literal::Integer(Integer {
+                        is_inclusive: false,
+                        from: Box::new(Expression::Literal(Literal::Integer(Integer {
                             value: 1,
                             range: new_range()
                         }))),
-                        end: None,
+                        to: None,
                         range: new_range()
                     })],
                     range: new_range()
@@ -1827,6 +1845,9 @@ mod tests {
             })
         );
         assert_eq!(a9.to_string(), "[1..,]\n");
+
+        // 闭区间
+        todo!();
 
         // 带有一个元素以及一个范围表达式的列表
         let a10 = parse_from_string("[1,3..9,]").unwrap();
@@ -1958,8 +1979,8 @@ mod tests {
         assert_eq!(
             a1,
             Node::Program(Program {
-                body: vec![Statement::Expression(Expression::ExpressionBlock(
-                    ExpressionBlock {
+                body: vec![Statement::Expression(Expression::BlockExpression(
+                    BlockExpression {
                         is_explicit: true,
                         body: vec![
                             Expression::Literal(Literal::Integer(Integer {
@@ -1969,6 +1990,7 @@ mod tests {
                             Expression::Identifier(Identifier {
                                 dirs: vec![],
                                 name: "abc".to_string(),
+                                generic_names: vec![],
                                 range: new_range()
                             }),
                         ],
@@ -1984,8 +2006,145 @@ mod tests {
 
     // statement
 
-    #[test]
-    fn test_if_expression() {
-        // todo::
-    }
+    // operating expressions
+    //
+    //     #[test]
+    //     fn test_display_binary_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_unary_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_function_call_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_member_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_slice_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_constructor_expression() {
+    //         // todo::
+    //     }
+    //
+    //     // general expressions
+    //
+    //     #[test]
+    //     fn test_display_block_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_let_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_for_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_branch_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_match_expression() {
+    //         // todo::
+    //     }
+    //
+    //     #[test]
+    //     fn test_display_if_expression() {
+    //         let e1 = Expression::IfExpression(IfExpression {
+    //             condition: Box::new(Expression::Literal(Literal::Boolean(Boolean {
+    //                 value: true,
+    //                 range: new_range(),
+    //             }))),
+    //             consequent: Box::new(Expression::Literal(Literal::Integer(Integer {
+    //                 value: 1,
+    //                 range: new_range(),
+    //             }))),
+    //             alternate: Some(Box::new(Expression::Literal(Literal::Integer(Integer {
+    //                 value: 2,
+    //                 range: new_range(),
+    //             })))),
+    //             range: new_range(),
+    //         });
+    //
+    //         assert_eq!(e1.to_string(), "if true then 1 else 2")
+    //     }
+
+    // statements
+
+    // #[test]
+    // fn test_display_function_declaration_statement() {
+    //             let s1 = Statement::FunctionDeclaration(FunctionDeclaration {
+    //                 name: "inc".to_string(),
+    //                 params: vec![(
+    //                     Identifier {
+    //                         dirs: vec![],
+    //                         name: "Int".to_string(),
+    //                         generic_names: vec![],
+    //                         range: new_range(),
+    //                     },
+    //                     Expression::Identifier(Identifier {
+    //                         dirs: vec![],
+    //                         name: "a".to_string(),
+    //                         generic_names: vec![],
+    //                         range: new_range(),
+    //                     }),
+    //                 )],
+    //                 return_type: Identifier {
+    //                     dirs: vec![],
+    //                     name: "Int".to_string(),
+    //                     generic_names: vec![],
+    //                     range: new_range(),
+    //                 },
+    //                 body: Box::new(Expression::BinaryExpression(BinaryExpression {
+    //                     operator: Token::Plus,
+    //                     left: Box::new(Expression::Identifier(Identifier {
+    //                         dirs: vec![],
+    //                         name: "a".to_string(),
+    //                         range: new_range(),
+    //                     })),
+    //                     right: Box::new(Expression::Literal(Literal::Integer(Integer {
+    //                         value: 1,
+    //                         range: new_range(),
+    //                     }))),
+    //                     range: new_range(),
+    //                 })),
+    //                 range: new_range(),
+    //             });
+    //
+    //             assert_eq!(s1.to_string(), "function inc (Int a) type Int = (a + 1)\n")
+    // }
+
+    // nodes
+
+    //     #[test]
+    //     fn test_display_node_program() {
+    //         let p1 = Node::Program(Program {
+    //             body: vec![Statement::Expression(Expression::Literal(
+    //                 Literal::Integer(Integer {
+    //                     value: 123,
+    //                     range: new_range(),
+    //                 }),
+    //             ))],
+    //             range: new_range(),
+    //         });
+    //
+    //         assert_eq!(p1.to_string(), "123\n");
+    //     }
 }

@@ -69,10 +69,10 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                             // `==`
                             add_token_detail(&mut token_details, new_token_detail(Token::Equal));
                             move_forword(rest, 1)
-                        } else if is_char('>', rest) {
-                            // `=>`
-                            add_token_detail(&mut token_details, new_token_detail(Token::Arrow));
-                            move_forword(rest, 1)
+                        // } else if is_char('>', rest) {
+                        //     // `=>`
+                        //     add_token_detail(&mut token_details, new_token_detail(Token::Arrow));
+                        //     move_forword(rest, 1)
                         } else {
                             // `=`
                             add_token_detail(&mut token_details, new_token_detail(Token::Assign));
@@ -1142,8 +1142,8 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         "do" => Some(Token::Do),
         "join" => Some(Token::Join),
         // "to" => Some(Token::To),
-
         "let" => Some(Token::Let),
+        "fn" => Some(Token::Fn),
 
         "if" => Some(Token::If),
         "then" => Some(Token::Then),
@@ -1391,25 +1391,22 @@ mod tests {
             ]
         );
 
-        let tokens2 = tokenize("?? & ^ ? . [ ] => ! ( ) : :: .. ... ,").unwrap();
+        let tokens2 = tokenize("?? & ^ ? . [ ] ! ( ) : :: .. ... ,").unwrap();
         assert_eq!(
             token_details_to_string(&tokens2),
-            vec![
-                "??", "&", "^", "?", ".", "[", "]", "=>", "!", "(", ")", ":", "::", "..", "...",
-                ",",
-            ]
+            vec!["??", "&", "^", "?", ".", "[", "]", "!", "(", ")", ":", "::", "..", "...", ",",]
         );
     }
 
     #[test]
     fn test_keywords() {
         let tokens1 =
-            tokenize("do join let if then else for next each in  branch match case default")
+            tokenize("do join let fn if then else for next each in  branch match case default")
                 .unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
             vec![
-                "do", "join", "let", "if", "then", "else", "for", "next", "each", "in",
+                "do", "join", "let", "fn", "if", "then", "else", "for", "next", "each", "in",
                 "branch", "match", "case", "default",
             ]
         );
