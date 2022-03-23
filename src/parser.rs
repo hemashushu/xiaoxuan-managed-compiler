@@ -7,7 +7,7 @@
  */
 use crate::{
     ast::{
-        BinaryExpression, Bit, Boolean, Char, Complex, DoExpression, Ellipsis, Expression, Float,
+        BinaryExpression, Bit, Boolean, Char, Complex, ExpressionBlock, Ellipsis, Expression, Float,
         GeneralString, HashString, Identifier, Integer, Interval, List, Literal, NamedOperator,
         Node, PrefixIdentifier, Program, Range, Statement, Tuple, UnaryExpression,
     },
@@ -108,11 +108,10 @@ fn parse_expression_statement(
 }
 
 // Expression
-//  : DoExpression
-//  | JoinExpression
+//  : ExpressionBlock
+//  |
 //  | LetExpression
 //  | ForExpression
-//  | EachExpression
 //  | BranchExpression
 //  | MatchExpression
 //  | IfExpression
@@ -122,6 +121,12 @@ fn parse_expression_statement(
 //  | MemberExpression
 //  | ConstructorExpression
 //  | Identifier
+//  | PrefixIdentifier
+//  | Ellipsis
+//  | Interval
+//  | List
+//  | Tuple
+//  | Map
 //  | Literal
 //  ;
 
@@ -172,7 +177,7 @@ fn parse_expression(
     }
 }
 
-// DoExpression
+// ExpressionBlock
 //  : 'do' ExpressionBlock
 //  ;
 fn parse_do_expression(
@@ -191,7 +196,7 @@ fn parse_do_expression(
         continue_parse_expression_block(post_consume_new_lines)?;
 
     Ok((
-        Expression::DoExpression(DoExpression {
+        Expression::ExpressionBlock(ExpressionBlock {
             is_explicit: true,
             body: expressions,
             range: new_range(),
@@ -260,7 +265,7 @@ fn continue_parse_expression_block_or_single_expression(
                     continue_parse_expression_block(source_token_details)?;
 
                 Ok((
-                    Expression::DoExpression(DoExpression {
+                    Expression::ExpressionBlock(ExpressionBlock {
                         is_explicit: false,
                         body: expressions,
                         range: new_range(),
@@ -861,7 +866,7 @@ fn continue_parse_identifier(
 // Literal
 //  : Integer
 //  | Float
-//  | Imaginary
+//  | Complex
 //  | Bit
 //  | Boolean
 //  | Char
@@ -870,6 +875,7 @@ fn continue_parse_identifier(
 //  | HashString
 //  | NamedOperator
 //  ;
+
 
 fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
     // literal
@@ -922,9 +928,9 @@ fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[Tok
                     rest,
                 ))
             }
-            Token::Bit(bit_width, bytes) => Ok((
+            Token::Bit(width, bytes) => Ok((
                 Literal::Bit(Bit {
-                    bit_width: *bit_width,
+                    width: *width,
                     bytes: bytes.clone(),
                     range: new_range(),
                 }),
@@ -1394,7 +1400,7 @@ fn new_range() -> Range {
 mod tests {
     use crate::{
         ast::{
-            BinaryExpression, Complex, DoExpression, Ellipsis, Expression, Float, Identifier,
+            BinaryExpression, Complex, ExpressionBlock, Ellipsis, Expression, Float, Identifier,
             Integer, Interval, List, Literal, Node, PrefixIdentifier, Program, Statement, Tuple,
         },
         error::Error,
@@ -1490,26 +1496,32 @@ mod tests {
         //         assert_eq!(a2.to_string(), "8'x81\n");
     }
 
+    #[test]
     fn test_boolean_literal() {
         // todo::
     }
 
+    #[test]
     fn test_char_literal() {
         // todo::
     }
 
+    #[test]
     fn test_general_string_literal() {
         // todo::
     }
 
+    #[test]
     fn test_template_string_literal() {
         // todo::
     }
 
+    #[test]
     fn test_hash_string_literal() {
         // todo::
     }
 
+    #[test]
     fn test_named_operator_string_literal() {
         // todo::
     }
@@ -1946,8 +1958,8 @@ mod tests {
         assert_eq!(
             a1,
             Node::Program(Program {
-                body: vec![Statement::Expression(Expression::DoExpression(
-                    DoExpression {
+                body: vec![Statement::Expression(Expression::ExpressionBlock(
+                    ExpressionBlock {
                         is_explicit: true,
                         body: vec![
                             Expression::Literal(Literal::Integer(Integer {
@@ -1972,6 +1984,7 @@ mod tests {
 
     // statement
 
+    #[test]
     fn test_if_expression() {
         // todo::
     }

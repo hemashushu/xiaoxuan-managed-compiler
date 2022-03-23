@@ -16,10 +16,6 @@ pub enum Node {
     Expression(Expression),
 }
 
-// Program
-//  : {Statement}
-//  ;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub body: Vec<Statement>,
@@ -45,6 +41,14 @@ impl Display for Node {
 // Statement
 //  : EmptyStatement
 //  | FunctionDeclaration
+//  | NamespaceStatement
+//  | UseStatement
+//  | ConstDeclaration
+//  | StructDeclaration
+//  | UnionDeclaration
+//  | TraitDeclaration
+//  | ImplStatement
+//  | AliasStatement
 //  | Expression
 //  ;
 
@@ -52,93 +56,135 @@ impl Display for Node {
 pub enum Statement {
     EmptyStatement, // 当一个程序的有效源码是空的时候，解析而得的语法树就只有一个 EmptyStatement
     FunctionDeclaration(FunctionDeclaration),
+    NamespaceStatement(NamespaceStatement),
+    UseStatement(UseStatement),
+    ConstDeclaration(ConstDeclaration),
+    StructDeclaration(StructDeclaration),
+    UnionDeclaration(UnionDeclaration),
+    TraitDeclaration(TraitDeclaration),
+    ImplStatement(ImplStatement),
+    AliasStatement(AliasStatement),
     Expression(Expression),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
     pub name: String,
-    pub params: Vec<(Identifier, Expression)>,
-    pub return_type: Identifier,
+    // pub params: Vec<(datatype, name, Expression)>,
+    //pub return_type: datatype(sign | Identifier),
     pub body: Box<Expression>,
     pub range: Range,
 }
 
-impl Display for Statement {
+#[derive(Debug, Clone, PartialEq)]
+pub struct NamespaceStatement {
+    // todo::
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UseStatement {
+    // todo::
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConstDeclaration {
+    // todo::
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructDeclaration {
+    // todo::
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnionDeclaration {
+    // todo::
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TraitDeclaration {
+    // todo::
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImplStatement {
+    // todo::
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AliasStatement {
+    pub name: String,
+    pub data_type: DataType,
+    pub generic_names: Vec<String>,
+    pub range: Range,
+}
+
+impl Display for FunctionDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Statement::FunctionDeclaration(FunctionDeclaration {
-                name,
-                params,
-                return_type,
-                body,
-                ..
-            }) => match body.as_ref() {
-                Expression::DoExpression(DoExpression {
-                    body: block_expression,
-                    ..
-                }) => {
-                    write!(
-                        f,
-                        "function {} ({}) type {} {}\n",
-                        name,
-                        format_params(params),
-                        return_type,
-                        format_expressions_with_new_line(block_expression)
-                    )
-                }
-                _ => {
-                    write!(
-                        f,
-                        "function {} ({}) type {} = {}\n",
-                        name,
-                        format_params(params),
-                        return_type,
-                        body
-                    )
-                }
-            },
-            Statement::Expression(expression) => {
-                write!(f, "{}\n", expression)
-            }
-            Statement::EmptyStatement => {
-                write!(f, "")
-            }
-        }
+        todo!()
+        //         match self.body.as_ref() {
+        //             Expression::ExpressionBlock(ExpressionBlock {
+        //                 body: block_expression,
+        //                 ..
+        //             }) => {
+        //                 write!(
+        //                     f,
+        //                     "function {} ({}) type {} {}\n",
+        //                     self.name,
+        //                     format_params(&self.params),
+        //                     self.return_type,
+        //                     format_expressions_with_new_line(block_expression)
+        //                 )
+        //             }
+        //             _ => {
+        //                 write!(
+        //                     f,
+        //                     "function {} ({}) type {} = {}\n",
+        //                     self.name,
+        //                     format_params(&self.params),
+        //                     self.return_type,
+        //                     self.body
+        //                 )
+        //             }
     }
 }
 
-// Expression
-//  : DoExpression
-//  | LetExpression
-//  | ForExpression
-//  | BranchExpression
-//  | MatchExpression
-//  | IfExpression
-//  | BinaryExpression
-//  | UnaryExpression
-//  | FunctionCallExpression
-//  | MemberExpression
-//  | ConstructorExpression
-//  | Identifier
-//  | PrefixIdentifier
-//  | Ellipsis
-//  | Interval
-//  | List
-//  | Tuple
-//  | Map
-//  | Literal
-//  ;
+impl Display for Statement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+        //         match self {
+        //             Statement::FunctionDeclaration(declaration) => {
+        //                 write!(f, "{}\n", declaration)
+        //             },
+        //             Statement::Expression(expression) => {
+        //                 write!(f, "{}\n", expression)
+        //             }
+        //             Statement::EmptyStatement => {
+        //                 write!(f, "")
+        //             }
+        //         }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     // general expressions
-    DoExpression(DoExpression),
+    ExpressionBlock(ExpressionBlock), // `表达式块` 本身也是 `表达式` 其中的一种
+    JoinExpression(JoinExpression),
     LetExpression(LetExpression),
+
+    IfExpression(IfExpression),
     ForExpression(ForExpression),
+    EachExpression(EachExpression),
     BranchExpression(BranchExpression),
     MatchExpression(MatchExpression),
-    IfExpression(IfExpression),
 
     // operating expressions
     BinaryExpression(BinaryExpression),
@@ -159,10 +205,21 @@ pub enum Expression {
     Literal(Literal),
 }
 
-// 显式代码块 `do...` 表达式，或者隠式的花括号 `{...}` 代码块
 #[derive(Debug, Clone, PartialEq)]
-pub struct DoExpression {
-    pub is_explicit: bool,
+pub struct ExpressionBlock {
+    // 用于标记是 `do 表达式` 还是 `隠式 do 表达式`。
+    //
+    // `隠式 do 表达式` 是指省略了 `do` 关键字，
+    // 只保留了花括号 `{...}` 的表达式块
+    pub is_explicit: bool, // false == `{...}`, true == `do {...}`
+
+    pub body: Vec<Expression>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct JoinExpression {
+    pub to: Option<Box<Expression>>,
     pub body: Vec<Expression>,
     pub range: Range,
 }
@@ -176,8 +233,23 @@ pub struct LetExpression {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub consequent: Box<Expression>,
+    pub alternate: Option<Box<Expression>>, // `else` 部分是可选的
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ForExpression {
-    pub is_in: bool, // false == 'for...let', true == 'for...in'
+    pub object: Box<Expression>,
+    pub value: Box<Expression>,
+    pub body: Box<Expression>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EachExpression {
     pub object: Box<Expression>,
     pub value: Box<Expression>,
     pub body: Box<Expression>,
@@ -186,59 +258,45 @@ pub struct ForExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BranchExpression {
-    pub additional: Option<Box<Expression>>,
-    pub cases: Vec<BranchCaseFragment>,
+    pub cases: Vec<BranchCase>,
     pub default: Option<Box<Expression>>,
+    pub where_exp: Option<Box<Expression>>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct BranchCaseFragment {
+pub struct BranchCase {
     pub condition: Box<Expression>,
-    pub additional: Option<Expression>,
     pub body: Box<Expression>,
+    pub where_exp: Option<Box<Expression>>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchExpression {
-    pub additional: Option<Box<Expression>>,
-    pub cases: Vec<MatchCaseFragment>,
+    pub cases: Vec<MatchCase>,
     pub default: Option<Box<Expression>>,
+    pub where_exp: Option<Box<Expression>>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MatchCaseFragment {
+pub struct MatchCase {
     pub condition: Box<Expression>,
-    pub additional: Vec<MatchCaseAdditional>,
     pub body: Box<Expression>,
+    pub where_exp: Option<Box<Expression>>,
+    pub variable: Option<String>, // @ 变量名称
+    pub additionals: Vec<MatchCaseAdditional>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MatchCaseAdditionalType {
-    Where,
-    Only,
-    In,
-    Regular,
-    Template,
-    Into,
-    As,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct MatchCaseAdditional {
-    pub additional_type: MatchCaseAdditionalType,
-    pub body: Box<Expression>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct IfExpression {
-    pub condition: Box<Expression>,
-    pub consequent: Box<Expression>,
-    pub alternate: Option<Box<Expression>>,
-    pub range: Range,
+pub enum MatchCaseAdditional {
+    Only(Expression),             // 附加条件，一个返回 Boolean 值的表达式
+    In(Expression),               // 实现了 `Exist` 特性的对象，比如 `Range` 或者 `List`
+    Into(String, String),         // 类型名称和标识符名称
+    Regular(String, Vec<String>), // 正则表达式字符串字面量，以及变量名列表
+    Template(String),             // 带有占位符的字符串字面量
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -259,7 +317,14 @@ pub struct UnaryExpression {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCallExpression {
     pub callee: Box<Expression>,
-    pub arguments: Vec<Expression>,
+    pub arguments: Vec<Argument>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Argument {
+    pub name: Option<String>,
+    pub value: Box<Expression>,
     pub range: Range,
 }
 
@@ -274,8 +339,6 @@ pub struct MemberExpression {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SliceExpression {
     pub object: Box<Expression>,
-    // pub start: Box<Expression>,
-    // pub end: Box<Expression>,
     pub interval: Interval,
     pub range: Range,
 }
@@ -287,11 +350,16 @@ pub struct ConstructorExpression {
     pub range: Range,
 }
 
+// identifier 是局部变量名称或者函数名称
+//
+// identifier 不包括
+// - `let 表达式` 的左值，左值是一个表达式
+// - 函数参数列表里的 `参数`
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier {
     pub dirs: Vec<String>,
     pub name: String,
-    // pub generic_type: Identifier
+    pub generic_names: Vec<String>, // 泛型代号列表
     pub range: Range,
 }
 
@@ -307,20 +375,59 @@ pub struct Ellipsis {
     pub range: Range,
 }
 
-// interval
+// 范围值,用于构建切片和数列
 //
 // e.g.
-// [a..b]
+// `0..10`
+// `0..=9`
 #[derive(Debug, Clone, PartialEq)]
 pub struct Interval {
-    pub start: Box<Expression>,
-    pub end: Option<Box<Expression>>,
+    pub is_inclusive: bool, // `..` 不包括 `to`，`..=` 包括 `to`
+    pub from: Box<Expression>,
+    pub to: Option<Box<Expression>>,
+    pub range: Range,
+}
+
+// 函数的签名
+//
+// e.g.
+// `sign (Int x, Int y) type Int`
+// `sign<T, E> (T x, E y) type T`
+// `sign (T a, String s) which {T: Int}`
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sign {
+    pub parameters: Vec<Parameter>,
+    pub return_data_type: Option<Box<DataType>>,
+    pub generic_names: Vec<String>,
+    pub which_entries: Vec<WhichEntry>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DataType {
+    Sign(Sign),
+    Identifier,
+}
+
+// 普通函数参数
+// 不包括模式函数的参数，模式函数的参数是一个表达式
+#[derive(Debug, Clone, PartialEq)]
+pub struct Parameter {
+    pub data_type: DataType,
+    pub name: String,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WhichEntry {
+    pub is_limit: bool, // false == 一般的类型说明，true == 泛型类型约束
+    pub name: String,
+    pub data_types: Vec<DataType>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct List {
-    // pub is_array: bool, // false == 'list', true == 'array'
     pub elements: Vec<Expression>,
     pub range: Range,
 }
@@ -344,13 +451,27 @@ pub struct MapEntry {
     pub range: Range,
 }
 
+impl Display for MatchCaseAdditional {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MatchCaseAdditional::Only(e) => {
+                write!(f, "only {}", e)
+            }
+            MatchCaseAdditional::In(e) => {
+                write!(f, "only {}", e)
+            }
+        }
+    }
+}
+
 impl Display for Interval {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.end.as_ref() {
-            Some(e) => {
-                write!(f, "{}..{}", self.start, e)
+        let operator = if self.is_inclusive { "..=" } else { ".." };
+        match self.to.as_ref() {
+            Some(to_exp) => {
+                write!(f, "{}{}{}", self.from, operator, to_exp)
             }
-            None => write!(f, "{}..", self.start),
+            None => write!(f, "{}{}", self.from, operator),
         }
     }
 }
@@ -419,51 +540,23 @@ impl Display for Identifier {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::DoExpression(DoExpression { body, .. }) => {
+            Expression::ExpressionBlock(ExpressionBlock { body, .. }) => {
                 let text = format_expressions_with_new_line(body);
                 write!(f, "{{\n{}\n}}", text)
             }
-            Expression::LetExpression(LetExpression {
-                is_match,
-                object,
-                value,
-                ..
-            }) => {
-                if *is_match {
-                    write!(f, "let {} match {}", object, value)
-                } else {
-                    write!(f, "let {} = {}", object, value)
+            Expression::JoinExpression(JoinExpression { to, body, .. }) => match to {
+                Some(to_exp) => {
+                    write!(
+                        f,
+                        "join to {} {{\n{}\n}}",
+                        to_exp,
+                        format_expressions_with_new_line(body)
+                    )
                 }
-            }
-            Expression::ForExpression(ForExpression {
-                is_in,
-                object,
-                value,
-                body,
-                ..
-            }) => {
-                if *is_in {
-                    write!(f, "for let {} in {} {}", object, value, body)
-                } else {
-                    write!(f, "for let {} = {} {}", object, value, body)
+                None => {
+                    write!(f, "join {{\n{}\n}}", format_expressions_with_new_line(body))
                 }
-            }
-            Expression::BranchExpression(BranchExpression {
-                additional,
-                cases,
-                default,
-                ..
-            }) => {
-                todo!()
-            }
-            Expression::MatchExpression(MatchExpression {
-                additional,
-                cases,
-                default,
-                ..
-            }) => {
-                todo!()
-            }
+            },
             Expression::IfExpression(IfExpression {
                 condition,
                 consequent,
@@ -477,6 +570,46 @@ impl Display for Expression {
                     write!(f, "if {} then {}", condition, consequent)
                 }
             },
+            Expression::LetExpression(LetExpression {
+                is_match,
+                object,
+                value,
+                ..
+            }) => {
+                if *is_match {
+                    write!(f, "let {} match {}", object, value)
+                } else {
+                    write!(f, "let {} = {}", object, value)
+                }
+            }
+            Expression::ForExpression(ForExpression {
+                object,
+                value,
+                body,
+                ..
+            }) => {
+                write!(f, "for let {} = {} {}", object, value, body)
+            }
+            Expression::EachExpression(EachExpression {
+                object,
+                value,
+                body,
+                ..
+            }) => {
+                write!(f, "each let {} in {} {}", object, value, body)
+            }
+            Expression::BranchExpression(BranchExpression { cases, default, .. }) => {
+                todo!()
+            }
+            Expression::MatchExpression(MatchExpression {
+                additional,
+                cases,
+                default,
+                ..
+            }) => {
+                todo!()
+            }
+
             Expression::BinaryExpression(BinaryExpression {
                 operator,
                 left,
@@ -562,19 +695,6 @@ impl Display for Expression {
     }
 }
 
-// Literal
-//  : Integer
-//  | Float
-//  | Complex
-//  | Bit
-//  | Boolean
-//  | Char
-//  | GeneralString
-//  | TemplateString
-//  | HashString
-//  | NamedOperator
-//  ;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     Integer(Integer),
@@ -610,7 +730,7 @@ pub struct Complex {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Bit {
-    pub bit_width: usize,
+    pub width: usize,
     pub bytes: Vec<u8>,
     pub range: Range,
 }
@@ -635,7 +755,7 @@ pub struct GeneralString {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TemplateString {
-    pub fragments: Vec<GeneralString>,
+    pub fragments: Vec<String>,
     pub expressions: Vec<Expression>,
     pub range: Range,
 }
@@ -660,14 +780,12 @@ impl Display for Literal {
             Literal::Complex(Complex {
                 real, imaginary, ..
             }) => write!(f, "{}+{}i", real, imaginary),
-            Literal::Bit(Bit {
-                bit_width, bytes, ..
-            }) => {
+            Literal::Bit(Bit { width, bytes, .. }) => {
                 let mut hex = String::new();
                 for byte in bytes {
                     write!(hex, "{:02x}", byte)?;
                 }
-                write!(f, "{}'x{}", bit_width, hex)
+                write!(f, "{}'x{}", width, hex)
             }
             Literal::Boolean(Boolean { value, .. }) => write!(f, "{}", value),
 
@@ -678,16 +796,12 @@ impl Display for Literal {
                 expressions,
                 ..
             }) => {
-                let fragment_text_iter = fragments
-                    .iter()
-                    .map(|general_string| general_string.value.clone());
                 let mut expression_text_iter = expressions.iter().map(|exp| exp.to_string());
-
                 let mut cross_combined = Vec::<String>::new();
 
-                // 交叉合并两个矢量
-                for e1 in fragment_text_iter {
-                    cross_combined.push(e1);
+                // 交叉合并两个列表
+                for e1 in fragments {
+                    cross_combined.push(e1.to_string());
                     if let Some(e2) = expression_text_iter.next() {
                         cross_combined.push(e2);
                     }
@@ -713,19 +827,19 @@ fn format_statements(statements: &[Statement]) -> String {
         .join("")
 }
 
-fn format_params(params: &[(Identifier, Expression)]) -> String {
-    params
-        .iter()
-        .map(|(id, exp)| {
-            let mut buf = String::new();
-            buf.push_str(&id.to_string());
-            buf.push_str(" ");
-            buf.push_str(&exp.to_string());
-            buf
-        })
-        .collect::<Vec<String>>()
-        .join(", ")
-}
+// fn format_params(params: &[(Identifier, Expression)]) -> String {
+//     params
+//         .iter()
+//         .map(|(id, exp)| {
+//             let mut buf = String::new();
+//             buf.push_str(&id.to_string());
+//             buf.push_str(" ");
+//             buf.push_str(&exp.to_string());
+//             buf
+//         })
+//         .collect::<Vec<String>>()
+//         .join(", ")
+// }
 
 fn format_expressions_with_comma(expressions: &[Expression]) -> String {
     expressions
@@ -743,7 +857,19 @@ fn format_expressions_with_new_line(expressions: &[Expression]) -> String {
         .join("\n")
 }
 
-// 记录 Node 在源文件中的位置
+// 属性，目前仅支持标注在 `namespace` 以及 `function` 语句
+//
+// e.g.
+// `#[name(name1=value1, name2)]`
+//
+// 其中变量值是可省的
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Attribute {
+    pub name: String,                             // 名称
+    pub arguments: Vec<(String, Option<String>)>, // 变量名及值
+}
+
+// 记录 Node 在源文件中的位置（范围）
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Range {
     pub file_id: usize, // 源文件 id
@@ -783,6 +909,7 @@ mod tests {
         assert_eq!(i1.to_string(), "123");
     }
 
+    #[test]
     fn test_display_literal_float() {
         // todo::
     }
@@ -801,7 +928,7 @@ mod tests {
     #[test]
     fn test_display_literal_bit() {
         let i1 = Literal::Bit(Bit {
-            bit_width: 12,
+            width: 12,
             bytes: vec![0xab, 0x8, 0x12],
             range: new_range(),
         });
@@ -809,10 +936,12 @@ mod tests {
         assert_eq!(i1.to_string(), "12'xab0812");
     }
 
+    #[test]
     fn test_display_literal_boolean() {
         // todo::
     }
 
+    #[test]
     fn test_display_literal_char() {
         // todo::
     }
@@ -827,10 +956,12 @@ mod tests {
         assert_eq!(i1.to_string(), "\"foo\"");
     }
 
+    #[test]
     fn test_display_literal_template_string() {
         // todo::
     }
 
+    #[test]
     fn test_display_literal_hash_string() {
         // todo::
     }
@@ -909,70 +1040,86 @@ mod tests {
         assert_eq!(e1.to_string(), "!len");
     }
 
+    #[test]
     fn test_display_expression_ellipsis() {
         // todo::
     }
 
+    #[test]
     fn test_display_expression_interval() {
         // todo::
     }
 
+    #[test]
     fn test_display_expression_tuple() {
         // todo::
     }
 
+    #[test]
     fn test_display_expression_list() {
         // todo::
     }
 
+    #[test]
     fn test_display_expression_map() {
         // todo::
     }
 
     // operating expressions
 
+    #[test]
     fn test_display_binary_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_unary_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_function_call_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_member_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_slice_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_constructor_expression() {
         // todo::
     }
 
     // general expressions
 
+    #[test]
     fn test_display_block_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_let_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_for_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_branch_expression() {
         // todo::
     }
 
+    #[test]
     fn test_display_match_expression() {
         // todo::
     }

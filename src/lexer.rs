@@ -184,10 +184,21 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                         add_token_detail(&mut token_details, new_token_detail(Token::Cast));
                         rest
                     }
+                    '@' => {
+                        add_token_detail(&mut token_details, new_token_detail(Token::At));
+                        rest
+                    }
                     '.' => {
                         if is_chars(['.', '.'], rest) {
                             // `...`
                             add_token_detail(&mut token_details, new_token_detail(Token::Ellipsis));
+                            move_forword(rest, 2)
+                        } else if is_chars(['.', '='], rest) {
+                            // `..=`
+                            add_token_detail(
+                                &mut token_details,
+                                new_token_detail(Token::IntervalInclusive),
+                            );
                             move_forword(rest, 2)
                         } else if is_char('.', rest) {
                             // `..`
@@ -297,7 +308,13 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                                 add_token_detail(&mut token_details, token_detail);
                                 post_rest
                             }
-                            _ => return Err(Error::LexerError("invalid hash string".to_string())),
+                            Some(second_char) if *second_char == '[' => {
+                                // `#[...]`
+                                let (token_detail, post_rest) = lex_attribute(rest)?;
+                                add_token_detail(&mut token_details, token_detail);
+                                post_rest
+                            }
+                            _ => return Err(Error::LexerError("invalid char '#'".to_string())),
                         }
                     }
 
@@ -362,7 +379,7 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                             post_rest
                         } else {
                             // 未预料的符号
-                            return Err(Error::LexerError("unexpected char".to_string()));
+                            return Err(Error::LexerError(format!("unexpected char '{}'", first)));
                         }
                     }
                 };
@@ -664,6 +681,36 @@ fn lex_named_operator(source_chars: &[char]) -> Result<(TokenDetail, &[char]), E
     // 剩余的字符应该从 `:` 位置之后开始
     let rest = move_forword(source_chars, end_pos + 1);
     Ok((new_token_detail(Token::NamedOperator(value)), rest))
+}
+
+fn lex_attribute(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    // 解析属性（attribute，类似 Java 的 annotation）
+    // 查找 `属性` 的结束字符 `]`
+    //
+    // e.g.
+    // "#[test]"
+    //   ^-------- 当前所在的位置
+
+    // let mut chars = &source_chars[1..];
+    // let mut end_pos: usize = 1;
+
+    let end_pos = match source_chars.iter().position(|c| *c == ']') {
+        Some(pos) => pos,
+        None => {
+            // 到了末尾仍未找到结束字符
+            return Err(Error::LexerError(
+                "expected attribute ending symbol".to_string(),
+            ));
+        }
+    };
+
+    let value_chars = &source_chars[1..end_pos];
+    let value = value_chars.iter().collect::<String>();
+
+    // 当前 end_pos 处于字符 `]` 位置
+    // 剩余的字符应该从 `]` 位置之后开始
+    let rest = move_forword(source_chars, end_pos + 1);
+    Ok((new_token_detail(Token::Attribute(value)), rest))
 }
 
 fn lex_16_radix_integer(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
@@ -1092,10 +1139,12 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         "false" => Some(Token::Boolean(false)),
 
         // 关键字
-        "let" => Some(Token::Let),
         "do" => Some(Token::Do),
         "join" => Some(Token::Join),
-        "match" => Some(Token::Match),
+        // "to" => Some(Token::To),
+
+        "let" => Some(Token::Let),
+
         "if" => Some(Token::If),
         "then" => Some(Token::Then),
         "else" => Some(Token::Else),
@@ -1103,18 +1152,27 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         "next" => Some(Token::Next),
         "each" => Some(Token::Each),
         "in" => Some(Token::In),
-        "mix" => Some(Token::Mix),
+
         "branch" => Some(Token::Branch),
-        "which" => Some(Token::Which),
+        "match" => Some(Token::Match),
+        "case" => Some(Token::Case),
+        "default" => Some(Token::Default),
         "where" => Some(Token::Where),
         "only" => Some(Token::Only),
+        "as" => Some(Token::As),
         "into" => Some(Token::Into),
         "regular" => Some(Token::Regular),
         "template" => Some(Token::Template),
-        "as" => Some(Token::As),
+
+        "function" => Some(Token::Function),
+        "type" => Some(Token::Type),
+        "which" => Some(Token::Which),
+        "empty" => Some(Token::Empty),
+        "pattern" => Some(Token::Pattern),
+        "limit" => Some(Token::Limit),
+
         "namespace" => Some(Token::Namespace),
         "use" => Some(Token::Use),
-        "function" => Some(Token::Function),
         "const" => Some(Token::Const),
         "enum" => Some(Token::Enum),
         "struct" => Some(Token::Struct),
@@ -1308,8 +1366,17 @@ mod tests {
 
     #[test]
     fn test_named_operator() {
-        let tokens4 = tokenize(":foo: :bar:").unwrap();
-        assert_eq!(token_details_to_string(&tokens4), vec![":foo:", ":bar:"]);
+        let tokens1 = tokenize(":foo: :bar:").unwrap();
+        assert_eq!(token_details_to_string(&tokens1), vec![":foo:", ":bar:"]);
+    }
+
+    #[test]
+    fn test_attribute() {
+        let tokens1 = tokenize("#[test] #[cfg(test)]").unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens1),
+            vec!["#[test]", "#[cfg(test)]"]
+        );
     }
 
     #[test]
@@ -1337,32 +1404,34 @@ mod tests {
     #[test]
     fn test_keywords() {
         let tokens1 =
-            tokenize("let do join match if then else for next each in mix branch which where")
+            tokenize("do join let if then else for next each in  branch match case default")
                 .unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
             vec![
-                "let", "do", "join", "match", "if", "then", "else", "for", "next", "each", "in",
-                "mix", "branch", "which", "where",
+                "do", "join", "let", "if", "then", "else", "for", "next", "each", "in",
+                "branch", "match", "case", "default",
             ]
         );
 
-        let tokens2 = tokenize("only into regular template as").unwrap();
+        let tokens2 = tokenize("where only as into regular template").unwrap();
         assert_eq!(
             token_details_to_string(&tokens2),
-            vec!["only", "into", "regular", "template", "as",]
+            vec!["where", "only", "as", "into", "regular", "template",]
         );
 
-        let tokens3 =
-            tokenize("namespace use function type const enum struct union trait impl alias")
-                .unwrap();
+        let tokens3 = tokenize("function type which empty pattern limit").unwrap();
         assert_eq!(
             token_details_to_string(&tokens3),
+            vec!["function", "type", "which", "empty", "pattern", "limit",]
+        );
+
+        let tokens4 = tokenize("namespace use const enum struct union trait impl alias").unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens4),
             vec![
                 "namespace",
                 "use",
-                "function",
-                "type",
                 "const",
                 "enum",
                 "struct",
