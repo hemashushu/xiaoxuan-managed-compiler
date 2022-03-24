@@ -46,8 +46,12 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
 
                     '/' => {
                         if is_char('/', rest) {
-                            // comment
-                            let post_rest = skip_comment(rest);
+                            // line comment
+                            let post_rest = skip_line_comment(rest);
+                            post_rest
+                        } else if is_char('*', rest) {
+                            /* comment */
+                            let post_rest = skip_comment(rest)?;
                             post_rest
                         } else {
                             // `/`
@@ -233,17 +237,30 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                     }
 
                     '\'' => {
-                        // `'char'`
-                        let (token_detail, post_rest) = lex_char(rest)?;
-                        add_token_detail(&mut token_details, token_detail);
-                        post_rest
+                        if is_chars(['\'', '\''], rest) {
+                            // `'''...'''` 文档注释
+                            let (_, post_rest) = lex_document_comment(rest)?;
+                            post_rest
+                        } else {
+                            // `'char'`
+                            let (token_detail, post_rest) = lex_char(rest)?;
+                            add_token_detail(&mut token_details, token_detail);
+                            post_rest
+                        }
                     }
 
                     '"' => {
-                        // `"string"`
-                        let (token_detail, post_rest) = lex_string(rest)?;
-                        add_token_detail(&mut token_details, token_detail);
-                        post_rest
+                        if is_chars(['"', '"'], rest) {
+                            // `"""..."""`
+                            let (token_detail, post_rest) = lex_raw_string(rest)?;
+                            add_token_detail(&mut token_details, token_detail);
+                            post_rest
+                        } else {
+                            // `"string"`
+                            let (token_detail, post_rest) = lex_string(rest)?;
+                            add_token_detail(&mut token_details, token_detail);
+                            post_rest
+                        }
                     }
 
                     '`' => {
@@ -391,9 +408,11 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
     Ok(token_details)
 }
 
-fn skip_comment(source_chars: &[char]) -> &[char] {
+fn skip_line_comment(source_chars: &[char]) -> &[char] {
     // 行注释
-    // 跳过所有字符直到行尾（`\n`、`\r\n` 或者 `\r`）
+    // 跳过所有字符直到：
+    // - 行尾（`\n`、`\r\n` 或者 `\r`）
+    // - 程序末尾
 
     let mut chars = source_chars;
     let mut end_pos: usize = 0;
@@ -427,6 +446,98 @@ fn skip_comment(source_chars: &[char]) -> &[char] {
 
     // 注意要保留换行符到返回的字符数组（rest）中，以便产生一个 Token::NewLine
     &source_chars[end_pos..]
+}
+
+fn skip_comment(source_chars: &[char]) -> Result<&[char], Error> {
+    // 区域注释
+    // 跳过所有字符直到找到结束符 `*/`
+
+    let mut chars = source_chars;
+    let mut end_pos: usize = 0;
+
+    loop {
+        chars = match chars.split_first() {
+            Some((first, rest)) => match *first {
+                '*' => {
+                    if is_char('/', rest) {
+                        // `*/`
+                        end_pos += 1;
+                        break;
+                    } else {
+                        // 找到了星号，但不是结束符
+                        end_pos += 1;
+                        rest
+                    }
+                }
+                _ => {
+                    end_pos += 1;
+                    rest
+                }
+            },
+            None => {
+                // 到了末尾仍未找到结束符
+                return Err(Error::LexerError(
+                    "expected comment ending symbol".to_string(),
+                ));
+            }
+        }
+    }
+
+    // /*foo bar*/
+    //           ^-------- 当前所在的位置
+    let rest = move_forword(source_chars, end_pos + 1);
+    Ok(rest)
+}
+
+fn lex_document_comment(source_chars: &[char]) -> Result<(String, &[char]), Error> {
+    // 文档注释
+    // 查找 `文档注释` 的结束字符 `‘’‘`
+    //
+    // e.g.
+    // ’‘’foo bar‘’‘
+    //  ^-------- 当前所在的位置
+
+    let mut chars = source_chars;
+    let mut end_pos: usize = 0;
+
+    loop {
+        match chars.split_first() {
+            Some((first, rest)) => {
+                chars = match *first {
+                    '\'' => {
+                        if is_chars(['\'','\''], rest) {
+                            // 找到了 `'''`
+                            end_pos += 2;
+                            break;
+
+                        } else {
+                            // 找到了单引号，但不是三个连续的单引号
+                            end_pos += 1;
+                            rest
+                        }
+                    }
+                    _ => {
+                        end_pos += 1;
+                        rest
+                    }
+                }
+            }
+            None => {
+                // 到了末尾仍未找到结束字符
+                return Err(Error::LexerError(
+                    "expected document comment ending symbol".to_string(),
+                ));
+            }
+        }
+    }
+
+    let value_chars = &source_chars[2..end_pos-2];
+    let value = value_chars.iter().collect::<String>();
+
+    // '''foo bar'''
+    //             ^-------- 当前所在的位置
+    let rest = move_forword(source_chars, end_pos + 1);
+    Ok((value, rest))
 }
 
 fn lex_char(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
@@ -472,7 +583,7 @@ fn lex_char(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
             None => {
                 // 到了末尾仍未找到结束字符
                 return Err(Error::LexerError(
-                    "expected char literal ending mark".to_string(),
+                    "expected char literal ending symbol".to_string(),
                 ));
             }
         }
@@ -528,7 +639,7 @@ fn lex_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
             None => {
                 // 到了末尾仍未找到结束字符
                 return Err(Error::LexerError(
-                    "expected string literal ending mark".to_string(),
+                    "expected string literal ending symbol".to_string(),
                 ));
             }
         }
@@ -541,6 +652,59 @@ fn lex_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
 
     // 当前 end_pos 处于字符 `"` 位置
     // 剩余的字符应该从 `"` 位置之后开始
+    let rest = move_forword(source_chars, end_pos + 1);
+    Ok((new_token_detail(Token::GeneralString(value)), rest))
+}
+
+fn lex_raw_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    // 原始字符串字面量
+    // 查找 `原始字符串字面量` 的结束字符 `"""`
+    //
+    // e.g.
+    // """foo bar"""
+    //  ^-------- 当前所在的位置
+
+    let mut chars = source_chars;
+    let mut end_pos: usize = 0;
+
+    loop {
+        match chars.split_first() {
+            Some((first, rest)) => {
+                chars = match *first {
+                    '"' => {
+                        if is_chars(['"','"'], rest) {
+                            // 找到了 '"""'
+                            end_pos += 2;
+                            break;
+
+                        } else {
+                            // 找到了双引号，但不是三个连续的双引号
+                            end_pos += 1;
+                            rest
+                        }
+                    }
+                    _ => {
+                        end_pos += 1;
+                        rest
+                    }
+                }
+            }
+            None => {
+                // 到了末尾仍未找到结束字符
+                return Err(Error::LexerError(
+                    "expected raw string literal ending symbol".to_string(),
+                ));
+            }
+        }
+    }
+
+    // todo:: 截去每行的共同前缀空白
+
+    let value_chars = &source_chars[2..end_pos-2];
+    let value = value_chars.iter().collect::<String>();
+
+    // """foo bar"""
+    //             ^-------- 当前所在的位置
     let rest = move_forword(source_chars, end_pos + 1);
     Ok((new_token_detail(Token::GeneralString(value)), rest))
 }
@@ -583,7 +747,7 @@ fn lex_template_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), 
             None => {
                 // 到了末尾仍未找到结束字符
                 return Err(Error::LexerError(
-                    "expected template string literal ending mark".to_string(),
+                    "expected template string literal ending symbol".to_string(),
                 ));
             }
         }
@@ -593,6 +757,8 @@ fn lex_template_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), 
     let value = value_chars.iter().collect::<String>();
 
     // todo:: 处理转义字符
+
+    // todo:: 截去每行的共同前缀空白
 
     // 当前 end_pos 处于字符 '`' 位置
     // 剩余的字符应该从 '`' 位置之后开始
@@ -668,7 +834,7 @@ fn lex_named_operator(source_chars: &[char]) -> Result<(TokenDetail, &[char]), E
             None => {
                 // 到了末尾仍未找到结束字符
                 return Err(Error::LexerError(
-                    "expected named operator ending mark".to_string(),
+                    "expected named operator ending symbol".to_string(),
                 ));
             }
         }
@@ -767,7 +933,13 @@ fn lex_number(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
                         }
                     }
                     '\'' => {
-                        return continue_lex_bit_number(source_chars[..end_pos].to_vec(), rest);
+                        if is_chars(['\'','\''], rest) {
+                            // 遇到了文档注释
+                            break;
+                        }else {
+                            // 遇到了比特数
+                            return continue_lex_bit_number(source_chars[..end_pos].to_vec(), rest);
+                        }
                     }
                     'i' => {
                         return continue_lex_imaginary_number(
@@ -1080,25 +1252,17 @@ fn is_valid_letter_of_identifier_or_keyword(c: char) -> bool {
 
 fn is_char(expected: char, source_chars: &[char]) -> bool {
     match source_chars.first() {
-        Some(first_char) => *first_char == expected,
-        None => false,
+        Some(first_char) if *first_char == expected => true,
+        _ => false,
     }
 }
 
 fn is_chars(expected: [char; 2], source_chars: &[char]) -> bool {
     match source_chars.split_first() {
-        Some((first, rest)) => {
-            // if *first == expected[0] {
-            //     match rest.first() {
-            //         Some(second) => *second == expected[1],
-            //         None => false,
-            //     }
-            // } else {
-            //     false
-            // }
-            (*first == expected[0]) && is_char(expected[1], rest)
+        Some((first, rest)) if *first == expected[0] => {
+            is_char(expected[1], rest)
         }
-        None => false,
+        _ => false,
     }
 }
 
@@ -1212,8 +1376,16 @@ mod tests {
         let tokens2 = tokenize("/ // comment").unwrap();
         assert_eq!(token_details_to_string(&tokens2), vec!["/"]);
 
-        let tokens3 = tokenize("/ // comment\n/").unwrap();
+        let tokens3 = tokenize("/ // comm/ent\n/").unwrap();
         assert_eq!(token_details_to_string(&tokens3), vec!["/", "\n", "/"]);
+
+        // 测试区域注释
+        let tokens4 = tokenize("1/*com//me**nt*/2").unwrap();
+        assert_eq!(token_details_to_string(&tokens4), vec!["1", "2"]);
+
+        // 测试文档注释
+        let tokens5 = tokenize("1'''docu//ment''com'ment/*foo*/bar'''2").unwrap();
+        assert_eq!(token_details_to_string(&tokens5), vec!["1", "2"]);
     }
 
     #[test]
@@ -1252,8 +1424,7 @@ mod tests {
             vec!["1", "100", "1234", "123"]
         );
 
-        // todo::
-        // 测试 16 进制和 2 进制表示法的整数
+        // todo:: 测试 16 进制和 2 进制表示法的整数
     }
 
     #[test]
@@ -1342,7 +1513,17 @@ mod tests {
             token_details_to_string(&tokens1),
             vec!["\"foo\"", "\"b'a`r\"", "\"a\\\"b\""]
         );
+
         // todo:: 测试转义字符
+
+        // 测试原始字符串
+        let tokens3 = tokenize(r#"11"""foo bar"""22"#).unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens3),
+            vec!["11", "\"foo bar\"", "22"]
+        );
+
+        // todo:: 测试截断原始字符串每行的共同前缀空白
     }
 
     #[test]
@@ -1352,7 +1533,10 @@ mod tests {
             token_details_to_string(&tokens1),
             vec!["`foo`", "`b'a\"r`", "`a\\`b`", "`user: {{name}}`"]
         );
+
         // todo:: 测试转义字符
+
+        // todo:: 测试截断模板字符串每行的共同前缀空白
     }
 
     #[test]

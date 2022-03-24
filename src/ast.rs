@@ -136,9 +136,9 @@ impl Display for FunctionDeclaration {
         //                 write!(
         //                     f,
         //                     "function {} ({}) type {} {}\n",
-        //                     self.name,
+        //                     &self.name,
         //                     format_parameters(&self.params),
-        //                     self.return_type,
+        //                     &self.return_type,
         //                     format_expressions_with_new_line(block_expression)
         //                 )
         //             }
@@ -146,10 +146,10 @@ impl Display for FunctionDeclaration {
         //                 write!(
         //                     f,
         //                     "function {} ({}) type {} = {}\n",
-        //                     self.name,
+        //                     &self.name,
         //                     format_parameters(&self.params),
-        //                     self.return_type,
-        //                     self.body
+        //                     &self.return_type,
+        //                     &self.body
         //                 )
         //             }
     }
@@ -425,7 +425,7 @@ pub struct Sign {
 // - 函数类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
-    Identifier,
+    Identifier(Identifier),
     Sign(Sign),
 }
 
@@ -485,7 +485,14 @@ impl Display for Sign {
 
 impl Display for DataType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        match self {
+            DataType::Identifier(i) => {
+                write!(f, "{}", i)
+            },
+            DataType::Sign(s) => {
+                write!(f, "{}", s)
+            }
+        }
     }
 }
 
@@ -605,20 +612,38 @@ impl Display for MatchCaseAdditional {
     }
 }
 
+impl Display for BlockExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_explicit {
+            write!(
+                f,
+                "do {{\n{}\n}}",
+                format_expressions_with_new_line(&self.body)
+            )
+        } else {
+            write!(
+                f,
+                "{{\n{}\n}}",
+                format_expressions_with_new_line(&self.body)
+            )
+        }
+    }
+}
+
 impl Display for Interval {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let operator = if self.is_inclusive { "..=" } else { ".." };
         if let Some(t) = &self.to {
-            write!(f, "{}{}{}", self.from, operator, t)
+            write!(f, "{}{}{}", &self.from, operator, t)
         } else {
-            write!(f, "{}{}", self.from, operator)
+            write!(f, "{}{}", &self.from, operator)
         }
     }
 }
 
 impl Display for Tuple {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.elements.len() == 0 {
+        if (&self.elements).len() == 0 {
             write!(f, "()")
         } else {
             let text = format_expressions_with_comma(&self.elements);
@@ -629,7 +654,7 @@ impl Display for Tuple {
 
 impl Display for List {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.elements.len() == 0 {
+        if (&self.elements).len() == 0 {
             write!(f, "[]")
         } else {
             let text = format_expressions_with_comma(&self.elements);
@@ -653,12 +678,12 @@ impl Display for Map {
 
 impl Display for MapEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.value {
+        match &(self.value) {
             Some(v) => {
-                write!(f, "{}: {}", self.key, v)
+                write!(f, "{}: {}", &self.key, v)
             }
             None => {
-                write!(f, "{}", self.key)
+                write!(f, "{}", &self.key)
             }
         }
     }
@@ -666,7 +691,29 @@ impl Display for MapEntry {
 
 impl Display for AnonymousFunction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        let mut fragments = Vec::<String>::new();
+
+        fragments.push("fn".to_string());
+        fragments.push(format!(
+            "({})",
+            format_anonymous_parameters(&self.parameters)
+        ));
+
+        if let Some(dt) = &self.return_data_type {
+            fragments.push(format!("type {}", dt));
+        }
+
+        match self.body.as_ref() {
+            Expression::BlockExpression(e) if e.is_explicit == false => {
+                fragments.push(format!("{}", e))
+            }
+            _ => {
+                fragments.push("=".to_string());
+                fragments.push(format!("{}", &self.body));
+            }
+        }
+
+        write!(f, "{}", fragments.join(" "))
     }
 }
 
@@ -675,8 +722,8 @@ impl Display for Identifier {
         let mut fullname = String::new();
 
         // 命名空间路径
-        if self.dirs.len() > 0 {
-            let path = self.dirs.join("::");
+        if (&self.dirs).len() > 0 {
+            let path = (&self.dirs).join("::");
             fullname.push_str(&path);
             fullname.push_str("::");
         }
@@ -685,8 +732,8 @@ impl Display for Identifier {
         fullname.push_str(&self.name);
 
         // 泛型代号
-        if self.generic_names.len() > 0 {
-            let generic = self.generic_names.join(", ");
+        if (&self.generic_names).len() > 0 {
+            let generic = (&self.generic_names).join(", ");
             fullname.push_str("<");
             fullname.push_str(&generic);
             fullname.push_str(">");
@@ -699,8 +746,8 @@ impl Display for Identifier {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::BlockExpression(BlockExpression { body, .. }) => {
-                write!(f, "{{\n{}\n}}", format_expressions_with_new_line(body))
+            Expression::BlockExpression(e) => {
+                write!(f, "{}", e)
             }
             Expression::JoinExpression(JoinExpression { body, .. }) => {
                 write!(f, "join {{\n{}\n}}", format_expressions_with_new_line(body))

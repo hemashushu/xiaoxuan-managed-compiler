@@ -265,7 +265,7 @@ impl fmt::Display for Token {
 
 impl fmt::Display for TokenDetail {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}] {}", self.location, self.token)
+        write!(f, "[{}] {}", &self.location, &self.token)
     }
 }
 
