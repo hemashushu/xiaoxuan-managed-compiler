@@ -508,17 +508,6 @@ fn parse_relational_expression(
             Token::LessThan,
             Token::LessThanOrEqual,
         ],
-        parse_forward_expression,
-        source_token_details,
-    )
-}
-
-fn parse_forward_expression(
-    source_token_details: &[TokenDetail],
-) -> Result<(Expression, &[TokenDetail]), Error> {
-    // left >> right
-    parse_binary_expression(
-        &vec![Token::Forward],
         parse_named_operator_expression,
         source_token_details,
     )
@@ -591,17 +580,28 @@ fn parse_multiplicative_expression(
     // left * right, left / right
     parse_binary_expression(
         &vec![Token::Asterisk, Token::Slash],
-        parse_unwrap_or_expression,
+        parse_optional_or_expression,
         source_token_details,
     )
 }
 
-fn parse_unwrap_or_expression(
+fn parse_optional_or_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // left ?? right
     parse_binary_expression(
-        &vec![Token::UnwrapOr],
+        &vec![Token::OptionalOr],
+        parse_optional_and_expression,
+        source_token_details,
+    )
+}
+
+fn parse_optional_and_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // left >> right
+    parse_binary_expression(
+        &vec![Token::OptionalAnd],
         parse_combine_expression,
         source_token_details,
     )

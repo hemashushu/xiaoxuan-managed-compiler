@@ -40,10 +40,17 @@ impl Display for Node {
 
 // Statement
 //  | FunctionDeclaration
+//  | EmptyFunctionDeclaration
+//  | PatternFunctionDeclarationzs
+//
 //  | NamespaceStatement
 //  | UseStatement
 //  | ConstDeclaration
-//  | StructDeclaration
+//
+//  | MemberStructDeclaration
+//  | TupleStructDeclaration
+//  | EmptyStructDeclaration
+//
 //  | UnionDeclaration
 //  | TraitDeclaration
 //  | ImplStatement
@@ -54,10 +61,17 @@ impl Display for Node {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     FunctionDeclaration(FunctionDeclaration),
+    EmptyFunctionDeclaration(EmptyFunctionDeclaration), // 空函数
+    PatternFunctionDeclarationzs(PatternFunctionDeclaration), // 模式函数
+
     NamespaceStatement(NamespaceStatement),
     UseStatement(UseStatement),
     ConstDeclaration(ConstDeclaration),
-    StructDeclaration(StructDeclaration),
+
+    MemberStructDeclaration(MemberStructDeclaration),
+    TupleStructDeclaration(TupleStructDeclaration),
+    EmptyStructDeclaration(EmptyStructDeclaration),
+
     UnionDeclaration(UnionDeclaration),
     TraitDeclaration(TraitDeclaration),
     ImplStatement(ImplStatement),
@@ -65,55 +79,275 @@ pub enum Statement {
     Expression(Expression),
 }
 
-// 普通函数的定义语句
+// 数据类型包括了：
+// - 纯数据的类型，如基本数据类型、用户自定义类型（结构体和联合体）
+// - 特性（trait）
+// - 函数类型
+#[derive(Debug, Clone, PartialEq)]
+pub enum DataType {
+    Identifier(Identifier),
+    Sign(Sign),
+}
+
+// 函数的签名
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sign {
+    pub parameters: Vec<Parameter>,
+    pub return_data_type: Option<Box<DataType>>,
+    pub generic_names: Vec<String>,
+    pub which_entries: Vec<WhichEntry>,
+    pub range: Range,
+}
+
+// 函数数据类型的补充说明从属表达式
+#[derive(Debug, Clone, PartialEq)]
+pub struct WhichEntry {
+    pub is_limit: bool, // false == 一般的类型说明，true == 泛型类型约束
+    pub name: String,
+    pub data_types: Vec<DataType>,
+    pub range: Range,
+}
+
+// 范围值,用于构建切片和数列
+//
+// e.g.
+// `0..10`
+// `0..=9`
+#[derive(Debug, Clone, PartialEq)]
+pub struct Interval {
+    pub is_inclusive: bool, // false == `..`（不包括 `to`）， true == `..=` （包括 `to`）
+    pub from: Box<Expression>,
+    pub to: Option<Box<Expression>>,
+    pub range: Range,
+}
+
+impl Display for DataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataType::Identifier(i) => {
+                write!(f, "{}", i)
+            }
+            DataType::Sign(s) => {
+                write!(f, "{}", s)
+            }
+        }
+    }
+}
+
+impl Display for Sign {
+    // e.g.
+    // `sign (Int x, Int y) type Int`
+    // `sign <T, E> (T x, E y) type T`
+    // `sign (T a, String s) which {T: Int}`
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut segments = Vec::<String>::new();
+
+        segments.push("sign".to_string());
+
+        if self.generic_names.len() > 0 {
+            //
+        }
+
+        todo!()
+    }
+}
+
+impl Display for WhichEntry {
+    // e.g.
+    // `T: Int`
+    // `T: limit Display`
+    // `T: limit Display, Clone`
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut segments = Vec::<String>::new();
+        segments.push(format!("{}:", self.name.clone()));
+
+        if self.is_limit {
+            segments.push("limit".to_string());
+        }
+
+        let mut type_segments = Vec::<String>::new();
+        for dt in &self.data_types {
+            type_segments.push(dt.to_string())
+        }
+
+        let type_text = type_segments.join(", ");
+        segments.push(type_text);
+
+        write!(f, "{}", segments.join(" "))
+    }
+}
+
+impl Display for Interval {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let operator = if self.is_inclusive { "..=" } else { ".." };
+        if let Some(t) = &self.to {
+            write!(f, "{}{}{}", &self.from, operator, t)
+        } else {
+            write!(f, "{}{}", &self.from, operator)
+        }
+    }
+}
+
+// 函数的定义语句
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
     pub name: String,
-    // pub params: Vec<(datatype, name, Expression)>,
-    //pub return_type: datatype(sign | Identifier),
-    pub body: Box<Expression>,
+    pub generic_names: Vec<String>,
+    pub parameters: Vec<Parameter>,
+    pub return_data_type: Option<DataType>,
+    pub which_entries: Vec<WhichEntry>,
+    pub where_exp: Option<Expression>,
+    pub body: Expression,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EmptyFunctionDeclaration {
+    pub name: String,
+    pub generic_names: Vec<String>,
+    pub parameters: Vec<Parameter>,
+    pub return_data_type: Option<DataType>,
+    pub which_entries: Vec<WhichEntry>,
+    pub where_exp: Option<Expression>,
+    pub range: Range,
+}
+
+// 普通函数的参数
+//
+// 注意：
+// 模式函数的参数是一个表达式，模式函数的参数不能使用这个 Parameter
+#[derive(Debug, Clone, PartialEq)]
+pub struct Parameter {
+    pub data_type: DataType,
+    pub name: String,
+    pub value: Option<Expression>,
+    pub range: Range,
+}
+
+// 模式函数的定义语句
+#[derive(Debug, Clone, PartialEq)]
+pub struct PatternFunctionDeclaration {
+    pub name: String,
+    pub generic_names: Vec<String>,
+    pub parameters: Vec<PatternParameter>,
+    pub return_data_type: Option<DataType>,
+    pub which_entries: Vec<WhichEntry>,
+    pub where_exp: Option<Expression>, // 有效范围覆盖各个参数以及整个函数
+    pub only_exp: Option<Expression>,  // 在各个参数匹配后，模式函数的最后一道防线
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PatternParameter {
+    pub variable: Option<(DataType, String)>, // @ 变量的类型及名称
+    pub pattern_exp: Option<Box<Expression>>, // 模式表达式
+    pub additionals: Vec<PatternAdditional>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NamespaceStatement {
-    // todo::
+    pub dirs: Vec<String>,
+    pub range: Range,
+}
+
+// use name
+// use name::name::name
+// use name::name{one, two, three::baz, four::{foo, bar}}
+#[derive(Debug, Clone, PartialEq)]
+pub struct UseStatement {
+    pub name_path: NamePath,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct UseStatement {
-    // todo::
-    pub range: Range,
+pub struct NamePath {
+    pub directories: Vec<NamePathItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum NamePathItem {
+    Name(String),
+    Children(String, Vec<NamePath>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstDeclaration {
-    // todo::
+    pub name: String,
+    pub value: Expression,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct StructDeclaration {
-    // todo::
+pub struct MemberStructDeclaration {
+    pub name: String,
+    pub members: Vec<StructMember>,
+    pub generic_names: Vec<String>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TupleStructDeclaration {
+    pub name: String,
+    pub members: Vec<DataType>,
+    pub generic_names: Vec<String>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EmptyStructDeclaration {
+    pub name: String,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructMember {
+    pub data_type: DataType,
+    pub name: String,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnionDeclaration {
-    // todo::
+    pub members: Vec<UnionMember>,
+    pub generic_names: Vec<String>,
     pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum UnionMember {
+    Struct(MemberStructDeclaration),
+    Tuple(TupleStructDeclaration),
+    Empty(EmptyStructDeclaration),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TraitDeclaration {
-    // todo::
+    pub name: String,
+    pub associated_types: Vec<AssociatedType>, // 关联类型
+    pub function_items: Vec<TraitFunctionItem>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct AssociatedType {
+    pub name: String,            // 关联类型名称
+    pub object_type: Identifier, // 默认类型
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TraitFunctionItem {
+    Function(FunctionDeclaration),
+    EmptyFunction(EmptyFunctionDeclaration),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ImplStatement {
-    // todo::
+    pub object: Identifier,
+    pub inherit: Identifier,                   // 一般是 trait 的名称
+    pub associated_types: Vec<AssociatedType>, // 关联类型
+    pub which_exp: WhichEntry,
     pub range: Range,
 }
 
@@ -278,16 +512,16 @@ pub struct MatchExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchCase {
-    pub condition: Option<Box<Expression>>,
+    pub pattern_exp: Option<Box<Expression>>, // 模式表达式
     pub body: Box<Expression>,
-    pub where_exp: Option<Box<Expression>>,
     pub variable: Option<String>, // @ 变量名称
-    pub additionals: Vec<MatchCaseAdditional>,
+    pub additionals: Vec<PatternAdditional>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MatchCaseAdditional {
+pub enum PatternAdditional {
+    Where(Expression),            // 作用范围仅当前 case （包括 only 从属表达式）有效
     Only(Expression),             // 附加条件，一个返回 Boolean 值的表达式
     In(Expression),               // 实现了 `Exist` 特性的对象，比如 `Range` 或者 `List`
     Into(Identifier, String),     // 类型名称和标识符名称
@@ -391,67 +625,6 @@ pub struct Ellipsis {
     pub range: Range,
 }
 
-// 范围值,用于构建切片和数列
-//
-// e.g.
-// `0..10`
-// `0..=9`
-#[derive(Debug, Clone, PartialEq)]
-pub struct Interval {
-    pub is_inclusive: bool, // false == `..`（不包括 `to`）， true == `..=` （包括 `to`）
-    pub from: Box<Expression>,
-    pub to: Option<Box<Expression>>,
-    pub range: Range,
-}
-
-// 函数的签名
-//
-// e.g.
-// `sign (Int x, Int y) type Int`
-// `sign <T, E> (T x, E y) type T`
-// `sign (T a, String s) which {T: Int}`
-#[derive(Debug, Clone, PartialEq)]
-pub struct Sign {
-    pub parameters: Vec<Parameter>,
-    pub return_data_type: Option<Box<DataType>>,
-    pub generic_names: Vec<String>,
-    pub which_entries: Vec<WhichEntry>,
-    pub range: Range,
-}
-
-// 数据类型包括了：
-// - 纯数据的类型，如基本数据类型、用户自定义类型（结构体和联合体）
-// - 特性（trait）
-// - 函数类型
-#[derive(Debug, Clone, PartialEq)]
-pub enum DataType {
-    Identifier(Identifier),
-    Sign(Sign),
-}
-
-// 普通函数的参数
-//
-// 注意：
-// 模式函数的参数是一个表达式，模式函数的参数不能使用这个 Parameter
-#[derive(Debug, Clone, PartialEq)]
-pub struct Parameter {
-    pub data_type: DataType,
-    pub name: String,
-    pub range: Range,
-}
-
-// 函数数据类型的补充说明从属表达式
-//
-// e.g.
-//
-#[derive(Debug, Clone, PartialEq)]
-pub struct WhichEntry {
-    pub is_limit: bool, // false == 一般的类型说明，true == 泛型类型约束
-    pub name: String,
-    pub data_types: Vec<DataType>,
-    pub range: Range,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct List {
     pub elements: Vec<Expression>,
@@ -475,25 +648,6 @@ pub struct MapEntry {
     pub key: Box<Expression>,
     pub value: Option<Box<Expression>>,
     pub range: Range,
-}
-
-impl Display for Sign {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
-
-impl Display for DataType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DataType::Identifier(i) => {
-                write!(f, "{}", i)
-            },
-            DataType::Sign(s) => {
-                write!(f, "{}", s)
-            }
-        }
-    }
 }
 
 impl Display for BranchExpression {
@@ -567,12 +721,8 @@ impl Display for MatchCase {
             first_line_fragments.push(format!("{} @", v));
         }
 
-        if let Some(e) = &self.condition {
+        if let Some(e) = &self.pattern_exp {
             first_line_fragments.push(format!("{}", e));
-        }
-
-        if let Some(e) = &self.where_exp {
-            first_line_fragments.push(format!("where {}", e));
         }
 
         let first_line_text = first_line_fragments.join(" ");
@@ -590,22 +740,25 @@ impl Display for MatchCase {
     }
 }
 
-impl Display for MatchCaseAdditional {
+impl Display for PatternAdditional {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MatchCaseAdditional::Only(e) => {
+            PatternAdditional::Where(e) => {
+                write!(f, "where {}", e)
+            }
+            PatternAdditional::Only(e) => {
                 write!(f, "only {}", e)
             }
-            MatchCaseAdditional::In(e) => {
+            PatternAdditional::In(e) => {
                 write!(f, "in {}", e)
             }
-            MatchCaseAdditional::Into(t, n) => {
+            PatternAdditional::Into(t, n) => {
                 write!(f, "into {} {}", t, n)
             }
-            MatchCaseAdditional::Regular(s, names) => {
+            PatternAdditional::Regular(s, names) => {
                 write!(f, "regular {} ({})", s, names.join(", "))
             }
-            MatchCaseAdditional::Template(s) => {
+            PatternAdditional::Template(s) => {
                 write!(f, "template {}", s)
             }
         }
@@ -626,17 +779,6 @@ impl Display for BlockExpression {
                 "{{\n{}\n}}",
                 format_expressions_with_new_line(&self.body)
             )
-        }
-    }
-}
-
-impl Display for Interval {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let operator = if self.is_inclusive { "..=" } else { ".." };
-        if let Some(t) = &self.to {
-            write!(f, "{}{}{}", &self.from, operator, t)
-        } else {
-            write!(f, "{}{}", &self.from, operator)
         }
     }
 }
@@ -997,6 +1139,8 @@ impl Display for Literal {
     }
 }
 
+// 返回所有 statement.to_string() 的无分隔符拼接
+// 注：每个 statement 已经包含换行符，所以拼接时无需分隔符
 fn format_statements(statements: &[Statement]) -> String {
     statements
         .iter()
@@ -1005,6 +1149,7 @@ fn format_statements(statements: &[Statement]) -> String {
         .join("")
 }
 
+// 返回普通函数的所有参数以逗号 ", " 的拼接，不包含括号
 fn format_parameters(parameters: &[Parameter]) -> String {
     parameters
         .iter()
@@ -1013,6 +1158,13 @@ fn format_parameters(parameters: &[Parameter]) -> String {
         .join(", ")
 }
 
+fn format_generic_names(generic_names: &[String]) -> String {
+    generic_names
+        .join(", ")
+}
+
+// 返回匿名函数的所有参数以逗号 ", " 的拼接，不包含括号
+// 注：匿名函数的参数可省略数据类型
 fn format_anonymous_parameters(parameters: &[AnonymousParameter]) -> String {
     parameters
         .iter()
@@ -1028,6 +1180,8 @@ fn format_anonymous_parameters(parameters: &[AnonymousParameter]) -> String {
         .join(", ")
 }
 
+// 返回函数调用时所有参数（实参）以逗号 ", " 的拼接，不包含括号
+// 注：参数有 "按位置" 和 "按名称" 两种方式。
 fn format_arguments(arguments: &[Argument]) -> String {
     arguments
         .iter()
@@ -1043,6 +1197,7 @@ fn format_arguments(arguments: &[Argument]) -> String {
         .join(", ")
 }
 
+// 返回所有表达式以逗号 ", " 的拼接，不包含括号
 fn format_expressions_with_comma(expressions: &[Expression]) -> String {
     expressions
         .iter()
@@ -1051,6 +1206,7 @@ fn format_expressions_with_comma(expressions: &[Expression]) -> String {
         .join(", ")
 }
 
+// 返回所有表达式以换行符 "\n" 的拼接，不包含括号
 fn format_expressions_with_new_line(expressions: &[Expression]) -> String {
     expressions
         .iter()

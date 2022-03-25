@@ -480,17 +480,50 @@ function name (T t, F f) type T
 }
 ```
 
-#### 空函数
+### 函数重载
+
+名称相同，返回值相同，但参数列表不同的函数称为函数重载。
+
+```js
+function fun1 (Int a) type Int {
+    ...
+}
+
+function fun2 (Int a, Int b) type Int {
+    ...
+}
+```
+
+#### 可选参数
+
+提供了默认值的参数为可选参数
+
+```js
+function name(Int a, Int b = 100) ...
+```
+
+可选参数必须排在参数列表的后面，允许多个可选参数。
+
+```js
+function draw(Int width, Style style = Style::Solid, Color color = Color::Red) ...
+```
+
+可选参数只是 **函数调用** 的语法糖，实际上带有可选参数的函数的签名当中的参数仍然是全体参数。
+
+#### 重载冲突
+
+在判断判断一个同名函数的所有重载是否存在冲突时，编译器将会 **无视参数名称**，**无视是否可选参数**，仅依据参数的数据类型和顺序来判断。
+
+### 空函数
 
 `empty` 关键字用于在 `trait` 里定义无具体实现的函数。
 
-```js
-empty function name (...) ...
-```
+`empty function name (...) type type_name`
+`empty function name (...)`
 
 ### 模式函数
 
-添加了关键字 `pattern` 的函数，其参数可以使用匹配/解藕表达式（包括 match 表达式 case 关键字后面的各种从属表达式）
+添加了关键字 `pattern` 的函数，其参数可以使用匹配/解藕表达式（包括 match 表达式 case 关键字后面的各种从属表达式）。模式函数必须同名、同参数、同返回类型（指：函数名称相同，参数个数、参数出现的顺序和数据类型都必须相同，返回数据类型也必须相同，仅每个参数的模式表达式不同）。
 
 ```js
 pattern function test (parse Email email, parse Phone phone) {
@@ -498,7 +531,9 @@ pattern function test (parse Email email, parse Phone phone) {
 }
 ```
 
-同名的模式匹配函数会被转换为 branch 结构
+同名的模式匹配函数会被编译器转换为 branch 结构。编译器会把它们全部组合为一个函数。
+
+模式函数的参数不能是可选参数。
 
 ### 关联函数/方法
 
@@ -574,11 +609,32 @@ trait Convertable type (ItemType1=TypeName2, ItemType1=TypeName2) {
 
 ### 泛型
 
+#### 泛型函数
+
 `function name<T>(T left, T right) ...`
 
 泛型参数具体化
 
 `let a = name<type_name>(a, b)`
+
+#### 泛型结构体
+
+```js
+struct Point<T> {
+    T x
+    T y
+}
+```
+
+关联方法
+
+```js
+impl<T> Point<T> {
+    function add(Self this) type T {
+        this.x + this.y
+    }
+}
+```
 
 #### 泛型特性约束
 

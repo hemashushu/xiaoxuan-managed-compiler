@@ -53,7 +53,6 @@ pub enum Token {
     GreaterThanOrEqual,    // >=
     LessThan,              // <
     LessThanOrEqual,       // <=
-    Forward,               // >>
     NamedOperator(String), // :name:
     Concat,                // ++
     Plus,                  // +
@@ -61,16 +60,16 @@ pub enum Token {
     Asterisk,              // *
     Slash,                 // /
 
-    UnwrapOr, // ??
-    Combine,  // &
-    Cast,     // ^
-    Unwrap,   // ?
-    Dot,      // .
+    OptionalOr,  // ??
+    OptionalAnd, // >>
+
+    Combine, // &
+    Cast,    // ^
+    Unwrap,  // ?
+    Dot,     // .
 
     LeftBracket,  // [
     RightBracket, // ]
-
-    // Arrow, // =>
 
     Exclamation, // !
 
@@ -183,7 +182,6 @@ impl fmt::Display for Token {
             Token::GreaterThanOrEqual => write!(f, ">="), // >=
             Token::LessThan => write!(f, "<"),    // <
             Token::LessThanOrEqual => write!(f, "<="), // <=
-            Token::Forward => write!(f, ">>"), // >>
             Token::NamedOperator(value) => write!(f, ":{}:", value),
             Token::Concat => write!(f, "++"), // ++
             Token::Plus /* Add */ => write!(f, "+"),      // +
@@ -191,7 +189,9 @@ impl fmt::Display for Token {
             Token::Asterisk /* Multiply */ => write!(f, "*"), // *
             Token::Slash /* Divide */ => write!(f, "/"),   // /
 
-            Token::UnwrapOr => write!(f, "??"), // ??
+            Token::OptionalOr => write!(f, "??"), // ??
+            Token::OptionalAnd => write!(f, ">>"), // >>
+
             Token::Combine => write!(f, "&"),   // &
             Token::Cast => write!(f, "^"), // ^
             Token::Unwrap => write!(f, "?"), // ?
@@ -199,8 +199,6 @@ impl fmt::Display for Token {
 
             Token::LeftBracket => write!(f, "["),  // [
             Token::RightBracket => write!(f, "]"), // ]
-
-            // Token::Arrow => write!(f, "=>"), // =>
 
             Token::Exclamation => write!(f, "!"), // !
 
@@ -343,14 +341,15 @@ mod tests {
         assert_eq!(Token::GreaterThanOrEqual.to_string(), ">=");
         assert_eq!(Token::LessThan.to_string(), "<");
         assert_eq!(Token::LessThanOrEqual.to_string(), "<=");
-        assert_eq!(Token::Forward.to_string(), ">>");
         assert_eq!(Token::Concat.to_string(), "++");
         assert_eq!(Token::Plus.to_string(), "+");
         assert_eq!(Token::Minus.to_string(), "-");
         assert_eq!(Token::Asterisk.to_string(), "*");
         assert_eq!(Token::Slash.to_string(), "/");
 
-        assert_eq!(Token::UnwrapOr.to_string(), "??");
+        assert_eq!(Token::OptionalOr.to_string(), "??");
+        assert_eq!(Token::OptionalAnd.to_string(), ">>");
+
         assert_eq!(Token::Combine.to_string(), "&");
         assert_eq!(Token::Cast.to_string(), "^");
         assert_eq!(Token::Unwrap.to_string(), "?");
@@ -358,7 +357,7 @@ mod tests {
 
         assert_eq!(Token::LeftBracket.to_string(), "[");
         assert_eq!(Token::RightBracket.to_string(), "]");
-        // assert_eq!(Token::Arrow.to_string(), "=>");
+
         assert_eq!(Token::Exclamation.to_string(), "!");
         assert_eq!(Token::LeftParen.to_string(), "(");
         assert_eq!(Token::RightParen.to_string(), ")");

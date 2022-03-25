@@ -86,7 +86,7 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                     '>' => {
                         if is_char('>', rest) {
                             // `>>`
-                            add_token_detail(&mut token_details, new_token_detail(Token::Forward));
+                            add_token_detail(&mut token_details, new_token_detail(Token::OptionalAnd));
                             move_forword(rest, 1)
                         } else if is_char('=', rest) {
                             // `>=`
@@ -176,7 +176,7 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                     '?' => {
                         if is_char('?', rest) {
                             // `??`
-                            add_token_detail(&mut token_details, new_token_detail(Token::UnwrapOr));
+                            add_token_detail(&mut token_details, new_token_detail(Token::OptionalOr));
                             move_forword(rest, 1)
                         } else {
                             // `?`
