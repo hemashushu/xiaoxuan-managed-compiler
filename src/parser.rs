@@ -34,7 +34,7 @@ fn parse_program(source_token_details: &[TokenDetail]) -> Result<Program, Error>
 
     loop {
         // 消除前导的空行
-        let post_new_lines = skip_new_lines(source_token_details);
+        let post_new_lines = skip_new_lines(token_details);
 
         if post_new_lines.first() == None {
             break;
@@ -1847,14 +1847,14 @@ mod tests {
         assert_eq!(a9.to_string(), "[1..,]\n");
 
         // 闭区间
-        todo!();
-
-        // 带有一个元素以及一个范围表达式的列表
-        let a10 = parse_from_string("[1,3..9,]").unwrap();
-        assert_eq!(a10.to_string(), "[1, 3..9,]\n");
-
-        let a11 = parse_from_string("[1,3..,]").unwrap();
-        assert_eq!(a11.to_string(), "[1, 3..,]\n");
+//         todo!();
+//
+//         // 带有一个元素以及一个范围表达式的列表
+//         let a10 = parse_from_string("[1,3..9,]").unwrap();
+//         assert_eq!(a10.to_string(), "[1, 3..9,]\n");
+//
+//         let a11 = parse_from_string("[1,3..,]").unwrap();
+//         assert_eq!(a11.to_string(), "[1, 3..,]\n");
     }
 
     // operating expressions
@@ -1910,26 +1910,26 @@ mod tests {
         let a4 = parse_from_string("1==2>3").unwrap();
         assert_eq!(a4.to_string(), "(1 == (2 > 3))\n");
 
-        let a5 = parse_from_string("1>2>>3").unwrap();
-        assert_eq!(a5.to_string(), "(1 > (2 >> 3))\n");
+        let a5 = parse_from_string("1>2:bit_or:3").unwrap();
+        assert_eq!(a5.to_string(), "(1 > (2 :bit_or: 3))\n");
 
-        let a6 = parse_from_string("1>>2:bit_or:3").unwrap();
-        assert_eq!(a6.to_string(), "(1 >> (2 :bit_or: 3))\n");
+        let a6 = parse_from_string("1:bit_and:2++3").unwrap();
+        assert_eq!(a6.to_string(), "(1 :bit_and: (2 ++ 3))\n");
 
-        let a7 = parse_from_string("1:bit_and:2++3").unwrap();
-        assert_eq!(a7.to_string(), "(1 :bit_and: (2 ++ 3))\n");
+        let a7 = parse_from_string("1++2+3").unwrap();
+        assert_eq!(a7.to_string(), "(1 ++ (2 + 3))\n");
 
-        let a8 = parse_from_string("1++2+3").unwrap();
-        assert_eq!(a8.to_string(), "(1 ++ (2 + 3))\n");
+        let a8 = parse_from_string("1+2*3").unwrap();
+        assert_eq!(a8.to_string(), "(1 + (2 * 3))\n");
 
-        let a9 = parse_from_string("1+2*3").unwrap();
-        assert_eq!(a9.to_string(), "(1 + (2 * 3))\n");
+        let a9 = parse_from_string("1*2??3").unwrap();
+        assert_eq!(a9.to_string(), "(1 * (2 ?? 3))\n");
 
-        let a10 = parse_from_string("1*2??3").unwrap();
-        assert_eq!(a10.to_string(), "(1 * (2 ?? 3))\n");
+        let a10 = parse_from_string("1??2>>3").unwrap();
+        assert_eq!(a10.to_string(), "(1 ?? (2 >> 3))\n");
 
-        let a11 = parse_from_string("1??2&3").unwrap();
-        assert_eq!(a11.to_string(), "(1 ?? (2 & 3))\n");
+        let a11 = parse_from_string("1>>2&3").unwrap();
+        assert_eq!(a11.to_string(), "(1 >> (2 & 3))\n");
     }
 
     #[test]
@@ -2001,7 +2001,7 @@ mod tests {
             })
         );
 
-        assert_eq!(a1.to_string(), "{\n123\nabc\n}\n");
+        assert_eq!(a1.to_string(), "do {\n123\nabc\n}\n");
     }
 
     // statement

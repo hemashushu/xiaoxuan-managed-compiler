@@ -391,15 +391,17 @@ impl Display for FunctionDeclaration {
 
 impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-        //         match self {
-        //             Statement::FunctionDeclaration(declaration) => {
-        //                 write!(f, "{}\n", declaration)
-        //             },
-        //             Statement::Expression(expression) => {
-        //                 write!(f, "{}\n", expression)
-        //             }
-        //         }
+        match self {
+            Statement::FunctionDeclaration(declaration) => {
+                write!(f, "{}\n", declaration)
+            }
+            Statement::Expression(expression) => {
+                write!(f, "{}\n", expression)
+            }
+            _=>{
+                todo!()
+            }
+        }
     }
 }
 
@@ -1159,8 +1161,7 @@ fn format_parameters(parameters: &[Parameter]) -> String {
 }
 
 fn format_generic_names(generic_names: &[String]) -> String {
-    generic_names
-        .join(", ")
+    generic_names.join(", ")
 }
 
 // 返回匿名函数的所有参数以逗号 ", " 的拼接，不包含括号
