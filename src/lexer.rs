@@ -86,7 +86,10 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                     '>' => {
                         if is_char('>', rest) {
                             // `>>`
-                            add_token_detail(&mut token_details, new_token_detail(Token::OptionalAnd));
+                            add_token_detail(
+                                &mut token_details,
+                                new_token_detail(Token::OptionalAnd),
+                            );
                             move_forword(rest, 1)
                         } else if is_char('=', rest) {
                             // `>=`
@@ -176,7 +179,10 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                     '?' => {
                         if is_char('?', rest) {
                             // `??`
-                            add_token_detail(&mut token_details, new_token_detail(Token::OptionalOr));
+                            add_token_detail(
+                                &mut token_details,
+                                new_token_detail(Token::OptionalOr),
+                            );
                             move_forword(rest, 1)
                         } else {
                             // `?`
@@ -505,11 +511,10 @@ fn lex_document_comment(source_chars: &[char]) -> Result<(String, &[char]), Erro
             Some((first, rest)) => {
                 chars = match *first {
                     '\'' => {
-                        if is_chars(['\'','\''], rest) {
+                        if is_chars(['\'', '\''], rest) {
                             // 找到了 `'''`
                             end_pos += 2;
                             break;
-
                         } else {
                             // 找到了单引号，但不是三个连续的单引号
                             end_pos += 1;
@@ -531,7 +536,7 @@ fn lex_document_comment(source_chars: &[char]) -> Result<(String, &[char]), Erro
         }
     }
 
-    let value_chars = &source_chars[2..end_pos-2];
+    let value_chars = &source_chars[2..end_pos - 2];
     let value = value_chars.iter().collect::<String>();
 
     // '''foo bar'''
@@ -672,11 +677,10 @@ fn lex_raw_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error
             Some((first, rest)) => {
                 chars = match *first {
                     '"' => {
-                        if is_chars(['"','"'], rest) {
+                        if is_chars(['"', '"'], rest) {
                             // 找到了 '"""'
                             end_pos += 2;
                             break;
-
                         } else {
                             // 找到了双引号，但不是三个连续的双引号
                             end_pos += 1;
@@ -700,7 +704,7 @@ fn lex_raw_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error
 
     // todo:: 截去每行的共同前缀空白
 
-    let value_chars = &source_chars[2..end_pos-2];
+    let value_chars = &source_chars[2..end_pos - 2];
     let value = value_chars.iter().collect::<String>();
 
     // """foo bar"""
@@ -933,10 +937,10 @@ fn lex_number(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
                         }
                     }
                     '\'' => {
-                        if is_chars(['\'','\''], rest) {
+                        if is_chars(['\'', '\''], rest) {
                             // 遇到了文档注释
                             break;
-                        }else {
+                        } else {
                             // 遇到了比特数
                             return continue_lex_bit_number(source_chars[..end_pos].to_vec(), rest);
                         }
@@ -1259,9 +1263,7 @@ fn is_char(expected: char, source_chars: &[char]) -> bool {
 
 fn is_chars(expected: [char; 2], source_chars: &[char]) -> bool {
     match source_chars.split_first() {
-        Some((first, rest)) if *first == expected[0] => {
-            is_char(expected[1], rest)
-        }
+        Some((first, rest)) if *first == expected[0] => is_char(expected[1], rest),
         _ => false,
     }
 }
@@ -1357,6 +1359,8 @@ mod tests {
 
     use super::tokenize;
 
+    // 辅助函数
+
     fn token_details_to_string(token_details: &[TokenDetail]) -> Vec<String> {
         let strings: Vec<String> = token_details.iter().map(|t| t.token.to_string()).collect();
         strings
@@ -1448,7 +1452,7 @@ mod tests {
         let tokens4 = tokenize("1.6e-2").unwrap();
         assert_eq!(token_details_to_string(&tokens4), vec!["0.016"]);
 
-        // 测试范围表达式，用于区分浮点数字面量
+        // 测试范围表达式，测试点号是否被正确解析
         let tokens5 = tokenize("1..10").unwrap();
         assert_eq!(token_details_to_string(&tokens5), vec!["1", "..", "10"]);
     }
@@ -1503,6 +1507,7 @@ mod tests {
     fn test_char_literal() {
         let tokens1 = tokenize("'a' 'b'").unwrap();
         assert_eq!(token_details_to_string(&tokens1), vec!["'a'", "'b'"]);
+
         // todo:: 测试转义字符
     }
 
@@ -1513,6 +1518,10 @@ mod tests {
             token_details_to_string(&tokens1),
             vec!["\"foo\"", "\"b'a`r\"", "\"a\\\"b\""]
         );
+
+        // 测试多行字符串
+        let tokens2 = tokenize("\"foo\n    bar\"").unwrap();
+        assert_eq!(token_details_to_string(&tokens2), vec!["\"foo\n    bar\""]);
 
         // todo:: 测试转义字符
 
@@ -1565,7 +1574,6 @@ mod tests {
 
     #[test]
     fn test_symbols_and_operators() {
-        // general punctuations
         let tokens1 = tokenize("{ } = | || && == != > >= < <= >> ++ + - * /").unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),

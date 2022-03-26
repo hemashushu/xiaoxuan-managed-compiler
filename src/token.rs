@@ -161,7 +161,7 @@ impl fmt::Display for Token {
                     write!(hex, "{:02x}", byte)?;
                 }
                 write!(f, "{}'x{}", width, hex)
-            },
+            }
             Token::Boolean(value) => write!(f, "{}", value),
             Token::Char(value) => write!(f, "'{}'", value),
             Token::GeneralString(value) => write!(f, "\"{}\"", value),
@@ -172,30 +172,30 @@ impl fmt::Display for Token {
             Token::LeftBrace => write!(f, "{{"),  // {
             Token::RightBrace => write!(f, "}}"), // }
 
-            Token::Assign => write!(f, "="),   // =
-            Token::Pipe => write!(f, "|"),     // |
-            Token::LogicOr => write!(f, "||"),    // ||
-            Token::LogicAnd => write!(f, "&&"),   // &&
-            Token::Equal => write!(f, "=="),      // ==
-            Token::NotEqual => write!(f, "!="),   // !=
-            Token::GreaterThan => write!(f, ">"), // >
+            Token::Assign => write!(f, "="),              // =
+            Token::Pipe => write!(f, "|"),                // |
+            Token::LogicOr => write!(f, "||"),            // ||
+            Token::LogicAnd => write!(f, "&&"),           // &&
+            Token::Equal => write!(f, "=="),              // ==
+            Token::NotEqual => write!(f, "!="),           // !=
+            Token::GreaterThan => write!(f, ">"),         // >
             Token::GreaterThanOrEqual => write!(f, ">="), // >=
-            Token::LessThan => write!(f, "<"),    // <
-            Token::LessThanOrEqual => write!(f, "<="), // <=
-            Token::NamedOperator(value) => write!(f, ":{}:", value),
-            Token::Concat => write!(f, "++"), // ++
-            Token::Plus /* Add */ => write!(f, "+"),      // +
-            Token::Minus /* Subtract */ => write!(f, "-"), // -
-            Token::Asterisk /* Multiply */ => write!(f, "*"), // *
-            Token::Slash /* Divide */ => write!(f, "/"),   // /
+            Token::LessThan => write!(f, "<"),            // <
+            Token::LessThanOrEqual => write!(f, "<="),    // <=
+            Token::NamedOperator(value) => write!(f, ":{}:", value), // :name:
+            Token::Concat => write!(f, "++"),             // ++
+            Token::Plus => write!(f, "+"),                // + Add
+            Token::Minus => write!(f, "-"),               // - Subtract
+            Token::Asterisk => write!(f, "*"),            // * Multiply
+            Token::Slash => write!(f, "/"),               // / Divide
 
-            Token::OptionalOr => write!(f, "??"), // ??
+            Token::OptionalOr => write!(f, "??"),  // ??
             Token::OptionalAnd => write!(f, ">>"), // >>
 
-            Token::Combine => write!(f, "&"),   // &
-            Token::Cast => write!(f, "^"), // ^
-            Token::Unwrap => write!(f, "?"), // ?
-            Token::Dot => write!(f, "."), // .
+            Token::Combine => write!(f, "&"), // &
+            Token::Cast => write!(f, "^"),    // ^
+            Token::Unwrap => write!(f, "?"),  // ?
+            Token::Dot => write!(f, "."),     // .
 
             Token::LeftBracket => write!(f, "["),  // [
             Token::RightBracket => write!(f, "]"), // ]
@@ -206,13 +206,13 @@ impl fmt::Display for Token {
             Token::RightParen => write!(f, ")"), // )
 
             // 其他符号
-            Token::At => write!(f, "@"),     // ..
-            Token::Interval => write!(f, ".."),     // ..
-            Token::IntervalInclusive => write!(f, "..="),     // ..=
-            Token::Ellipsis => write!(f, "..."), // ...
-            Token::Separator => write!(f, "::"), // ::
-            Token::Colon => write!(f, ":"),      // :
-            Token::Comma => write!(f, ","),      // ,
+            Token::At => write!(f, "@"),                  // ..
+            Token::Interval => write!(f, ".."),           // ..
+            Token::IntervalInclusive => write!(f, "..="), // ..=
+            Token::Ellipsis => write!(f, "..."),          // ...
+            Token::Separator => write!(f, "::"),          // ::
+            Token::Colon => write!(f, ":"),               // :
+            Token::Comma => write!(f, ","),               // ,
 
             // 关键字
             Token::Do => write!(f, "do"),
@@ -372,7 +372,6 @@ mod tests {
 
         assert_eq!(Token::Do.to_string(), "do");
         assert_eq!(Token::Join.to_string(), "join");
-        // assert_eq!(Token::To.to_string(), "to");
 
         assert_eq!(Token::Let.to_string(), "let");
         assert_eq!(Token::Fn.to_string(), "fn");
@@ -436,7 +435,7 @@ mod tests {
                 start: 2,
                 end: 3,
             },
-            token: Token::Plus, // Add,
+            token: Token::Plus, // Add
         };
 
         let tk2 = TokenDetail {
@@ -445,7 +444,7 @@ mod tests {
                 start: 2,
                 end: 3,
             },
-            token: Token::Minus, // Subtract,
+            token: Token::Minus, // Subtract
         };
 
         assert_eq!(tk1.to_string(), "[file id: 1, start: 2, end: 3] +");

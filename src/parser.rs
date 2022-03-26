@@ -1043,14 +1043,14 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
                                 // 当前是范围表达式
                                 let (
                                     is_inclusive,
-                                    optional_end_expression,
+                                    optional_to_expression,
                                     post_continue_parse_interval,
                                 ) = continue_parse_interval(post_rest)?;
 
                                 let interval_expression = Expression::Interval(Interval {
                                     is_inclusive,
                                     from: Box::new(expression),
-                                    to: match optional_end_expression {
+                                    to: match optional_to_expression {
                                         Some(end_expression) => Some(Box::new(end_expression)),
                                         None => None,
                                     },
@@ -1266,7 +1266,7 @@ fn continue_parse_ellipsis(
 }
 
 // 解析 `范围表达式`
-// 返回 (`end` 是否闭区间, `end` 部分表达式, 剩余的 token)
+// 返回 (`to` 是否闭区间, `to` 表达式, 剩余的 token)
 fn continue_parse_interval(
     source_token_details: &[TokenDetail],
 ) -> Result<(bool, Option<Expression>, &[TokenDetail]), Error> {
@@ -1295,13 +1295,21 @@ fn continue_parse_interval(
         Some(TokenDetail { token, .. })
             if (*token == Token::Comma || *token == Token::RightBracket) =>
         {
-            // 遇到了逗号或者右中括号，说明当前范围表达式缺省 `end` 部分。
-            Ok((is_inclusive, None, post_new_lines))
+            // 遇到了逗号或者右中括号
+            if is_inclusive {
+                // 对于闭区间的范围表达式，`to` 部分是不能省略的。
+                Err(Error::ParserError(
+                    "expected inclusive range end".to_string(),
+                ))
+            } else {
+                // 当前范围表达式缺省了 `to` 部分。
+                Ok((is_inclusive, None, post_new_lines))
+            }
         }
         _ => {
-            // 解析 `end` 部分表达式
-            let (end_expression, post_end_expression) = parse_expression(post_new_lines)?;
-            Ok((is_inclusive, Some(end_expression), post_end_expression))
+            // 解析 `to` 部分表达式
+            let (to_expression, post_parse_to_expression) = parse_expression(post_new_lines)?;
+            Ok((is_inclusive, Some(to_expression), post_parse_to_expression))
         }
     }
 }
@@ -1847,14 +1855,14 @@ mod tests {
         assert_eq!(a9.to_string(), "[1..,]\n");
 
         // 闭区间
-//         todo!();
-//
-//         // 带有一个元素以及一个范围表达式的列表
-//         let a10 = parse_from_string("[1,3..9,]").unwrap();
-//         assert_eq!(a10.to_string(), "[1, 3..9,]\n");
-//
-//         let a11 = parse_from_string("[1,3..,]").unwrap();
-//         assert_eq!(a11.to_string(), "[1, 3..,]\n");
+        //         todo!();
+        //
+        //         // 带有一个元素以及一个范围表达式的列表
+        //         let a10 = parse_from_string("[1,3..9,]").unwrap();
+        //         assert_eq!(a10.to_string(), "[1, 3..9,]\n");
+        //
+        //         let a11 = parse_from_string("[1,3..,]").unwrap();
+        //         assert_eq!(a11.to_string(), "[1, 3..,]\n");
     }
 
     // operating expressions
@@ -2001,7 +2009,7 @@ mod tests {
             })
         );
 
-        assert_eq!(a1.to_string(), "do {\n123\nabc\n}\n");
+        assert_eq!(a1.to_string(), "do {123\nabc}\n");
     }
 
     // statement
