@@ -399,46 +399,52 @@ pub struct EachExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BranchExpression {
+    pub where_exp: Option<Box<Expression>>,
     pub cases: Vec<BranchCase>,
     pub default: Option<Box<Expression>>,
-    pub where_exp: Option<Box<Expression>>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BranchCase {
+    pub where_exp: Option<Box<Expression>>,
     pub condition: Box<Expression>,
     pub body: Box<Expression>,
-    pub where_exp: Option<Box<Expression>>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchExpression {
+    pub where_exp: Option<Box<Expression>>,
     pub object: Box<Expression>,
     pub cases: Vec<MatchCase>,
     pub default: Option<Box<Expression>>,
-    pub where_exp: Option<Box<Expression>>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchCase {
+    pub variable: Option<String>,             // @ 变量名称
     pub pattern_exp: Option<Box<Expression>>, // 模式表达式
-    pub body: Box<Expression>,
-    pub variable: Option<String>, // @ 变量名称
     pub additionals: Vec<PatternAdditional>,
+    pub body: Box<Expression>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PatternAdditional {
-    Where(Expression),            // 作用范围仅当前 case （包括 only 从属表达式）有效
-    Only(Expression),             // 附加条件，一个返回 Boolean 值的表达式
-    In(Expression),               // 实现了 `Exist` 特性的对象，比如 `Range` 或者 `List`
-    Into(Identifier, String),     // 类型名称和标识符名称
-    Regular(String, Vec<String>), // 正则表达式字符串字面量，以及变量名列表
-    Template(String),             // 带有占位符的字符串字面量
+    Where(Expression),        // 作用范围仅当前 case （包括 only 从属表达式）有效
+    Only(Expression),         // 附加条件，一个返回 Boolean 值的表达式
+    In(Expression),           // 实现了 `Exist` 特性的对象，比如 `Range` 或者 `List`
+    Into(Identifier, String), // 类型名称和标识符名称
+    Regular(RegularExpressionLiteral, Tuple), // 正则表达式字符串字面量，以及变量名列表
+    Template(RegularExpressionLiteral), // 带有占位符的字符串字面量
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RegularExpressionLiteral {
+    GeneralString(GeneralString),
+    TemplateString(TemplateString),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -684,21 +690,36 @@ pub struct MapEntry {
 
 impl Display for BlockExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut segments = Vec::<String>::new();
         if self.is_explicit {
-            write!(f, "do {{{}}}", format_expressions_with_new_line(&self.body))
-        } else {
-            write!(f, "{{{}}}", format_expressions_with_new_line(&self.body))
+            segments.push("do ".to_string());
         }
+        segments.push("{".to_string());
+        if self.body.len() > 0 {
+            segments.push("\n".to_string());
+            segments.push(format_expressions_with_new_line(&self.body));
+            segments.push("\n".to_string());
+        }
+        segments.push("}".to_string());
+
+        write!(f, "{}", segments.join(""))
     }
 }
 
 impl Display for JoinExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "join {{{}}}",
-            format_expressions_with_new_line(&self.body)
-        )
+        let mut segments = Vec::<String>::new();
+        segments.push("join ".to_string());
+
+        segments.push("{".to_string());
+        if self.body.len() > 0 {
+            segments.push("\n".to_string());
+            segments.push(format_expressions_with_new_line(&self.body));
+            segments.push("\n".to_string());
+        }
+        segments.push("}".to_string());
+
+        write!(f, "{}", segments.join(""))
     }
 }
 
@@ -710,16 +731,32 @@ impl Display for LetExpression {
 
 impl Display for IfExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // 当 if 的各子表达式为另一个 if 表达式时，加上
+        // 一对花括号包围起来，防止嵌套 if 表达式结构错乱
+        let escape = |e: &Expression| match e {
+            Expression::IfExpression(i) => {
+                format!("{{{}}}", i)
+            }
+            _ => format!("{}", e),
+        };
+
         match &self.alternate {
             Some(a) => {
                 write!(
                     f,
                     "if {} then {} else {}",
-                    self.condition, self.consequent, a
+                    escape(&self.condition),
+                    escape(&self.consequent),
+                    escape(a)
                 )
             }
             None => {
-                write!(f, "if {} then {}", self.condition, self.consequent)
+                write!(
+                    f,
+                    "if {} then {}",
+                    escape(&self.condition),
+                    escape(&self.consequent)
+                )
             }
         }
     }
@@ -771,15 +808,15 @@ impl Display for BranchExpression {
 
 impl Display for BranchCase {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut head_line_fragments = Vec::<String>::new();
+        let mut fragments = Vec::<String>::new();
 
-        head_line_fragments.push(format!("{}", &self.condition));
+        fragments.push(format!("case {}", &self.condition));
 
         if let Some(e) = &self.where_exp {
-            head_line_fragments.push(format!("where {}", e));
+            fragments.push(format!("where {}", e));
         }
 
-        let head_text = head_line_fragments.join(" ");
+        let head_text = fragments.join(" ");
         write!(f, "{}: {}", head_text, &self.body)
     }
 }
@@ -812,28 +849,31 @@ impl Display for MatchExpression {
 
 impl Display for MatchCase {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut first_line_fragments = Vec::<String>::new();
+        let mut fragments = Vec::<String>::new();
+
+        fragments.push("case".to_string());
 
         if let Some(v) = &self.variable {
-            first_line_fragments.push(format!("{} @", v));
+            fragments.push(format!("{} @", v));
         }
 
         if let Some(e) = &self.pattern_exp {
-            first_line_fragments.push(format!("{}", e));
+            fragments.push(format!("{}", e));
         }
 
-        let first_line_text = first_line_fragments.join(" ");
+        if self.additionals.len() > 0 {
+            let mut additional_lines = Vec::<String>::new();
 
-        let mut additional_lines = Vec::<String>::new();
+            for a in &self.additionals {
+                additional_lines.push(format!("{}", a));
+            }
 
-        for a in &self.additionals {
-            additional_lines.push(format!("{}", a));
+            let additional_text = additional_lines.join("\n");
+
+            fragments.push(additional_text);
         }
 
-        let additional_text = additional_lines.join("\n");
-
-        let head_text = vec![first_line_text, additional_text].join("\n");
-        write!(f, "{}: {}", head_text, &self.body)
+        write!(f, "{}: {}", fragments.join(" "), &self.body)
     }
 }
 
@@ -852,12 +892,21 @@ impl Display for PatternAdditional {
             PatternAdditional::Into(t, n) => {
                 write!(f, "into {} {}", t, n)
             }
-            PatternAdditional::Regular(s, names) => {
-                write!(f, "regular {} ({})", s, names.join(", "))
+            PatternAdditional::Regular(s, n) => {
+                write!(f, "regular {} {}", s, n)
             }
             PatternAdditional::Template(s) => {
                 write!(f, "template {}", s)
             }
+        }
+    }
+}
+
+impl Display for RegularExpressionLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RegularExpressionLiteral::GeneralString(v) => write!(f, "{}", v),
+            RegularExpressionLiteral::TemplateString(v) => write!(f, "{}", v),
         }
     }
 }
@@ -1023,7 +1072,7 @@ impl Display for Map {
             .collect::<Vec<String>>()
             .join("\n"); // 注：映射表项目之间也支持使用逗号分隔
 
-        write!(f, "{{{}}}", text)
+        write!(f, "{{\n{}\n}}", text)
     }
 }
 
@@ -1346,17 +1395,18 @@ mod tests {
     use crate::{
         ast::{
             Argument, Bit, Complex, Ellipsis, Expression, FunctionCallExpression, GeneralString,
-            HashString, Identifier, JoinExpression, List, NamedOperator, PrefixIdentifier,
-            UnaryExpression, WhichEntry,
+            HashString, Identifier, JoinExpression, List, MatchCase, MatchExpression,
+            NamedOperator, NextExpression, PatternAdditional, PrefixIdentifier,
+            RegularExpressionLiteral, UnaryExpression, WhichEntry,
         },
         token::Token,
     };
 
     use super::{
-        BinaryExpression, BlockExpression, Boolean, Char, ConstructorExpression, DataType, Float,
-        FunctionDeclaration, IfExpression, Integer, Interval, LetExpression, Literal, Map,
-        MapEntry, MemberExpression, Node, Program, Range, Sign, SliceExpression, Statement,
-        TemplateString, Tuple,
+        BinaryExpression, BlockExpression, Boolean, BranchCase, BranchExpression, Char,
+        ConstructorExpression, DataType, EachExpression, Float, ForExpression, FunctionDeclaration,
+        IfExpression, Integer, Interval, LetExpression, Literal, Map, MapEntry, MemberExpression,
+        Node, Program, Range, Sign, SliceExpression, Statement, TemplateString, Tuple,
     };
 
     // 辅助函数
@@ -1426,6 +1476,23 @@ mod tests {
             left: Box::new(Expression::Literal(new_literal_integer(left))),
             right: Box::new(Expression::Literal(new_literal_integer(right))),
             operator: Token::Plus,
+            range: new_range(),
+        })
+    }
+
+    fn new_relational_expression(left: i64, right: i64) -> Expression {
+        Expression::BinaryExpression(BinaryExpression {
+            left: Box::new(Expression::Literal(new_literal_integer(left))),
+            right: Box::new(Expression::Literal(new_literal_integer(right))),
+            operator: Token::GreaterThan,
+            range: new_range(),
+        })
+    }
+
+    fn new_let_expression(variable_name: &str, value: i64) -> Expression {
+        Expression::LetExpression(LetExpression {
+            object: Box::new(Expression::Identifier(new_identifier(variable_name))),
+            value: Box::new(Expression::Literal(new_literal_integer(value))),
             range: new_range(),
         })
     }
@@ -2067,8 +2134,10 @@ mod tests {
         assert_eq!(
             m1.to_string(),
             trim_left_margin(
-                "{#name: \"foo\"
-                id: 123}"
+                "{
+                    #name: \"foo\"
+                    id: 123
+                }"
             )
         );
 
@@ -2099,9 +2168,11 @@ mod tests {
         assert_eq!(
             m2.to_string(),
             trim_left_margin(
-                "{name: \"bar\"
-                id
-                ...}"
+                "{
+                    name: \"bar\"
+                    id
+                    ...
+                }"
             )
         );
     }
@@ -2135,6 +2206,9 @@ mod tests {
         // 测试辅助方法 new_addition_expression
         let e3 = new_addition_expression(11, 22);
         assert_eq!(e3.to_string(), "(11 + 22)");
+
+        let e4 = new_relational_expression(6, 3);
+        assert_eq!(e4.to_string(), "(6 > 3)");
     }
 
     #[test]
@@ -2359,7 +2433,15 @@ mod tests {
             },
             range: new_range(),
         };
-        assert_eq!(e1.to_string(), "Point {x: 123\ny: 456}");
+        assert_eq!(
+            e1.to_string(),
+            trim_left_margin(
+                "Point {
+                    x: 123
+                    y: 456
+                }"
+            )
+        );
 
         // 单纯使用 key 实例化
         let e2 = ConstructorExpression {
@@ -2381,7 +2463,15 @@ mod tests {
             },
             range: new_range(),
         };
-        assert_eq!(e2.to_string(), "User {id\nname}");
+        assert_eq!(
+            e2.to_string(),
+            trim_left_margin(
+                "User {
+                    id
+                    name
+                }"
+            )
+        );
     }
 
     // general expressions
@@ -2401,9 +2491,11 @@ mod tests {
         assert_eq!(
             e1.to_string(),
             trim_left_margin(
-                "do {10
+                "do {
+                    10
                     (1 + 2)
-                    name}"
+                    name
+                }"
             )
         );
 
@@ -2420,8 +2512,10 @@ mod tests {
         assert_eq!(
             e2.to_string(),
             trim_left_margin(
-                "{10
-                    name}"
+                "{
+                    10
+                    name
+                }"
             )
         );
 
@@ -2432,7 +2526,7 @@ mod tests {
             range: new_range(),
         };
 
-        assert_eq!(e3.to_string(), trim_left_margin("do {}"));
+        assert_eq!(e3.to_string(), "do {}");
     }
 
     #[test]
@@ -2449,9 +2543,11 @@ mod tests {
         assert_eq!(
             e1.to_string(),
             trim_left_margin(
-                "join {10
+                "join {
+                    10
                     (1 + 2)
-                    name}"
+                    name
+                }"
             )
         );
     }
@@ -2486,28 +2582,391 @@ mod tests {
             range: new_range(),
         };
         assert_eq!(e3.to_string(), "let (id, name,) = user");
+
+        // 测试辅助函数
+        let e4 = new_let_expression("foo", 123);
+        assert_eq!(e4.to_string(), "let foo = 123");
     }
 
+    #[test]
     fn test_if_expression() {
-        // todo::
+        let e1 = IfExpression {
+            condition: Box::new(Expression::Literal(new_literal_boolean(false))),
+            consequent: Box::new(Expression::Literal(new_literal_integer(10))),
+            alternate: None,
+            range: new_range(),
+        };
+        assert_eq!(e1.to_string(), "if false then 10");
+
+        let e2 = IfExpression {
+            condition: Box::new(new_relational_expression(1, 2)),
+            consequent: Box::new(new_addition_expression(3, 4)),
+            alternate: Some(Box::new(new_addition_expression(5, 6))),
+            range: new_range(),
+        };
+        assert_eq!(e2.to_string(), "if (1 > 2) then (3 + 4) else (5 + 6)");
+
+        // 测试嵌套 if 表达式
+        let e3 = IfExpression {
+            condition: Box::new(Expression::Literal(new_literal_boolean(true))),
+            consequent: Box::new(Expression::IfExpression(IfExpression {
+                condition: Box::new(new_relational_expression(1, 2)),
+                consequent: Box::new(Expression::Literal(new_literal_integer(3))),
+                alternate: None,
+                range: new_range(),
+            })),
+            alternate: Some(Box::new(Expression::Literal(new_literal_integer(3)))),
+            range: new_range(),
+        };
+        assert_eq!(e3.to_string(), "if true then {if (1 > 2) then 3} else 3");
+
+        // 测试空子表达式
+        let e4 = IfExpression {
+            condition: Box::new(Expression::Literal(new_literal_boolean(true))),
+            consequent: Box::new(Expression::BlockExpression(BlockExpression {
+                is_explicit: false,
+                body: vec![],
+                range: new_range(),
+            })),
+            alternate: Some(Box::new(Expression::Literal(new_literal_integer(10)))),
+            range: new_range(),
+        };
+        assert_eq!(e4.to_string(), "if true then {} else 10");
     }
 
+    #[test]
     fn test_for_expression() {
-        // todo::
+        let e1 = ForExpression {
+            object: Box::new(Expression::Identifier(new_identifier("i"))),
+            value: Box::new(Expression::Literal(new_literal_integer(100))),
+            body: Box::new(Expression::Literal(new_literal_string("value"))),
+            range: new_range(),
+        };
+        assert_eq!(e1.to_string(), "for let i = 100 \"value\"");
 
         // 测试 next 语句
+        let e2 = NextExpression {
+            value: Box::new(Expression::Identifier(new_identifier("foo"))),
+            range: new_range(),
+        };
+        assert_eq!(e2.to_string(), "next foo");
+
+        let e3 = NextExpression {
+            value: Box::new(new_addition_expression(1, 2)),
+            range: new_range(),
+        };
+        assert_eq!(e3.to_string(), "next (1 + 2)");
+
+        // 测试 body 为表达式块
+        let e4 = ForExpression {
+            object: Box::new(Expression::Tuple(Tuple {
+                elements: vec![
+                    Expression::Identifier(new_identifier("sum")),
+                    Expression::Identifier(new_identifier("step")),
+                ],
+                range: new_range(),
+            })),
+            value: Box::new(Expression::Tuple(new_tuple(&vec![0, 2]))),
+            body: Box::new(Expression::BlockExpression(BlockExpression {
+                is_explicit: false,
+                body: vec![
+                    Expression::LetExpression(LetExpression {
+                        object: Box::new(Expression::Identifier(new_identifier("i"))),
+                        value: Box::new(Expression::BinaryExpression(BinaryExpression {
+                            operator: Token::Plus,
+                            left: Box::new(Expression::Identifier(new_identifier("sum"))),
+                            right: Box::new(Expression::Identifier(new_identifier("step"))),
+                            range: new_range(),
+                        })),
+                        range: new_range(),
+                    }),
+                    Expression::IfExpression(IfExpression {
+                        condition: Box::new(Expression::BinaryExpression(BinaryExpression {
+                            operator: Token::LessThan,
+                            left: Box::new(Expression::Identifier(new_identifier("i"))),
+                            right: Box::new(Expression::Literal(new_literal_integer(100))),
+                            range: new_range(),
+                        })),
+                        consequent: Box::new(Expression::NextExpression(NextExpression {
+                            value: Box::new(Expression::Tuple(Tuple {
+                                elements: vec![
+                                    Expression::Identifier(new_identifier("i")),
+                                    Expression::Identifier(new_identifier("step")),
+                                ],
+                                range: new_range(),
+                            })),
+                            range: new_range(),
+                        })),
+                        alternate: None,
+                        range: new_range(),
+                    }),
+                ],
+                range: new_range(),
+            })),
+            range: new_range(),
+        };
+        assert_eq!(
+            e4.to_string(),
+            trim_left_margin(
+                "for let (sum, step,) = (0, 2,) {
+                    let i = (sum + step)
+                    if (i < 100) then next (i, step,)
+                }"
+            )
+        );
     }
 
+    #[test]
     fn test_each_expression() {
-        // todo::
+        let e1 = EachExpression {
+            object: Box::new(Expression::Identifier(new_identifier("i"))),
+            value: Box::new(Expression::List(new_list(&vec![1, 2, 3]))),
+            body: Box::new(Expression::Literal(new_literal_integer(5))),
+            range: new_range(),
+        };
+        assert_eq!(e1.to_string(), "each let i in [1, 2, 3,] 5");
+
+        // body 为 do 表达式
+        let e2 = EachExpression {
+            object: Box::new(Expression::Identifier(new_identifier("i"))),
+            value: Box::new(Expression::List(new_list(&vec![1, 2, 3]))),
+            body: Box::new(Expression::BlockExpression(BlockExpression {
+                is_explicit: true,
+                body: vec![Expression::FunctionCallExpression(FunctionCallExpression {
+                    callee: Box::new(Expression::Identifier(new_identifier("sqrt"))),
+                    arguments: vec![Argument {
+                        name: None,
+                        value: Box::new(Expression::Identifier(new_identifier("i"))),
+                        range: new_range(),
+                    }],
+                    range: new_range(),
+                })],
+                range: new_range(),
+            })),
+            range: new_range(),
+        };
+        assert_eq!(
+            e2.to_string(),
+            trim_left_margin(
+                "each let i in [1, 2, 3,] do {
+                    sqrt(i)
+                }"
+            )
+        );
     }
 
+    #[test]
     fn test_branch_expression() {
-        // todo::
+        let e1 = BranchExpression {
+            where_exp: None,
+            cases: vec![
+                BranchCase {
+                    where_exp: None,
+                    condition: Box::new(Expression::Literal(new_literal_boolean(false))),
+                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    range: new_range(),
+                },
+                BranchCase {
+                    condition: Box::new(Expression::Literal(new_literal_boolean(true))),
+                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    where_exp: None,
+                    range: new_range(),
+                },
+            ],
+            default: None,
+            range: new_range(),
+        };
+        assert_eq!(
+            e1.to_string(),
+            trim_left_margin(
+                "branch {
+                case false: 1
+                case true: 2
+                }"
+            )
+        );
+
+        // 测试 default 和 where 从属表达式
+        let e2 = BranchExpression {
+            where_exp: Some(Box::new(new_let_expression("foo", 10))),
+            cases: vec![
+                BranchCase {
+                    where_exp: Some(Box::new(new_let_expression("i", 20))),
+                    condition: Box::new(Expression::BinaryExpression(BinaryExpression {
+                        operator: Token::GreaterThan,
+                        left: Box::new(Expression::Identifier(new_identifier("foo"))),
+                        right: Box::new(Expression::Identifier(new_identifier("i"))),
+                        range: new_range(),
+                    })),
+                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    range: new_range(),
+                },
+                BranchCase {
+                    condition: Box::new(Expression::Literal(new_literal_boolean(true))),
+                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    where_exp: None,
+                    range: new_range(),
+                },
+            ],
+            default: Some(Box::new(Expression::Literal(new_literal_integer(3)))),
+            range: new_range(),
+        };
+        assert_eq!(
+            e2.to_string(),
+            trim_left_margin(
+                "branch where let foo = 10 {
+                    case (foo > i) where let i = 20: 1
+                    case true: 2
+                    default: 3
+                }"
+            )
+        );
     }
 
+    #[test]
     fn test_match_expression() {
-        // todo::
+        let e1 = MatchExpression {
+            object: Box::new(Expression::Identifier(new_identifier("obj"))),
+            where_exp: None,
+            cases: vec![
+                MatchCase {
+                    variable: None,
+                    pattern_exp: Some(Box::new(Expression::Literal(new_literal_boolean(false)))),
+                    additionals: vec![],
+                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    range: new_range(),
+                },
+                MatchCase {
+                    variable: None,
+                    pattern_exp: Some(Box::new(Expression::Literal(new_literal_boolean(true)))),
+                    additionals: vec![],
+                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    range: new_range(),
+                },
+            ],
+            default: None,
+            range: new_range(),
+        };
+        assert_eq!(
+            e1.to_string(),
+            trim_left_margin(
+                "match obj {
+                    case false: 1
+                    case true: 2
+                }"
+            )
+        );
+
+        // 测试 default、where、variable、in、only 从属表达式
+        let e2 = MatchExpression {
+            object: Box::new(new_addition_expression(1, 2)),
+            where_exp: Some(Box::new(new_let_expression("foo", 10))),
+            cases: vec![
+                MatchCase {
+                    variable: Some("v".to_string()),
+                    pattern_exp: None,
+                    additionals: vec![PatternAdditional::In(Expression::List(new_list(&vec![
+                        1, 2, 3,
+                    ])))],
+                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    range: new_range(),
+                },
+                MatchCase {
+                    variable: None,
+                    pattern_exp: Some(Box::new(Expression::Literal(new_literal_boolean(true)))),
+                    additionals: vec![
+                        PatternAdditional::Only(Expression::BinaryExpression(BinaryExpression {
+                            operator: Token::GreaterThan,
+                            left: Box::new(Expression::Identifier(new_identifier("foo"))),
+                            right: Box::new(Expression::Identifier(new_identifier("bar"))),
+                            range: new_range(),
+                        })),
+                        PatternAdditional::Where(Expression::LetExpression(LetExpression {
+                            object: Box::new(Expression::Identifier(new_identifier("bar"))),
+                            value: Box::new(Expression::Literal(new_literal_integer(20))),
+                            range: new_range(),
+                        })),
+                    ],
+                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    range: new_range(),
+                },
+            ],
+            default: Some(Box::new(Expression::Literal(new_literal_integer(3)))),
+            range: new_range(),
+        };
+        assert_eq!(
+            e2.to_string(),
+            trim_left_margin(
+                "match (1 + 2) where let foo = 10 {
+                    case v @ in [1, 2, 3,]: 1
+                    case true only (foo > bar)
+                        where let bar = 20: 2
+                    default: 3
+                }"
+            )
+        );
+
+        // 测试 match 表达式其他从属表达式
+        let e3 = MatchExpression {
+            object: Box::new(Expression::Identifier(new_identifier("obj"))),
+            where_exp: None,
+            cases: vec![
+                MatchCase {
+                    variable: None,
+                    pattern_exp: None,
+                    additionals: vec![PatternAdditional::Into(
+                        new_identifier("User"),
+                        "user".to_string(),
+                    )],
+                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    range: new_range(),
+                },
+                MatchCase {
+                    variable: None,
+                    pattern_exp: None,
+                    additionals: vec![PatternAdditional::Regular(
+                        RegularExpressionLiteral::GeneralString(GeneralString {
+                            value: "(\\d+),(\\w+)".to_string(),
+                            range: new_range(),
+                        }),
+                        Tuple {
+                            elements: vec![
+                                Expression::Identifier(new_identifier("id")),
+                                Expression::Identifier(new_identifier("name")),
+                            ],
+                            range: new_range(),
+                        },
+                    )],
+                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    range: new_range(),
+                },
+                MatchCase {
+                    variable: None,
+                    pattern_exp: None,
+                    additionals: vec![PatternAdditional::Template(
+                        RegularExpressionLiteral::GeneralString(GeneralString {
+                            value: "\\user\\{name:\\w+}\\post\\{id:\\d+}".to_string(),
+                            range: new_range(),
+                        }),
+                    )],
+                    body: Box::new(Expression::Literal(new_literal_integer(3))),
+                    range: new_range(),
+                },
+            ],
+            default: None,
+            range: new_range(),
+        };
+
+        assert_eq!(
+            e3.to_string(),
+            trim_left_margin(
+                "match obj {
+                    case into User user: 1
+                    case regular \"(\\d+),(\\w+)\" (id, name,): 2
+                    case template \"\\user\\{name:\\w+}\\post\\{id:\\d+}\": 3
+                }"
+            )
+        );
     }
 
     // statements

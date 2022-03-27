@@ -134,10 +134,32 @@
 - `let ... = ...`
 - `if ... then ... else ...`
   `if let ... = ... then ... else ...`
-- `for let ... = ... { next }`
-- `each let ... in ... {...}`
-- `branch {case, default...}`
-- `match ... {case, default...}`
+- `for let ... = ...`
+  `next ...`
+- `each let ... in ... ...`
+- 分支表达式
+
+```js
+branch {
+    case: ...
+    default: ...
+}
+```
+
+- 模式匹配表达式
+
+```js
+match ... {
+    case: ...
+    default: ...
+}
+```
+
+注：
+
+- 上面的三个点 `...` 表示任意表达式；
+- 关键字后面的表达式可以是 `隠式 do 表达式`，即一对花括号包围起来的表达式块，比如 `then ...` 也可以是 `then {...}`；（`let` 表达式的左手边表达式除外）
+- 上面的花括号属于固定语法的一部分，比如关键字 `do` 后面必须带上一对花括号，而不能省略。
 
 #### 从属表达式
 
@@ -145,6 +167,7 @@
 
 - `then`
 - `else`
+- `next`
 - `which`
 - `where`
 - `only`

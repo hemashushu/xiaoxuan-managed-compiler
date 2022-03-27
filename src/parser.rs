@@ -1432,9 +1432,18 @@ mod tests {
 
     use super::parse;
 
+    // 辅助函数
+
     fn parse_from_string(text: &str) -> Result<Node, Error> {
         let token_details = lexer::tokenize(text)?;
         parse(&token_details)
+    }
+
+    fn trim_left_margin(s: &str) -> String {
+        s.split("\n")
+            .map(|s| s.trim_start().to_string())
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 
     // literal
@@ -2009,7 +2018,15 @@ mod tests {
             })
         );
 
-        assert_eq!(a1.to_string(), "do {123\nabc}\n");
+        assert_eq!(
+            a1.to_string(),
+            trim_left_margin(
+                "do {
+                    123
+                    abc
+                }\n"
+            )
+        );
     }
 
     // statement
