@@ -35,11 +35,12 @@
 - [语句](#语句-1)
   - [函数定义](#函数定义)
     - [返回值](#返回值)
-    - [函数签名](#函数签名)
+    - [函数的 where 从属表达式](#函数的-where-从属表达式)
     - [参数的类型说明](#参数的类型说明)
-  - [函数重载](#函数重载)
+    - [函数重载](#函数重载)
     - [可选参数](#可选参数)
     - [重载冲突](#重载冲突)
+  - [函数签名](#函数签名)
   - [空函数](#空函数)
   - [模式函数](#模式函数)
   - [关联函数/方法](#关联函数方法)
@@ -130,29 +131,28 @@
 
 - `do {...}`
 - `join {...}`
-  <!-- `join to ... {...}` -->
 - `let ... = ...`
 - `if ... then ... else ...`
-  `if let ... = ... then ... else ...`
 - `for let ... = ...`
   `next ...`
 - `each let ... in ... ...`
+- `fn () ...`
 - 分支表达式
 
 ```js
-branch {
-    case: ...
-    default: ...
-}
+    branch {
+        case: ...
+        default: ...
+    }
 ```
 
 - 模式匹配表达式
 
 ```js
-match ... {
-    case: ...
-    default: ...
-}
+    match ... {
+        case: ...
+        default: ...
+    }
 ```
 
 注：
@@ -167,7 +167,6 @@ match ... {
 
 - `then`
 - `else`
-- `next`
 - `which`
 - `where`
 - `only`
@@ -272,9 +271,9 @@ const Int Code {
 使用 `. + 下标` 的方式访问元组的元素：
 
 ```js
-(a,b,c).0 // a
-(a,b,c).1 // b
-(a,b,c).2 // c
+(a,b,c).0 // == a
+(a,b,c).1 // == b
+(a,b,c).2 // == c
 ```
 
 #### 空元组
@@ -355,13 +354,13 @@ struct User {
 }
 
 // 普通方式
-List<User> aa = [
+List<User> a1 = [
     User {id: 1, name: "foo", Addr {city: "sz", code: 518100}},
     User {id: 2, name: "bar", Addr {city: "gz", code: 510600}},
     ]
 
 // 使用元组转换方式
-List<User> aa = [
+List<User> a2 = [
     (1, "foo", ("sz", 518100)^)^,
     (2, "bar", ("gz", 510600)^)^
     ]
@@ -377,16 +376,7 @@ List<User> aa = [
 struct Writer
 ```
 
-<!-- 无成员结构体可以使用花括号 `{...}` 实例化，但无法使用 new 函数实例化，但实例总是相等的（因为没有自己的数据），实例跟结构体本身也可以直接作相等比较：
-
-```js
-let m1 = Writer{}
-let m2 = Writer{}
-assert(m1 == m2)     // true
-assert(m1 == Writer) // true
-``` -->
-
-无成员结构体无法实例化，这种结构体有且只有一个（同名）实例，比如 `let Writer w = Writer`，第一个 `Writer` 是数据类型，第二个 `Writer` 是实例名称（类似常量）。
+无成员结构体无法实例化（注：这点跟 rust lang 不同），这种结构体有且只有一个（同名）实例，比如 `let Writer w = Writer`，第一个 `Writer` 是数据类型，第二个 `Writer` 是实例名称（类似常量）。
 
 ```js
 let Writer m1 = Writer
@@ -506,9 +496,15 @@ let Matrix m =
 - `/* ... */` （区域）注释
 - `//` 行注释
 - 文档型注释
+
+```js
     '''
     文档型注释
     '''
+    function Int name() type Int {
+        ...
+    }
+```
 
 ## 语句
 
@@ -526,17 +522,17 @@ function name (...) type type_name = expression
 
 `type` 用于指示返回值的数据类型，当缺省 `type` 时，返回值数据类型为 `std::Unit`，其值只有 `std::Unit`，字面量为空元组 `()`。
 
-#### 函数签名
+#### 函数的 where 从属表达式
 
-函数的类型（函数的签名）可以作为一种数据类型。
+函数后面可以添加 `where 从属表达式`，用于创建作用范围为整个函数的表达式，比如：
 
-`sign (type1, type2...) type type_name`
-
-例如：
-
-`sign (Int x, Int y) type Int`
-`sign<T, E> (T x, E y) type T`
-`sign (T a, String s) which {T: Int}`
+```js
+function test(Int a, Int b)
+    where {
+        Int x = a + b
+        Int y = a - b
+    } = power(x, 2) + power(y, 2)
+```
 
 #### 参数的类型说明
 
@@ -561,7 +557,7 @@ function name (T t, F f) type T
 }
 ```
 
-### 函数重载
+#### 函数重载
 
 名称相同，返回值相同，但参数列表不同的函数称为函数重载。
 
@@ -575,9 +571,9 @@ function fun2 (Int a, Int b) type Int {
 }
 ```
 
-#### 可选参数
+#### 参数的默认值
 
-提供了默认值的参数为可选参数
+提供了默认值的参数为 `可选参数`
 
 ```js
 function name(Int a, Int b = 100) ...
@@ -595,6 +591,29 @@ function draw(Int width, Style style = Style::Solid, Color color = Color::Red) .
 
 在判断判断一个同名函数的所有重载是否存在冲突时，编译器将会 **无视参数名称**，**无视是否可选参数**，仅依据参数的数据类型和顺序来判断。
 
+### 函数签名
+
+函数的类型（函数的签名）可以作为一种数据类型。
+
+`sign (type1, type2...) type type_name`
+
+例如：
+
+```js
+sign (Int x, Int y) type Int
+sign<T, E> (T x, E y) type T
+sign (T a, String s) which {T: Int}
+```
+
+函数签名当中的参数可以省略名称，参数名称一般是为了帮助记忆参数的用途，但在编译时会直接被抛弃。
+
+```js
+// 省略了参数的名称
+sign (Int, Int) type Int
+sign<T, E> (T, E) type T
+sign (T, String) which {T: Int}
+```
+
 ### 空函数
 
 `empty` 关键字用于在 `trait` 里定义无具体实现的函数。
@@ -602,19 +621,46 @@ function draw(Int width, Style style = Style::Solid, Color color = Color::Red) .
 `empty function name (...) type type_name`
 `empty function name (...)`
 
+空函数比较像函数签名，比如，空函数不支持 `where 从属表达式`，也无函数主体。参数不能指定默认值，但需要写出名称。
+
+在实现空函数时，函数的签名、参数的名称都必须一致。因为空函数不支持指定参数默认值，所以其实现也无法指定参数的默认值。
+
 ### 模式函数
 
-添加了关键字 `pattern` 的函数，其参数可以使用匹配/解藕表达式（包括 match 表达式 case 关键字后面的各种从属表达式）。模式函数必须同名、同参数、同返回类型（指：函数名称相同，参数个数、参数出现的顺序和数据类型都必须相同，返回数据类型也必须相同，仅每个参数的模式表达式不同）。
+添加了关键字 `pattern` 的函数，其参数可以使用模式匹配表达式（包括 match 表达式 case 关键字后面的各种从属表达式）。模式函数必须同名、同参数、同返回类型（指：函数名称相同，参数个数、参数出现的顺序和数据类型都必须相同，返回数据类型也必须相同，仅每个参数的模式表达式不同）。
 
 ```js
-pattern function test (parse Email email, parse Phone phone) {
+pattern function test (String s @ parse Email email, String s @ parse Phone phone) {
     ...
 }
 ```
 
 同名的模式匹配函数会被编译器转换为 branch 结构。编译器会把它们全部组合为一个函数。
 
-模式函数的参数不能是可选参数。
+跟 `match 表达式` 的 `case` 不同，模式函数的参数需要指出参数的数据类型，除非出现了 `regular`、`template` 这两种从属表达式。因为它们要求被匹配的数据只能是 `String` 类型。
+
+```js
+pattern function test (
+    Int i @ in [1..10],
+    Point (x, y) only x + y > c
+        where let c = x - y),
+    User {id, name} only id > 100
+    {
+    ...
+}
+```
+
+另外，模式函数也支持函数范围的 `where` 从属表达式（注意，模式函数的 `where` 从属表达式的生效在所有参数解析完之后），以及作为模式匹配最后一道防线的 `only` 从属表达式。
+
+```js
+pattern function test(Int x, Int y)
+    where let z = x+y
+    only z > 10 {
+        ...
+}
+```
+
+> 模式函数的参数不能是可选参数。
 
 ### 关联函数/方法
 
@@ -787,21 +833,42 @@ namespace tests {
 
 例如：
 
+`let Int a = 10`
+
+当左手边值是一个标识符时，可以省略数据类型，编译器会自动推导：
+
 `let a = 10`
 
-#### 解构/模式匹配
+#### let 模式匹配
 
-left-hand-side 即可以是一个变量，也可以是一个模式匹配表达式，例如：
+left-hand-side 即可以是一个变量，也可以是一个模式匹配表达式。`let 模式匹配` 表达式也称为 `解构表达式`，例如：
 
 ```js
-let (a,b,c) = ... // 元组解构
-let [a,b] = ... // 列表解构
-//let #[a,b] = ... // 数组解构
-let User{id, name} = ... // 结构体解构
-let User{id: user_id, name: user_name } = ...
-let Json::String{value} = ... // 结构体形式的枚举值解构
-let Json::Value(v) = ... // 元组形式的枚举值解构
+let List<Int> [a,b] = ... // 列表解构
+let User {id, name} = ... // 结构体解构
+let User {id: user_id, name: user_name } = ...
+let (Int, Int, String) (a,b,c) = ... // 元组解构
+let Shape::Point {x, y} = ... // 结构体形式的枚举值解构
+let Json::Number (v) = ... // 元组形式的枚举值解构
 ```
+
+注意，解构表达式需要明确列出数据类型，另外当模式不匹配时，会引起运行时异常（而且无法捕捉和恢复）。
+
+如果对解构后的部分数据不感兴趣，可以使用 _丢弃标识符_， 即下划线 `_` 来接收数据，比如：
+
+`let (Int, String) _, name = user001`
+
+或者使用省略操作符丢弃其余部分：
+
+`let List<Int> [a,b, ...] = list001`
+
+或者整个数据丢弃：
+
+`let (Int ,String) _ = user001`
+
+当然整个数据都丢弃的话，虽然语法允许，但这条表达式是无意义的。
+
+有关模式匹配表达式的详细说明，见语言参考文档。
 
 #### let 表达式的返回值
 
@@ -810,8 +877,6 @@ let Json::Value(v) = ... // 元组形式的枚举值解构
 `let User{id, name} = user001`
 
 返回的是 `user001` 的值。
-
-但当配搭 `if` 表达式时，`let ... = ...` 返回的是一个 Boolean 数值，表示是否匹配成功。
 
 ### do 表达式
 
@@ -875,7 +940,7 @@ if, then, else 关键字后面的表达式都允许换行写
 
 #### if where 从属表达式
 
-用于补充 `作用域为整个 if 表达式块` 的局部变量，比如
+`if 表达式` 的三个子表达式里面创建的标识符的作用域都仅仅局限在它们当前的子表达式（块）里，如果需要创建一个仅限当前 `if 表达式` 范围有效的标识符，可以使用 `if 表达式` 的 `where 从属表达式`：
 
 ```js
 if a > 1 where let a = 2 then ...
@@ -883,6 +948,8 @@ if a > b where {
     let a = 2
     let b = 1 } then ...
 ```
+
+> 因为 `if 表达式` 的各子表达式的作用域限制，类似 rust lang 的 `if let 表达式` 是不支持的。原因有两个：其一是因为它会根据条件是否成立而创建或者不创建标识符，xiaoxuan 语言不支持这种不确定的标识符。其二是如果将条件成立后所创建的标识符的作用范围覆盖到 `then` 子表达式，则破坏一致性。
 
 ### branch 表达式
 
@@ -945,25 +1012,7 @@ for let i = 0 if i < 10 then {
 }
 ```
 
-<!--
-### for let .. in 表达式
-
-`for let i in [1,2,3] {...}`
-
-for let .. in 返回最后一次执行的语句的值
-for let .. in 里面不需要写 next .. 语句
-
-in 后面可以加 mix 关键字，表示混入另一个列表
-
-```
-for let i in [1,2,3] mix
-    let j in [4,5,6] {
-    ...
-}
-```
--->
-
-`next` 是一个特殊的表达式，`next` 表达式之后的程序不会被执行，所以自然无法接收它的返回值，一般来说，`next` 是 `语句` 而非 `表达式`。
+`next` 是一个特殊的表达式，`next` 表达式之后的程序不会被执行，所以自然无法接收它的返回值，一般来说，`next` 是传统意义上的 `语句` 而非 `表达式`。
 
 ### each 表达式
 
@@ -972,20 +1021,6 @@ for let i in [1,2,3] mix
 `each let i in [1,2,3] {...}`
 
 each 返回一个列表
-
-<!--
-each .. in .. mix .. 表达式，依次从 2 个或多个列表里取出元素
-
-```
-let a =
-    each let i in [1,2] mix
-         let j in [4,5,6] (i,j)
-```
-
-返回 [(1,4),(1,5),(1,6), (2,4),(2,5),(2,6)]
-
-跟嵌套多个 `each` 表达式不同，带 mix 的 each 表达式返回的是单一层的列表，而不是嵌套列表。
--->
 
 ### 模式匹配
 
@@ -997,9 +1032,11 @@ match v {
 }
 ```
 
+`case` 后面是一个模式匹配表达式，跟 `解构表达式` 的左手边值的模式匹配表达式不同，因为 `match` 表达式的被匹配对象的数据类型是已知的，所以在 `case` 后面可以省略数据类型。另外 `case` 后面还能添加一个或多个 `模式匹配从属表达式`。下面会详细讲述。
+
 #### match where 从属表达式
 
-match 后面可以加上 where 从属表达式
+`match` 后面可以加上 `where 从属表达式`
 
 ```js
 match v where ... {
@@ -1007,7 +1044,9 @@ match v where ... {
 }
 ```
 
-case 后面也可以加上 where 从属表达式
+`match` 关键字后面的 `where 从属表达式` 的作用域覆盖整个 `match 表达式`，包括每一个 `case`。
+
+`case` 后面也可以加上 `where 从属表达式`
 
 ```js
 match v {
@@ -1017,6 +1056,8 @@ match v {
 }
 ```
 
+`case` 后面的 `where 从属表达式` 的作用域仅覆盖当前 `case`。
+
 #### only 从属表达式
 
 也叫守护表达式
@@ -1024,7 +1065,7 @@ match v {
 ```js
 match v {
     case a only a>0: ...
-    case a only {...}: ...
+    case a only a>b where let b = 10: ...
 }
 ```
 
@@ -1128,7 +1169,7 @@ match u {
 `fn (type_name param_name) type type_name = ...`
 `fn (type_name param_name) type type_name {...}`
 
-省略参数和返回值数据类型的形式：
+只要能在上下文环境中推导出来，匿名函数的参数类型可以省略，返回值数据类型也可以省略：
 
 `fn (param1, param2) = ...`
 
@@ -1136,7 +1177,7 @@ match u {
 
 `fn () = ...`
 
-单独一个参数时，可以再省略为：
+当参数只有一个，且省略了参数数据类型和返回值的数据类型时，匿名函数可以进一步简化为：FunctionDeclaration
 
 `fn param_name = ...`
 

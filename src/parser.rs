@@ -741,12 +741,14 @@ fn parse_primary_expression(
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     match source_token_details.first() {
         Some(first) => match first.token {
+            Token::Fn => todo!(),
+            Token::Sign => todo!(),
             Token::Exclamation => {
-                // 函数的前置调用
-                parse_prefix_identifier(source_token_details)
+                parse_prefix_identifier(source_token_details) // 函数的前置调用
             }
-            Token::LeftBracket => parse_list(source_token_details),
+            Token::Ellipsis => todo!(),
             Token::LeftParen => parse_tuple_or_parenthesized(source_token_details),
+            Token::LeftBracket => parse_list(source_token_details),
             Token::LeftBrace => parse_map(source_token_details),
             Token::Identifier(_) => parse_identifier(source_token_details),
             _ => {

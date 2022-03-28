@@ -31,9 +31,9 @@ impl Display for Program {
 impl Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Node::Program(p) => write!(f, "{}", p),
-            Node::Statement(s) => write!(f, "{}", s),
-            Node::Expression(e) => write!(f, "{}", e),
+            Node::Program(v) => write!(f, "{}", v),
+            Node::Statement(v) => write!(f, "{}", v),
+            Node::Expression(v) => write!(f, "{}", v),
         }
     }
 }
@@ -62,7 +62,7 @@ impl Display for Node {
 pub enum Statement {
     FunctionDeclaration(FunctionDeclaration),
     EmptyFunctionDeclaration(EmptyFunctionDeclaration), // 空函数
-    PatternFunctionDeclarationzs(PatternFunctionDeclaration), // 模式函数
+    PatternFunctionDeclaration(PatternFunctionDeclaration), // 模式函数
 
     NamespaceStatement(NamespaceStatement),
     UseStatement(UseStatement),
@@ -84,34 +84,41 @@ pub enum Statement {
 pub struct FunctionDeclaration {
     pub name: String,
     pub generic_names: Vec<String>,
-    pub parameters: Vec<Parameter>,
+    pub parameters: Vec<FunctionParameter>,
     pub return_data_type: Option<DataType>,
     pub which_entries: Vec<WhichEntry>,
-    pub where_exp: Option<Expression>,
+    pub where_exp: Option<Expression>, // 作用域为整个函数的表达式块
     pub body: Expression,
     pub range: Range,
 }
 
+// 普通函数的参数
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionParameter {
+    pub data_type: DataType,
+    pub name: String,
+    pub value: Option<Expression>, // 默认值
+    pub range: Range,
+}
+
+// 空函数定义语句
+//
+// 空函数无函数主体 `body`，也不支持 `where 从属表达式`，
 #[derive(Debug, Clone, PartialEq)]
 pub struct EmptyFunctionDeclaration {
     pub name: String,
     pub generic_names: Vec<String>,
-    pub parameters: Vec<Parameter>,
+    pub parameters: Vec<EmptyFunctionParameter>,
     pub return_data_type: Option<DataType>,
     pub which_entries: Vec<WhichEntry>,
-    pub where_exp: Option<Expression>,
     pub range: Range,
 }
 
-// 普通函数的参数
-//
-// 注意：
-// 模式函数的参数是一个表达式，模式函数的参数不能使用这个 Parameter
+// 空函数的参数需要指明名称，但不支持默认值
 #[derive(Debug, Clone, PartialEq)]
-pub struct Parameter {
+pub struct EmptyFunctionParameter {
     pub data_type: DataType,
     pub name: String,
-    pub value: Option<Expression>,
     pub range: Range,
 }
 
@@ -120,17 +127,18 @@ pub struct Parameter {
 pub struct PatternFunctionDeclaration {
     pub name: String,
     pub generic_names: Vec<String>,
-    pub parameters: Vec<PatternParameter>,
+    pub parameters: Vec<PatternFunctionParameter>,
     pub return_data_type: Option<DataType>,
-    pub which_entries: Vec<WhichEntry>,
-    pub where_exp: Option<Expression>, // 有效范围覆盖各个参数以及整个函数
+    pub where_exp: Option<Expression>, // 作用域为整个函数的表达式块，但在各参数解析完毕之后生效
     pub only_exp: Option<Expression>,  // 在各个参数匹配后，模式函数的最后一道防线
+    pub which_entries: Vec<WhichEntry>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PatternParameter {
-    pub variable: Option<(DataType, String)>, // @ 变量的类型及名称
+pub struct PatternFunctionParameter {
+    pub data_type: Option<DataType>,          // 变量的类型
+    pub variable: Option<String>,             // 变量的名称 `@ 从属表达式`
     pub pattern_exp: Option<Box<Expression>>, // 模式表达式
     pub additionals: Vec<PatternAdditional>,
     pub range: Range,
@@ -238,7 +246,7 @@ pub struct ImplStatement {
     pub object: Identifier,
     pub inherit: Identifier,                   // 一般是 trait 的名称
     pub associated_types: Vec<AssociatedType>, // 关联类型
-    pub which_exp: WhichEntry,
+    pub which_entries: Vec<WhichEntry>,
     pub range: Range,
 }
 
@@ -264,45 +272,137 @@ pub struct Attribute {
 
 impl Display for FunctionDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut segments = Vec::<String>::new();
+
+        segments.push("function".to_string());
+        segments.push(self.name.clone());
+
+        if self.generic_names.len() > 0 {
+            segments.push(format!("<{}>", format_generic_names(&self.generic_names)));
+        }
+
+        segments.push(format!(
+            "({})",
+            format_function_parameters(&self.parameters)
+        ));
+
+        if let Some(d) = &self.return_data_type {
+            segments.push(format!("type {}", d));
+        }
+
+        if self.which_entries.len() > 0 {
+            segments.push(format!(
+                "which {{\n{}\n}}",
+                format_which_entries(&self.which_entries)
+            ));
+        }
+
+        if let Some(e) = &self.where_exp {
+            segments.push(format!("where {}", e));
+        }
+
+        match &self.body {
+            Expression::BlockExpression(b) if !(b.is_explicit) => {
+                // 函数主体是隠式 do 表达式
+                segments.push(format!("{}", b))
+            }
+            _ => segments.push(format!("= {}", self.body)),
+        }
+
+        write!(f, "{}", segments.join(" ") + "\n")
+    }
+}
+
+impl Display for EmptyFunctionDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         todo!()
-        //         match self.body.as_ref() {
-        //             Expression::BlockExpression(BlockExpression {
-        //                 body: block_expression,
-        //                 ..
-        //             }) => {
-        //                 write!(
-        //                     f,
-        //                     "function {} ({}) type {} {}\n",
-        //                     &self.name,
-        //                     format_parameters(&self.params),
-        //                     &self.return_type,
-        //                     format_expressions_with_new_line(block_expression)
-        //                 )
-        //             }
-        //             _ => {
-        //                 write!(
-        //                     f,
-        //                     "function {} ({}) type {} = {}\n",
-        //                     &self.name,
-        //                     format_parameters(&self.params),
-        //                     &self.return_type,
-        //                     &self.body
-        //                 )
-        //             }
+    }
+}
+
+impl Display for PatternFunctionDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for NamespaceStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for UseStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for ConstDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for MemberStructDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for TupleStructDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for EmptyStructDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for UnionDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for TraitDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for ImplStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for AliasStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
     }
 }
 
 impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::FunctionDeclaration(declaration) => {
-                write!(f, "{}\n", declaration)
-            }
+            Statement::FunctionDeclaration(v) => write!(f, "{}", v),
+            Statement::EmptyFunctionDeclaration(v) => write!(f, "{}", v),
+            Statement::PatternFunctionDeclaration(v) => write!(f, "{}", v),
+            Statement::NamespaceStatement(v) => write!(f, "{}", v),
+            Statement::UseStatement(v) => write!(f, "{}", v),
+            Statement::ConstDeclaration(v) => write!(f, "{}", v),
+            Statement::MemberStructDeclaration(v) => write!(f, "{}", v),
+            Statement::TupleStructDeclaration(v) => write!(f, "{}", v),
+            Statement::EmptyStructDeclaration(v) => write!(f, "{}", v),
+            Statement::UnionDeclaration(v) => write!(f, "{}", v),
+            Statement::TraitDeclaration(v) => write!(f, "{}", v),
+            Statement::ImplStatement(v) => write!(f, "{}", v),
+            Statement::AliasStatement(v) => write!(f, "{}", v),
             Statement::Expression(expression) => {
                 write!(f, "{}\n", expression)
-            }
-            _ => {
-                todo!()
             }
         }
     }
@@ -332,6 +432,7 @@ pub enum Expression {
 
     // primary expressions
     AnonymousFunction(AnonymousFunction),
+    Sign(Sign),
     Identifier(Identifier),
     PrefixIdentifier(PrefixIdentifier),
     Ellipsis(Ellipsis),
@@ -362,6 +463,7 @@ pub struct JoinExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LetExpression {
+    pub data_type: Option<DataType>, // 数据类型是可选的
     pub object: Box<Expression>,
     pub value: Box<Expression>,
     pub range: Range,
@@ -525,16 +627,24 @@ pub struct AnonymousParameter {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
     Identifier(Identifier),
+    Tuple(Tuple), // 元组类型，因为存在嵌套元组的情况，所以不能定义为 Tuple(Vec<Identifier>)
     Sign(Sign),
 }
 
 // 函数的签名
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sign {
-    pub parameters: Vec<Identifier>,
+    pub parameters: Vec<SignParameter>,
     pub return_data_type: Option<Box<DataType>>,
     pub generic_names: Vec<String>,
     pub which_entries: Vec<WhichEntry>,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SignParameter {
+    pub data_type: DataType,
+    pub name: Option<String>, // 函数签名当中的参数名称是可选的（一般不写）
     pub range: Range,
 }
 
@@ -552,6 +662,9 @@ impl Display for DataType {
         match self {
             DataType::Identifier(i) => {
                 write!(f, "{}", i)
+            }
+            DataType::Tuple(t) => {
+                write!(f, "{}", t)
             }
             DataType::Sign(s) => {
                 write!(f, "{}", s)
@@ -725,7 +838,11 @@ impl Display for JoinExpression {
 
 impl Display for LetExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "let {} = {}", self.object, self.value)
+        if let Some(d) = &self.data_type {
+            write!(f, "let {} {} = {}", d, self.object, self.value)
+        } else {
+            write!(f, "let {} = {}", self.object, self.value)
+        }
     }
 }
 
@@ -938,7 +1055,7 @@ impl Display for UnaryExpression {
 
 impl Display for FunctionCallExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}({})", self.callee, format_arguments(&self.arguments))
+        write!(f, "{} ({})", self.callee, format_arguments(&self.arguments))
     }
 }
 
@@ -1108,6 +1225,7 @@ impl Display for Expression {
             Expression::SliceExpression(v) => write!(f, "{}", v),
             Expression::ConstructorExpression(v) => write!(f, "{}", v),
             Expression::AnonymousFunction(v) => write!(f, "{}", v),
+            Expression::Sign(v) => write!(f, "{}", v),
             Expression::Identifier(v) => write!(f, "{}", v),
             Expression::PrefixIdentifier(v) => write!(f, "{}", v),
             Expression::Ellipsis(v) => write!(f, "{}", v),
@@ -1300,20 +1418,45 @@ fn format_statements(statements: &[Statement]) -> String {
         .join("")
 }
 
-// 返回函数签名的所有参数以逗号 ", " 的拼接，不包含括号
-fn format_sign_parameters(identifiers: &[Identifier]) -> String {
-    identifiers
+// 返回普通函数的所有参数以逗号 ", " 的拼接，不包含括号
+fn format_function_parameters(parameters: &[FunctionParameter]) -> String {
+    parameters
         .iter()
-        .map(|i| i.to_string())
+        .map(|p| {
+            if let Some(v) = &p.value {
+                // 提供了默认值的参数
+                format!("{} {} = {}", p.data_type, p.name, v)
+            } else {
+                format!("{} {}", p.data_type, p.name)
+            }
+        })
         .collect::<Vec<String>>()
         .join(", ")
 }
 
-// 返回普通函数的所有参数以逗号 ", " 的拼接，不包含括号
-fn format_parameters(parameters: &[Parameter]) -> String {
+// 返回函数签名的所有参数以逗号 ", " 的拼接，不包含括号
+// 注：空函数的参数不支持默认值
+fn format_empty_function_parameters(parameters: &[EmptyFunctionParameter]) -> String {
+    todo!()
+}
+
+fn format_pattern_function_parameters(parameters: &[PatternFunctionParameter]) -> String {
+    todo!()
+}
+
+// 返回函数签名的所有参数以逗号 ", " 的拼接，不包含括号
+// 注：函数签名的参数可省略参数名，且不支持默认值
+fn format_sign_parameters(parameters: &[SignParameter]) -> String {
     parameters
         .iter()
-        .map(|p| format!("{} {}", p.data_type, p.name))
+        .map(|p| {
+            if let Some(n) = &p.name {
+                format!("{} {}", p.data_type, n)
+            } else {
+                // 省略了参数名
+                format!("{}", p.data_type)
+            }
+        })
         .collect::<Vec<String>>()
         .join(", ")
 }
@@ -1323,11 +1466,11 @@ fn format_parameters(parameters: &[Parameter]) -> String {
 fn format_anonymous_parameters(parameters: &[AnonymousParameter]) -> String {
     parameters
         .iter()
-        .map(|p| match &p.data_type {
-            Some(dt) => {
-                format!("{} {}", dt, p.name)
-            }
-            None => {
+        .map(|p| {
+            if let Some(d) = &p.data_type {
+                format!("{} {}", d, p.name)
+            } else {
+                // 省略了参数数据类型
                 format!("{}", p.name)
             }
         })
@@ -1356,21 +1499,13 @@ fn format_generic_names(generic_names: &[String]) -> String {
     generic_names.join(", ")
 }
 
+// 返回所有 WhichEntry 表达式以逗号 ", " 的拼接，不包含花括号
 fn format_which_entries(which_entries: &[WhichEntry]) -> String {
     which_entries
         .iter()
         .map(|w| w.to_string())
         .collect::<Vec<String>>()
         .join("\n")
-}
-
-// 返回所有表达式以逗号 ", " 的拼接，不包含括号
-fn format_expressions_with_comma(expressions: &[Expression]) -> String {
-    expressions
-        .iter()
-        .map(|e| e.to_string())
-        .collect::<Vec<String>>()
-        .join(", ")
 }
 
 // 返回所有表达式以换行符 "\n" 的拼接，不包含括号
@@ -1380,6 +1515,17 @@ fn format_expressions_with_new_line(expressions: &[Expression]) -> String {
         .map(|e| e.to_string())
         .collect::<Vec<String>>()
         .join("\n")
+}
+
+// 返回所有表达式以逗号 ", " 的拼接，不包含括号
+// 一般表达式列表都是以换行符 "\n" 拼接，而使用逗号拼接的
+// 仅用于生成 Tuple 和 List 的元素列表
+fn format_expressions_with_comma(expressions: &[Expression]) -> String {
+    expressions
+        .iter()
+        .map(|e| e.to_string())
+        .collect::<Vec<String>>()
+        .join(", ")
 }
 
 // 记录 Node 在源文件中的位置（范围）
@@ -1397,7 +1543,7 @@ mod tests {
             Argument, Bit, Complex, Ellipsis, Expression, FunctionCallExpression, GeneralString,
             HashString, Identifier, JoinExpression, List, MatchCase, MatchExpression,
             NamedOperator, NextExpression, PatternAdditional, PrefixIdentifier,
-            RegularExpressionLiteral, UnaryExpression, WhichEntry,
+            RegularExpressionLiteral, SignParameter, UnaryExpression, WhichEntry,
         },
         token::Token,
     };
@@ -1405,8 +1551,9 @@ mod tests {
     use super::{
         BinaryExpression, BlockExpression, Boolean, BranchCase, BranchExpression, Char,
         ConstructorExpression, DataType, EachExpression, Float, ForExpression, FunctionDeclaration,
-        IfExpression, Integer, Interval, LetExpression, Literal, Map, MapEntry, MemberExpression,
-        Node, Program, Range, Sign, SliceExpression, Statement, TemplateString, Tuple,
+        FunctionParameter, IfExpression, Integer, Interval, LetExpression, Literal, Map, MapEntry,
+        MemberExpression, Node, Program, Range, Sign, SliceExpression, Statement, TemplateString,
+        Tuple,
     };
 
     // 辅助函数
@@ -1491,6 +1638,7 @@ mod tests {
 
     fn new_let_expression(variable_name: &str, value: i64) -> Expression {
         Expression::LetExpression(LetExpression {
+            data_type: Some(DataType::Identifier(new_identifier("Int"))),
             object: Box::new(Expression::Identifier(new_identifier(variable_name))),
             value: Box::new(Expression::Literal(new_literal_integer(value))),
             range: new_range(),
@@ -1749,18 +1897,56 @@ mod tests {
             range: new_range(),
         });
         assert_eq!(d2.to_string(), "Shape::Point<Int>");
+
+        // DataType::Sign 和 DataType::Tuple 类型的测试分别在
+        // 后面的 sign 和 tuple 当中测试
     }
 
     #[test]
     fn test_display_sign() {
         let s1 = Sign {
-            parameters: vec![new_identifier("Int"), new_identifier("Boolean")],
+            parameters: vec![
+                SignParameter {
+                    data_type: DataType::Identifier(new_identifier("Int")),
+                    name: None,
+                    range: new_range(),
+                },
+                SignParameter {
+                    data_type: DataType::Identifier(new_identifier("Boolean")),
+                    name: None,
+                    range: new_range(),
+                },
+            ],
             return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Int")))),
             which_entries: vec![],
             generic_names: vec![],
             range: new_range(),
         };
         assert_eq!(s1.to_string(), "sign (Int, Boolean) type Int");
+
+        // 带有名称的参数
+        let s1 = Sign {
+            parameters: vec![
+                SignParameter {
+                    data_type: DataType::Identifier(new_identifier("Int")),
+                    name: Some("number".to_string()),
+                    range: new_range(),
+                },
+                SignParameter {
+                    data_type: DataType::Identifier(new_identifier("String")),
+                    name: Some("name".to_string()),
+                    range: new_range(),
+                },
+            ],
+            return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Boolean")))),
+            which_entries: vec![],
+            generic_names: vec![],
+            range: new_range(),
+        };
+        assert_eq!(
+            s1.to_string(),
+            "sign (Int number, String name) type Boolean"
+        );
 
         // 无参数、无返回值的函数签名
         let s2 = Sign {
@@ -1775,14 +1961,26 @@ mod tests {
         // 带泛型的函数签名
         let s3 = Sign {
             parameters: vec![
-                Identifier {
-                    dirs: vec![],
-                    generic_names: vec!["T".to_string()],
-                    name: "List".to_string(),
+                SignParameter {
+                    data_type: DataType::Identifier(Identifier {
+                        dirs: vec![],
+                        generic_names: vec!["T".to_string()],
+                        name: "List".to_string(),
+                        range: new_range(),
+                    }),
+                    name: None,
                     range: new_range(),
                 },
-                new_identifier("U"),
-                new_identifier("Int"),
+                SignParameter {
+                    data_type: DataType::Identifier(new_identifier("U")),
+                    name: None,
+                    range: new_range(),
+                },
+                SignParameter {
+                    data_type: DataType::Identifier(new_identifier("Int")),
+                    name: None,
+                    range: new_range(),
+                },
             ],
             return_data_type: Some(Box::new(DataType::Identifier(Identifier {
                 dirs: vec![],
@@ -1795,16 +1993,47 @@ mod tests {
             range: new_range(),
         };
         assert_eq!(s3.to_string(), "sign <T, U> (List<T>, U, Int) type List<U>");
+
+        // 测试数据类型 Sign
+        let s4 = Sign {
+            parameters: vec![],
+            return_data_type: Some(Box::new(DataType::Sign(Sign {
+                parameters: vec![
+                    SignParameter {
+                        data_type: DataType::Identifier(new_identifier("Int")),
+                        name: None,
+                        range: new_range(),
+                    },
+                    SignParameter {
+                        data_type: DataType::Identifier(new_identifier("Boolean")),
+                        name: None,
+                        range: new_range(),
+                    },
+                ],
+                return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Int")))),
+                which_entries: vec![],
+                generic_names: vec![],
+                range: new_range(),
+            }))),
+            which_entries: vec![],
+            generic_names: vec![],
+            range: new_range(),
+        };
+        assert_eq!(s4.to_string(), "sign () type sign (Int, Boolean) type Int");
     }
 
     #[test]
     fn test_display_which() {
         // 单独一个类型说明
         let s1 = Sign {
-            parameters: vec![Identifier {
-                dirs: vec![],
-                generic_names: vec!["T".to_string()],
-                name: "List".to_string(),
+            parameters: vec![SignParameter {
+                data_type: DataType::Identifier(Identifier {
+                    dirs: vec![],
+                    generic_names: vec!["T".to_string()],
+                    name: "List".to_string(),
+                    range: new_range(),
+                }),
+                name: None,
                 range: new_range(),
             }],
             return_data_type: None,
@@ -1812,12 +2041,7 @@ mod tests {
             which_entries: vec![WhichEntry {
                 is_limit: false,
                 name: "T".to_string(),
-                data_types: vec![DataType::Identifier(Identifier {
-                    dirs: vec![],
-                    generic_names: vec![],
-                    name: "Int".to_string(),
-                    range: new_range(),
-                })],
+                data_types: vec![DataType::Identifier(new_identifier("Int"))],
                 range: new_range(),
             }],
             range: new_range(),
@@ -1826,10 +2050,14 @@ mod tests {
 
         // 多个类型说明
         let s2 = Sign {
-            parameters: vec![Identifier {
-                dirs: vec![],
-                generic_names: vec!["T".to_string(), "E".to_string()],
-                name: "Result".to_string(),
+            parameters: vec![SignParameter {
+                data_type: DataType::Identifier(Identifier {
+                    dirs: vec![],
+                    generic_names: vec!["T".to_string(), "E".to_string()],
+                    name: "Result".to_string(),
+                    range: new_range(),
+                }),
+                name: None,
                 range: new_range(),
             }],
             return_data_type: None,
@@ -1838,23 +2066,13 @@ mod tests {
                 WhichEntry {
                     is_limit: false,
                     name: "T".to_string(),
-                    data_types: vec![DataType::Identifier(Identifier {
-                        dirs: vec![],
-                        generic_names: vec![],
-                        name: "Int".to_string(),
-                        range: new_range(),
-                    })],
+                    data_types: vec![DataType::Identifier(new_identifier("Int"))],
                     range: new_range(),
                 },
                 WhichEntry {
                     is_limit: false,
                     name: "E".to_string(),
-                    data_types: vec![DataType::Identifier(Identifier {
-                        dirs: vec![],
-                        generic_names: vec![],
-                        name: "Error".to_string(),
-                        range: new_range(),
-                    })],
+                    data_types: vec![DataType::Identifier(new_identifier("Error"))],
                     range: new_range(),
                 },
             ],
@@ -1865,19 +2083,22 @@ mod tests {
             "sign <T, E> (Result<T, E>) which {\nT: Int\nE: Error\n}"
         );
 
-        // 类型为函数型，以及带 limit 的类型说明
+        // 类型为 Sign，以及带 limit 的类型说明
         let s3 = Sign {
             parameters: vec![
-                Identifier {
-                    dirs: vec![],
-                    generic_names: vec![],
-                    name: "F".to_string(),
+                SignParameter {
+                    data_type: DataType::Identifier(new_identifier("F")),
+                    name: None,
                     range: new_range(),
                 },
-                Identifier {
-                    dirs: vec![],
-                    generic_names: vec!["T".to_string()],
-                    name: "List".to_string(),
+                SignParameter {
+                    data_type: DataType::Identifier(Identifier {
+                        dirs: vec![],
+                        generic_names: vec!["T".to_string()],
+                        name: "List".to_string(),
+                        range: new_range(),
+                    }),
+                    name: None,
                     range: new_range(),
                 },
             ],
@@ -1889,25 +2110,20 @@ mod tests {
                     name: "F".to_string(),
                     data_types: vec![DataType::Sign(Sign {
                         parameters: vec![
-                            Identifier {
-                                dirs: vec![],
-                                generic_names: vec![],
-                                name: "Int".to_string(),
+                            SignParameter {
+                                data_type: DataType::Identifier(new_identifier("Int")),
+                                name: None,
                                 range: new_range(),
                             },
-                            Identifier {
-                                dirs: vec![],
-                                generic_names: vec![],
-                                name: "Boolean".to_string(),
+                            SignParameter {
+                                data_type: DataType::Identifier(new_identifier("Boolean")),
+                                name: None,
                                 range: new_range(),
                             },
                         ],
-                        return_data_type: Some(Box::new(DataType::Identifier(Identifier {
-                            dirs: vec![],
-                            generic_names: vec![],
-                            name: "Int".to_string(),
-                            range: new_range(),
-                        }))),
+                        return_data_type: Some(Box::new(DataType::Identifier(new_identifier(
+                            "Int",
+                        )))),
                         which_entries: vec![],
                         generic_names: vec![],
                         range: new_range(),
@@ -1918,18 +2134,8 @@ mod tests {
                     is_limit: true,
                     name: "T".to_string(),
                     data_types: vec![
-                        DataType::Identifier(Identifier {
-                            dirs: vec![],
-                            generic_names: vec![],
-                            name: "Eq".to_string(),
-                            range: new_range(),
-                        }),
-                        DataType::Identifier(Identifier {
-                            dirs: vec![],
-                            generic_names: vec![],
-                            name: "Display".to_string(),
-                            range: new_range(),
-                        }),
+                        DataType::Identifier(new_identifier("Eq")),
+                        DataType::Identifier(new_identifier("Display")),
                     ],
                     range: new_range(),
                 },
@@ -2018,9 +2224,25 @@ mod tests {
         };
         assert_eq!(t4.to_string(), "(123, 456, (abc, def,),)");
 
+        // 测试数据类型 Tuple
+        let t5 = Sign {
+            parameters: vec![],
+            return_data_type: Some(Box::new(DataType::Tuple(Tuple {
+                elements: vec![
+                    Expression::Identifier(new_identifier("Int")),
+                    Expression::Identifier(new_identifier("Boolean")),
+                ],
+                range: new_range(),
+            }))),
+            which_entries: vec![],
+            generic_names: vec![],
+            range: new_range(),
+        };
+        assert_eq!(t5.to_string(), "sign () type (Int, Boolean,)");
+
         // 测试辅助函数
-        let t5 = new_tuple(&vec![8, 13, 21, 34]);
-        assert_eq!(t5.to_string(), "(8, 13, 21, 34,)");
+        let t6 = new_tuple(&vec![8, 13, 21, 34]);
+        assert_eq!(t6.to_string(), "(8, 13, 21, 34,)");
     }
 
     #[test]
@@ -2275,7 +2497,7 @@ mod tests {
             arguments: vec![],
             range: new_range(),
         };
-        assert_eq!(e1.to_string(), "foo()");
+        assert_eq!(e1.to_string(), "foo ()");
 
         let e2 = FunctionCallExpression {
             callee: Box::new(Expression::Identifier(new_identifier("foo"))),
@@ -2286,7 +2508,7 @@ mod tests {
             }],
             range: new_range(),
         };
-        assert_eq!(e2.to_string(), "foo(1)");
+        assert_eq!(e2.to_string(), "foo (1)");
 
         // 使用命名参数
         let e3 = FunctionCallExpression {
@@ -2298,7 +2520,7 @@ mod tests {
             }],
             range: new_range(),
         };
-        assert_eq!(e3.to_string(), "foo(width=2)");
+        assert_eq!(e3.to_string(), "foo (width=2)");
 
         // 表达式作为参数
         let e4 = FunctionCallExpression {
@@ -2317,7 +2539,7 @@ mod tests {
             ],
             range: new_range(),
         };
-        assert_eq!(e4.to_string(), "foo(length=(1 + 2), width=3)");
+        assert_eq!(e4.to_string(), "foo (length=(1 + 2), width=3)");
 
         // callee 为表达式的情况
         let e5 = FunctionCallExpression {
@@ -2341,7 +2563,7 @@ mod tests {
             ],
             range: new_range(),
         };
-        assert_eq!(e5.to_string(), "(foo & bar)(10, name=20)");
+        assert_eq!(e5.to_string(), "(foo & bar) (10, name=20)");
     }
 
     #[test]
@@ -2555,22 +2777,39 @@ mod tests {
     #[test]
     fn test_let_expression() {
         let e1 = LetExpression {
+            data_type: None,
             object: Box::new(Expression::Identifier(new_identifier("foo"))),
             value: Box::new(Expression::Literal(new_literal_integer(123))),
             range: new_range(),
         };
         assert_eq!(e1.to_string(), "let foo = 123");
 
-        // 右手边值为表达式
         let e2 = LetExpression {
+            data_type: Some(DataType::Identifier(new_identifier("Int"))),
+            object: Box::new(Expression::Identifier(new_identifier("foo"))),
+            value: Box::new(Expression::Literal(new_literal_integer(123))),
+            range: new_range(),
+        };
+        assert_eq!(e2.to_string(), "let Int foo = 123");
+
+        // 右手边值为表达式
+        let e3 = LetExpression {
+            data_type: None,
             object: Box::new(Expression::Identifier(new_identifier("bar"))),
             value: Box::new(new_addition_expression(1, 2)),
             range: new_range(),
         };
-        assert_eq!(e2.to_string(), "let bar = (1 + 2)");
+        assert_eq!(e3.to_string(), "let bar = (1 + 2)");
 
         // 左手边值为元组
-        let e3 = LetExpression {
+        let e4 = LetExpression {
+            data_type: Some(DataType::Tuple(Tuple {
+                elements: vec![
+                    Expression::Identifier(new_identifier("Int")),
+                    Expression::Identifier(new_identifier("String")),
+                ],
+                range: new_range(),
+            })),
             object: Box::new(Expression::Tuple(Tuple {
                 elements: vec![
                     Expression::Identifier(new_identifier("id")),
@@ -2581,11 +2820,11 @@ mod tests {
             value: Box::new(Expression::Identifier(new_identifier("user"))),
             range: new_range(),
         };
-        assert_eq!(e3.to_string(), "let (id, name,) = user");
+        assert_eq!(e4.to_string(), "let (Int, String,) (id, name,) = user");
 
         // 测试辅助函数
-        let e4 = new_let_expression("foo", 123);
-        assert_eq!(e4.to_string(), "let foo = 123");
+        let e5 = new_let_expression("foo", 123);
+        assert_eq!(e5.to_string(), "let Int foo = 123");
     }
 
     #[test]
@@ -2671,6 +2910,7 @@ mod tests {
                 is_explicit: false,
                 body: vec![
                     Expression::LetExpression(LetExpression {
+                        data_type: None,
                         object: Box::new(Expression::Identifier(new_identifier("i"))),
                         value: Box::new(Expression::BinaryExpression(BinaryExpression {
                             operator: Token::Plus,
@@ -2749,7 +2989,7 @@ mod tests {
             e2.to_string(),
             trim_left_margin(
                 "each let i in [1, 2, 3,] do {
-                    sqrt(i)
+                    sqrt (i)
                 }"
             )
         );
@@ -2814,8 +3054,8 @@ mod tests {
         assert_eq!(
             e2.to_string(),
             trim_left_margin(
-                "branch where let foo = 10 {
-                    case (foo > i) where let i = 20: 1
+                "branch where let Int foo = 10 {
+                    case (foo > i) where let Int i = 20: 1
                     case true: 2
                     default: 3
                 }"
@@ -2882,6 +3122,7 @@ mod tests {
                             range: new_range(),
                         })),
                         PatternAdditional::Where(Expression::LetExpression(LetExpression {
+                            data_type: None,
                             object: Box::new(Expression::Identifier(new_identifier("bar"))),
                             value: Box::new(Expression::Literal(new_literal_integer(20))),
                             range: new_range(),
@@ -2897,7 +3138,7 @@ mod tests {
         assert_eq!(
             e2.to_string(),
             trim_left_margin(
-                "match (1 + 2) where let foo = 10 {
+                "match (1 + 2) where let Int foo = 10 {
                     case v @ in [1, 2, 3,]: 1
                     case true only (foo > bar)
                         where let bar = 20: 2
@@ -2970,9 +3211,156 @@ mod tests {
     }
 
     // statements
-
+    #[test]
     fn test_function_declaration() {
-        // todo::
+        let s1 = FunctionDeclaration {
+            name: "test".to_string(),
+            generic_names: vec![],
+            parameters: vec![
+                FunctionParameter {
+                    data_type: DataType::Identifier(new_identifier("Int")),
+                    name: "a".to_string(),
+                    value: None,
+                    range: new_range(),
+                },
+                FunctionParameter {
+                    data_type: DataType::Identifier(new_identifier("Int")),
+                    name: "b".to_string(),
+                    value: None,
+                    range: new_range(),
+                },
+            ],
+            return_data_type: Some(DataType::Identifier(new_identifier("Int"))),
+            which_entries: vec![],
+            where_exp: None,
+            body: Expression::BinaryExpression(BinaryExpression {
+                operator: Token::Plus,
+                left: Box::new(Expression::Identifier(new_identifier("a"))),
+                right: Box::new(Expression::Identifier(new_identifier("b"))),
+                range: new_range(),
+            }),
+            range: new_range(),
+        };
+        assert_eq!(
+            s1.to_string(),
+            "function test (Int a, Int b) type Int = (a + b)\n"
+        );
+
+        // 测试泛型和 which
+        let s2 = FunctionDeclaration {
+            name: "writeLine".to_string(),
+            generic_names: vec!["D".to_string(), "W".to_string()],
+            parameters: vec![
+                FunctionParameter {
+                    data_type: DataType::Identifier(new_identifier("D")),
+                    name: "data".to_string(),
+                    value: None,
+                    range: new_range(),
+                },
+                FunctionParameter {
+                    data_type: DataType::Identifier(new_identifier("W")),
+                    name: "output".to_string(),
+                    value: None,
+                    range: new_range(),
+                },
+            ],
+            return_data_type: None,
+            which_entries: vec![
+                WhichEntry {
+                    is_limit: true,
+                    name: "D".to_string(),
+                    data_types: vec![DataType::Identifier(new_identifier("Display"))],
+                    range: new_range(),
+                },
+                WhichEntry {
+                    is_limit: true,
+                    name: "W".to_string(),
+                    data_types: vec![DataType::Identifier(new_identifier("Writer"))],
+                    range: new_range(),
+                },
+            ],
+            body: Expression::FunctionCallExpression(FunctionCallExpression {
+                callee: Box::new(Expression::Identifier(new_identifier("write"))),
+                arguments: vec![
+                    Argument {
+                        name: None,
+                        value: Box::new(Expression::Identifier(new_identifier("output"))),
+                        range: new_range(),
+                    },
+                    Argument {
+                        name: None,
+                        value: Box::new(Expression::BinaryExpression(BinaryExpression {
+                            operator: Token::Concat,
+                            left: Box::new(Expression::Identifier(new_identifier("data"))),
+                            right: Box::new(Expression::Literal(new_literal_string("\\n"))),
+                            range: new_range(),
+                        })),
+                        range: new_range(),
+                    },
+                ],
+                range: new_range(),
+            }),
+            where_exp: None,
+            range: new_range(),
+        };
+        assert_eq!(
+            s2.to_string(),
+            trim_left_margin(
+                "function writeLine <D, W> (D data, W output) which {
+                D: limit Display
+                W: limit Writer
+            } = write (output, (data ++ \"\\n\"))
+            "
+            )
+        );
+
+        // 测试默认值和 where 从属表达式
+        let s3 = FunctionDeclaration {
+            name: "test".to_string(),
+            generic_names: vec![],
+            parameters: vec![
+                FunctionParameter {
+                    data_type: DataType::Identifier(new_identifier("Int")),
+                    name: "a".to_string(),
+                    value: Some(Expression::Literal(new_literal_integer(10))),
+                    range: new_range(),
+                },
+                FunctionParameter {
+                    data_type: DataType::Identifier(new_identifier("Int")),
+                    name: "b".to_string(),
+                    value: Some(Expression::Literal(new_literal_integer(20))),
+                    range: new_range(),
+                },
+            ],
+            return_data_type: Some(DataType::Identifier(new_identifier("Int"))),
+            which_entries: vec![],
+            where_exp: Some(Expression::LetExpression(LetExpression {
+                data_type: None,
+                object: Box::new(Expression::Identifier(new_identifier("c"))),
+                value: Box::new(Expression::BinaryExpression(BinaryExpression {
+                    operator: Token::Plus,
+                    left: Box::new(Expression::Identifier(new_identifier("a"))),
+                    right: Box::new(Expression::Identifier(new_identifier("b"))),
+                    range: new_range(),
+                })),
+                range: new_range(),
+            })),
+            body: Expression::BlockExpression(BlockExpression {
+                is_explicit: false,
+                body: vec![Expression::Identifier(new_identifier("c"))],
+                range: new_range(),
+            }),
+            range: new_range(),
+        };
+        assert_eq!(
+            s3.to_string(),
+            trim_left_margin(
+                "function test (Int a = 10, Int b = 20) type Int where let c = (a + b) {
+                    c
+                }
+                "
+            )
+        );
     }
 
     fn test_empty_function_declaration() {
@@ -3023,7 +3411,10 @@ mod tests {
         // todo::
     }
 
-    fn test_expression() {
-        // todo::
+    #[test]
+    fn test_statement_expression() {
+        let e1 = new_addition_expression(1, 2);
+        let s1 = Statement::Expression(e1);
+        assert_eq!(s1.to_string(), "(1 + 2)\n");
     }
 }

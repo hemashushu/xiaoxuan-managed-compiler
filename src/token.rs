@@ -91,6 +91,7 @@ pub enum Token {
 
     Let,
     Fn,
+    Sign,
 
     If,
     Then,
@@ -126,7 +127,6 @@ pub enum Token {
     Union,
     Trait,
     Impl,
-    Sign,
     Alias,
 }
 
@@ -220,6 +220,7 @@ impl fmt::Display for Token {
 
             Token::Let => write!(f, "let"),
             Token::Fn => write!(f, "fn"),
+            Token::Sign => write!(f, "sign"),
 
             Token::If => write!(f, "if"),
             Token::Then => write!(f, "then"),
@@ -255,7 +256,6 @@ impl fmt::Display for Token {
             Token::Union => write!(f, "union"),
             Token::Trait => write!(f, "trait"),
             Token::Impl => write!(f, "impl"),
-            Token::Sign => write!(f, "sign"),
             Token::Alias => write!(f, "alias"),
         }
     }
@@ -375,6 +375,7 @@ mod tests {
 
         assert_eq!(Token::Let.to_string(), "let");
         assert_eq!(Token::Fn.to_string(), "fn");
+        assert_eq!(Token::Sign.to_string(), "sign");
 
         assert_eq!(Token::If.to_string(), "if");
         assert_eq!(Token::Then.to_string(), "then");
@@ -410,7 +411,6 @@ mod tests {
         assert_eq!(Token::Union.to_string(), "union");
         assert_eq!(Token::Trait.to_string(), "trait");
         assert_eq!(Token::Impl.to_string(), "impl");
-        assert_eq!(Token::Sign.to_string(), "sign");
         assert_eq!(Token::Alias.to_string(), "alias");
     }
 
