@@ -795,8 +795,9 @@ pub struct MapEntry {
     // 注：
     // - 在使用花括号实例化结构体时，可以使用完整的 `key: value` 表达式
     //   为每个成员赋值，如果当前环境存在一个标识符，名称跟结构体的成员同名，
-    //   也可以 `: value` 部分，直接写 `key` 部分，所以 `value` 是可选值。
+    //   也可以省略 `value` 部分，只写 `key` 部分，所以 `value` 是可选值。
     // - 当映射表作为 `左手边值` 时，也是可以省略 `value`。
+    // - 当值是 `省略号表达式` 时，也是只有 `key` 而无 `value`。
     pub value: Option<Box<Expression>>,
     pub range: Range,
 }

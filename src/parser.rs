@@ -8,8 +8,9 @@
 use crate::{
     ast::{
         BinaryExpression, Bit, BlockExpression, Boolean, Char, Complex, Ellipsis, Expression,
-        Float, GeneralString, HashString, Identifier, Integer, Interval, List, Literal,
-        NamedOperator, Node, PrefixIdentifier, Program, Range, Statement, Tuple, UnaryExpression,
+        Float, GeneralString, HashString, Identifier, Integer, Interval, List, Literal, Map,
+        MapEntry, NamedOperator, Node, PrefixIdentifier, Program, Range, Statement, Tuple,
+        UnaryExpression,
     },
     error::Error,
     token::{Token, TokenDetail},
@@ -98,7 +99,7 @@ fn parse_expression_statement(
     let (expression, rest) = parse_expression(source_token_details)?;
 
     // statement 以 Token::NewLine 或者 EOF 结束，消耗这个换行符（如果存在的话）
-    consume_new_line_token_if_exists(rest)
+    consume_new_line_or_end_of_file(rest)
         .map(|post_rest| (Statement::Expression(expression), post_rest))
 }
 
@@ -237,7 +238,7 @@ fn continue_parse_expression_block(
     }
 
     let post_consume_token_right_brace =
-        consume_token_ignore_new_lines(&Token::RightBrace, token_details)?;
+        skip_new_lines_and_consume_token(&Token::RightBrace, token_details)?;
 
     Ok((expressions, post_consume_token_right_brace))
 }
@@ -752,8 +753,8 @@ fn parse_primary_expression(
             Token::LeftBrace => parse_map(source_token_details),
             Token::Identifier(_) => parse_identifier(source_token_details),
             _ => {
-                let (literal, post_rest) = parse_literal(source_token_details)?;
-                Ok((Expression::Literal(literal), post_rest))
+                let (literal, post_parse_literal) = parse_literal(source_token_details)?;
+                Ok((Expression::Literal(literal), post_parse_literal))
             }
         },
         None => Err(Error::ParserError(
@@ -980,11 +981,45 @@ fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[Tok
     }
 }
 
+// 尝试解析复数，如果成功则返回虚数及剩余的 token，
+// 如果不成功则返回空元
+fn continue_parse_imaginary(
+    source_token_details: &[TokenDetail],
+) -> Result<(f64, &[TokenDetail]), ()> {
+    match source_token_details.split_first() {
+        Some((first, rest)) if first.token == Token::Plus => match rest.split_first() {
+            Some((
+                TokenDetail {
+                    token: Token::Imaginary(f),
+                    ..
+                },
+                post_rest,
+            )) => Ok((*f, post_rest)),
+            _ => {
+                // 当前表达式并非复数（但不是错误）
+                Err(())
+            }
+        },
+        _ => {
+            // 当前表达式并非复数（但不是错误）
+            Err(())
+        }
+    }
+}
+
 fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[TokenDetail]), Error> {
     // list
     //
     // e.g.
     // [123, 345, 567,]
+    // [123, 345, 567]   // 末尾逗号可省略
+    //
+    // [
+    //    123,  // 换行时，项目之间的逗号不可以省略
+    //    456,
+    //    678
+    // ]
+    //
     // [1..10]
     // [1..=9]
     // [1,3..10]
@@ -992,10 +1027,10 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
     let mut token_details = source_token_details;
 
     let mut expressions: Vec<Expression> = vec![];
-    let mut is_expected_end = false;
+    let mut is_expected_end = false; // 标记当前是否处于一心找列表结束的状态
 
-    token_details = consume_token(&Token::LeftBracket, token_details)?; // 消除左中括号
-    token_details = skip_new_lines(token_details); // 左中括号后面允许换行
+    token_details = consume_token(&Token::LeftBracket, token_details)?; // 消除左中括号（方括号）
+    token_details = skip_new_lines(token_details); // 左中括号（方括号）后面允许换行
 
     loop {
         token_details = match token_details.first() {
@@ -1005,75 +1040,82 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
                     ..
                 } = first
                 {
-                    // 找到右中括号，退出循环
+                    // 找到了结束符号————右中括号（方括号），退出循环
                     break;
                 } else {
                     if is_expected_end {
-                        // 当前只允许右中括号
+                        // 当前的状态是一心寻找结束符号 ———— 右中括号（方括号）
                         return Err(Error::ParserError(
                             "expected the right bracket symbol \"]\"".to_string(),
                         ));
                     } else {
-                        // 先检查是否 `展开式`
+                        // 先检查是否 `省略符表达式`
                         if let TokenDetail {
                             token: Token::Ellipsis,
                             ..
                         } = first
                         {
-                            // 当前是 `展开式`
-                            let (ellipsis, post_rest) = continue_parse_ellipsis(token_details)?;
+                            // 当前是 `省略符表达式`
+                            let (ellipsis, post_parse_ellipsis) =
+                                continue_parse_ellipsis(token_details)?;
                             expressions.push(Expression::Ellipsis(ellipsis));
-                            is_expected_end = true; // 设置标记，`展开式` 后面只能允许右中括号
+                            is_expected_end = true; // 设置标记，`省略符表达式` 后面只能允许列表结束
 
                             // 消除逗号
-                            let post_consume_comma = if is_token(&Token::Comma, post_rest) {
-                                consume_token(&Token::Comma, post_rest)?
+                            let post_consume_comma = if is_token(&Token::Comma, post_parse_ellipsis)
+                            {
+                                consume_token(&Token::Comma, post_parse_ellipsis)?
                             } else {
-                                post_rest
+                                post_parse_ellipsis
                             };
 
                             // 消除空行
                             let post_consume_new_lines = skip_new_lines(post_consume_comma);
                             post_consume_new_lines
                         } else {
-                            // 解析普通表达式
-                            let (expression, post_rest) = parse_expression(token_details)?;
+                            // 当前是普通表达式或者 `范围表达式`
+                            let (expression, post_parse_expression) =
+                                parse_expression(token_details)?;
 
-                            let post_check_interval = if is_token(&Token::Interval, post_rest)
-                                || is_token(&Token::IntervalInclusive, post_rest)
-                            {
-                                // 当前是范围表达式
-                                let (
-                                    is_inclusive,
-                                    optional_to_expression,
-                                    post_continue_parse_interval,
-                                ) = continue_parse_interval(post_rest)?;
+                            let post_check_interval =
+                                if is_token(&Token::Interval, post_parse_expression)
+                                    || is_token(&Token::IntervalInclusive, post_parse_expression)
+                                {
+                                    // 当前是 `范围表达式`
+                                    let (
+                                        is_inclusive,
+                                        optional_to_expression,
+                                        post_continue_parse_interval,
+                                    ) = continue_parse_interval(post_parse_expression)?;
 
-                                let interval_expression = Expression::Interval(Interval {
-                                    is_inclusive,
-                                    from: Box::new(expression),
-                                    to: match optional_to_expression {
-                                        Some(end_expression) => Some(Box::new(end_expression)),
-                                        None => None,
-                                    },
-                                    range: new_range(),
-                                });
+                                    let interval_expression = Expression::Interval(Interval {
+                                        is_inclusive,
+                                        from: Box::new(expression),
+                                        to: match optional_to_expression {
+                                            Some(end_expression) => Some(Box::new(end_expression)),
+                                            None => None,
+                                        },
+                                        range: new_range(),
+                                    });
 
-                                is_expected_end = true; // 设置标记，`范围表达式` 后面只能允许右中括号
+                                    is_expected_end = true; // 设置标记，`范围表达式` 后面只能允许列表结束
 
-                                expressions.push(interval_expression);
-                                post_continue_parse_interval
-                            } else {
-                                // 当前是普通表达式
-                                expressions.push(expression);
-                                post_rest
-                            };
+                                    expressions.push(interval_expression);
+                                    post_continue_parse_interval
+                                } else {
+                                    // 当前是普通表达式
+                                    expressions.push(expression);
+                                    post_parse_expression
+                                };
 
                             // 消除逗号
                             let post_consume_comma = if is_token(&Token::Comma, post_check_interval)
                             {
                                 consume_token(&Token::Comma, post_check_interval)?
                             } else {
+                                // 设置标记，表示如果项目后面没有逗号，则表示当前已经是最后一项
+                                // 后面只能允许列表结束
+                                is_expected_end = true;
                                 post_check_interval
                             };
 
@@ -1086,7 +1128,7 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
             }
             None => {
                 return Err(Error::ParserError(
-                    "expected the right paren symbol \")\"".to_string(),
+                    "expected the right bracket symbol \")\"".to_string(),
                 ))
             }
         }
@@ -1114,10 +1156,16 @@ fn parse_tuple_or_parenthesized(
     // tuple:
     //
     // ()
-    // (one,)
-    // (one, two, )
-    // (one, two, ...)
-    // (one, two, ...rest)
+    // (one,)              // 单独一个元素的末尾逗号不可省略
+    // (one, two, )        // 末尾逗号可以省略
+    // (one, two, ...)     //
+    // (one, two, ...rest) //
+    //
+    // (
+    //    123,  // 换行时，项目之间的逗号不可以省略
+    //    456,
+    //    678
+    // )
     //
     // parenthesized:
     //
@@ -1126,8 +1174,8 @@ fn parse_tuple_or_parenthesized(
     let mut token_details = source_token_details;
 
     let mut expressions: Vec<Expression> = vec![];
-    let mut is_tuple = false;
-    let mut is_expected_end = false;
+    let mut is_tuple = false; // 标记当前是否元组（而不是表达式括号运算）
+    let mut is_expected_end = false; // 标记当前是否处于一心找元组结束的状态
 
     token_details = consume_token(&Token::LeftParen, token_details)?; // 消除左括号
     token_details = skip_new_lines(token_details); // 左括号后面允许换行
@@ -1140,31 +1188,33 @@ fn parse_tuple_or_parenthesized(
                     ..
                 } = first
                 {
-                    // 找到右括号，退出循环
+                    // 找到了结束符号————右括号，退出循环
                     break;
                 } else {
                     if is_expected_end {
-                        // 当前只允许右括号
+                        // 当前的状态是一心寻找结束符号 ———— 右括号
                         return Err(Error::ParserError(
                             "expected the right paren symbol \")\"".to_string(),
                         ));
                     } else {
-                        // 先检查是否 `展开式`
+                        // 先检查是否 `省略符表达式`
                         if let TokenDetail {
                             token: Token::Ellipsis,
                             ..
                         } = first
                         {
-                            // 当前是 `展开式`
-                            let (ellipsis, post_rest) = continue_parse_ellipsis(token_details)?;
+                            // 当前是 `省略符表达式`
+                            let (ellipsis, post_parse_ellipsis) =
+                                continue_parse_ellipsis(token_details)?;
                             expressions.push(Expression::Ellipsis(ellipsis));
-                            is_expected_end = true; // 设置标记，`展开式` 后面只能允许右括号
+                            is_expected_end = true; // 设置标记，`省略符表达式` 后面只能允许列表结束
 
                             // 消除逗号
-                            let post_consume_comma = if is_token(&Token::Comma, post_rest) {
-                                consume_token(&Token::Comma, post_rest)?
+                            let post_consume_comma = if is_token(&Token::Comma, post_parse_ellipsis)
+                            {
+                                consume_token(&Token::Comma, post_parse_ellipsis)?
                             } else {
-                                post_rest
+                                post_parse_ellipsis
                             };
 
                             // 消除空行
@@ -1172,16 +1222,22 @@ fn parse_tuple_or_parenthesized(
                             post_consume_new_lines
                         } else {
                             // 当前是普通表达式
-                            let (expression, post_rest) = parse_expression(token_details)?;
+                            let (expression, post_parse_expression) =
+                                parse_expression(token_details)?;
                             expressions.push(expression);
 
                             // 消除逗号
-                            let post_consume_comma = if is_token(&Token::Comma, post_rest) {
-                                is_tuple = true;
-                                consume_token(&Token::Comma, post_rest)?
-                            } else {
-                                post_rest
-                            };
+                            let post_consume_comma =
+                                if is_token(&Token::Comma, post_parse_expression) {
+                                    // 检测到逗号，设置标记，表明当前表达式是元组而非括号表达式
+                                    is_tuple = true;
+                                    consume_token(&Token::Comma, post_parse_expression)?
+                                } else {
+                                    // 设置标记，表示如果项目后面没有逗号，则表示当前已经是最后一项
+                                    // 后面只能允许列表结束
+                                    is_expected_end = true;
+                                    post_parse_expression
+                                };
 
                             // 消除空行
                             let post_consume_new_lines = skip_new_lines(post_consume_comma);
@@ -1297,7 +1353,7 @@ fn continue_parse_interval(
         Some(TokenDetail { token, .. })
             if (*token == Token::Comma || *token == Token::RightBracket) =>
         {
-            // 遇到了逗号或者右中括号
+            // 遇到了逗号或者右中括号（方括号）
             if is_inclusive {
                 // 对于闭区间的范围表达式，`to` 部分是不能省略的。
                 Err(Error::ParserError(
@@ -1320,8 +1376,159 @@ fn parse_map(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Toke
     // map
     //
     // e.g.
-    // {name: value, name, expression, ...}
-    todo!()
+    // {name: value, name: value} // 项目之间使用逗号分隔
+    // {id, name, ...rest}        // 末尾逗号可以省略
+    // {
+    //    id: value,
+    //    name: value    // 换行时，项目之间的逗号 **可以** 省略
+    //    checkd: value  // 这种格式对于同样使用花括号作为主体的 map/branch/match 三种表达式都保持一致
+    // }
+
+    let mut token_details = source_token_details;
+    let mut entries: Vec<MapEntry> = vec![];
+    let mut is_expected_end = false; // 标记当前是否处于一心找映射表结束的状态
+
+    token_details = consume_token(&Token::LeftBrace, token_details)?; // 消除左花括号
+    token_details = skip_new_lines(token_details); // 左花括号后面允许换行
+
+    loop {
+        token_details = match token_details.first() {
+            Some(first) => {
+                if let TokenDetail {
+                    token: Token::RightBrace,
+                    ..
+                } = first
+                {
+                    // 找到了结束符号————右花括号，退出循环
+                    break;
+                } else {
+                    if is_expected_end {
+                        // 当前的状态是一心寻找结束符号 ———— 右花括号
+                        return Err(Error::ParserError(
+                            "expected the right brace symbol \"}\"".to_string(),
+                        ));
+                    } else {
+                        // 先检查是否 `省略符表达式`
+                        if let TokenDetail {
+                            token: Token::Ellipsis,
+                            ..
+                        } = first
+                        {
+                            // 当前是 `省略符表达式`
+                            let (ellipsis, post_parse_ellipsis) =
+                                continue_parse_ellipsis(token_details)?;
+
+                            // `省略表达式` 以 `key` 添加到项目里
+                            entries.push(MapEntry {
+                                key: Box::new(Expression::Ellipsis(ellipsis)),
+                                value: None,
+                                range: new_range(),
+                            });
+                            is_expected_end = true; // 设置标记，`省略符表达式` 后面只能允许列表结束
+
+                            // 消除逗号
+                            let post_consume_comma = if is_token(&Token::Comma, post_parse_ellipsis)
+                            {
+                                consume_token(&Token::Comma, post_parse_ellipsis)?
+                            } else {
+                                post_parse_ellipsis
+                            };
+
+                            // 消除空行
+                            let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                            post_consume_new_lines
+                        } else {
+                            // 当前是 `key: value` 表达式
+                            // 注意其中的 `value` 部分是可选的。
+
+                            let (expression, post_parse_key_expression) =
+                                parse_expression(token_details)?;
+
+                            let post_entry = if is_token(&Token::Colon, post_parse_key_expression) {
+                                // 当前存在 `value` 部分
+
+                                // 消除冒号
+                                let post_consume_colon =
+                                    consume_token(&Token::Colon, post_parse_key_expression)?;
+
+                                // 消除空行
+                                let post_consume_new_lines_after_colon =
+                                    skip_new_lines(post_consume_colon);
+
+                                let (value_expression, post_parse_value_expression) =
+                                    parse_expression(post_consume_new_lines_after_colon)?;
+
+                                // 构造 MapEntry
+                                let entry = MapEntry {
+                                    key: Box::new(expression),
+                                    value: Some(Box::new(value_expression)),
+                                    range: new_range(),
+                                };
+
+                                entries.push(entry);
+                                post_parse_value_expression
+                            } else {
+                                // 当前不存在 `value` 部分
+
+                                // 构造 MapEntry
+                                let entry = MapEntry {
+                                    key: Box::new(expression),
+                                    value: None,
+                                    range: new_range(),
+                                };
+
+                                entries.push(entry);
+                                post_parse_key_expression
+                            };
+
+                            // 如果接下来是：
+                            // - 逗号
+                            // - 逗号+空行
+                            // - 空行
+                            //
+                            // 表明还有下一项，否则表示后面没有更多项目
+
+                            let post_consume_comma = match post_entry.split_first() {
+                                Some((first, rest)) if first.token == Token::Comma => {
+                                    // 消除逗号
+                                    rest
+                                }
+                                Some((first, _)) if first.token == Token::NewLine => {
+                                    // 等接下来的代码来统一来消除空行
+                                    post_entry
+                                }
+                                _ => {
+                                    // 没有下一项了，标记映射表的已经到达末尾
+                                    is_expected_end = true;
+                                    post_entry
+                                }
+                            };
+
+                            // 消除空行
+                            let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                            post_consume_new_lines
+                        }
+                    }
+                }
+            }
+            None => {
+                return Err(Error::ParserError(
+                    "expected the right brace symbol \"}\"".to_string(),
+                ));
+            }
+        }
+    }
+
+    // 消除右花括号
+    token_details = consume_token(&Token::RightBrace, token_details)?;
+
+    Ok((
+        Expression::Map(Map {
+            elements: entries,
+            range: new_range(),
+        }),
+        token_details,
+    ))
 }
 
 // 跳过空白的行，在 lexer 里产生的 Token 序列当中，有可能存在多行连续的空行，
@@ -1341,6 +1548,14 @@ fn skip_new_lines(source_token_details: &[TokenDetail]) -> &[TokenDetail] {
     token_details
 }
 
+fn skip_new_lines_and_consume_token<'a>(
+    expected: &Token,
+    source_token_details: &'a [TokenDetail],
+) -> Result<&'a [TokenDetail], Error> {
+    let token_details = skip_new_lines(source_token_details);
+    consume_token(expected, token_details)
+}
+
 fn is_token(expected: &Token, source_token_details: &[TokenDetail]) -> bool {
     match source_token_details.first() {
         Some(first) if &first.token == expected => true,
@@ -1351,24 +1566,6 @@ fn is_token(expected: &Token, source_token_details: &[TokenDetail]) -> bool {
 fn is_token_ignore_new_lines(expected: &Token, source_token_details: &[TokenDetail]) -> bool {
     let token_details = skip_new_lines(source_token_details);
     is_token(expected, token_details)
-}
-
-fn continue_parse_imaginary(
-    source_token_details: &[TokenDetail],
-) -> Result<(f64, &[TokenDetail]), ()> {
-    match source_token_details.split_first() {
-        Some((first, rest)) if first.token == Token::Plus => match rest.split_first() {
-            Some((
-                TokenDetail {
-                    token: Token::Imaginary(f),
-                    ..
-                },
-                post_rest,
-            )) => Ok((*f, post_rest)),
-            _ => Err(()),
-        },
-        _ => Err(()),
-    }
 }
 
 fn consume_token<'a>(
@@ -1384,15 +1581,17 @@ fn consume_token<'a>(
     }
 }
 
-fn consume_token_ignore_new_lines<'a>(
+fn consume_token_if_exists<'a>(
     expected: &Token,
     source_token_details: &'a [TokenDetail],
-) -> Result<&'a [TokenDetail], Error> {
-    let token_details = skip_new_lines(source_token_details);
-    consume_token(expected, token_details)
+) -> &'a [TokenDetail] {
+    match source_token_details.split_first() {
+        Some((first, rest)) if &first.token == expected => rest,
+        _ => source_token_details,
+    }
 }
 
-fn consume_new_line_token_if_exists(
+fn consume_new_line_or_end_of_file(
     source_token_details: &[TokenDetail],
 ) -> Result<&[TokenDetail], Error> {
     match source_token_details.split_first() {
@@ -1621,6 +1820,17 @@ mod tests {
         // 逗号结尾
         let n7 = parse_from_string("(123,...abc,)").unwrap();
         assert_eq!(n7.to_string(), "(123, ...abc,)\n");
+
+        // 多行格式
+        let n8 = parse_from_string(&trim_left_margin(
+            "(
+                123,
+                456,
+                789
+            )",
+        ))
+        .unwrap();
+        assert_eq!(n8.to_string(), "(123, 456, 789,)\n");
     }
 
     #[test]
@@ -1687,11 +1897,154 @@ mod tests {
         // 一个元素，以及一个闭区间范围表达式的列表
         let n16 = parse_from_string("[1,3..=9]").unwrap();
         assert_eq!(n16.to_string(), "[1, 3..=9,]\n");
+
+        // 多行格式
+        let n17 = parse_from_string(&trim_left_margin(
+            "[
+                123,
+                456,
+                789
+            ]",
+        ))
+        .unwrap();
+        assert_eq!(n17.to_string(), "[123, 456, 789,]\n");
     }
 
     #[test]
     fn test_map() {
-        //
+        let n1 = parse_from_string("{name:\"foo\"}").unwrap();
+        assert_eq!(
+            n1.to_string(),
+            trim_left_margin(
+                "{
+                    name: \"foo\"
+                }
+                "
+            )
+        );
+
+        let n2 = parse_from_string("{x:10,y:20}").unwrap();
+        assert_eq!(
+            n2.to_string(),
+            trim_left_margin(
+                "{
+                    x: 10
+                    y: 20
+                }
+                "
+            )
+        );
+
+        // 以逗号结尾
+        let n3 = parse_from_string("{x:10,y:20,}").unwrap();
+        assert_eq!(
+            n3.to_string(),
+            trim_left_margin(
+                "{
+                    x: 10
+                    y: 20
+                }
+                "
+            )
+        );
+
+        // 多行格式
+        let n3 = parse_from_string(&trim_left_margin(
+            "{
+                x:10
+                y:20
+                z:30
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n3.to_string(),
+            trim_left_margin(
+                "{
+                    x: 10
+                    y: 20
+                    z: 30
+                }
+                "
+            )
+        );
+
+        // 多行格式带逗号
+        let n4 = parse_from_string(&trim_left_margin(
+            "{
+                x:10,
+                y:20,
+                z:30,
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n4.to_string(),
+            trim_left_margin(
+                "{
+                    x: 10
+                    y: 20
+                    z: 30
+                }
+                "
+            )
+        );
+
+        // 测试缺少 `value` 部分的
+        let n5 = parse_from_string(&trim_left_margin(
+            "{
+                x
+                y:20,
+                z
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n5.to_string(),
+            trim_left_margin(
+                "{
+                    x
+                    y: 20
+                    z
+                }
+                "
+            )
+        );
+
+        // 测试 `省略号表达式`
+        let n6 = parse_from_string("{x, y:20, ...rest}").unwrap();
+        assert_eq!(
+            n6.to_string(),
+            trim_left_margin(
+                "{
+                    x
+                    y: 20
+                    ...rest
+                }
+                "
+            )
+        );
+
+        // 测试多行格式的 `省略号表达式`
+        let n7 = parse_from_string(&trim_left_margin(
+            "{
+                x
+                y:20,
+                ...rest
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n7.to_string(),
+            trim_left_margin(
+                "{
+                    x
+                    y: 20
+                    ...rest
+                }
+                "
+            )
+        );
     }
 
     #[test]
