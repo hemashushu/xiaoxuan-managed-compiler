@@ -1452,9 +1452,9 @@ mod tests {
 
     #[test]
     fn test_integer_literal() {
-        let a1 = parse_from_string("123").unwrap();
+        let n1 = parse_from_string("123").unwrap();
         assert_eq!(
-            a1,
+            n1,
             Node::Program(Program {
                 body: vec![Statement::Expression(Expression::Literal(
                     Literal::Integer(Integer {
@@ -1466,81 +1466,89 @@ mod tests {
             })
         );
 
-        assert_eq!(a1.to_string(), "123\n"); // Statement 以符号 '\n' 结尾
+        assert_eq!(n1.to_string(), "123\n"); // Statement 以符号 '\n' 结尾
     }
 
     #[test]
     fn test_float_literal() {
-        let a1 = parse_from_string("3.14").unwrap();
-        assert_eq!(a1.to_string(), "3.14\n");
+        let n1 = parse_from_string("3.14").unwrap();
+        assert_eq!(n1.to_string(), "3.14\n");
 
-        let a2 = parse_from_string("3.14e2").unwrap();
-        assert_eq!(a2.to_string(), "314\n");
+        let n2 = parse_from_string("3.14e2").unwrap();
+        assert_eq!(n2.to_string(), "314\n");
 
-        let a3 = parse_from_string("3.14e-1").unwrap();
-        assert_eq!(a3.to_string(), "0.314\n");
+        let n3 = parse_from_string("3.14e-1").unwrap();
+        assert_eq!(n3.to_string(), "0.314\n");
     }
 
     #[test]
     fn test_complex_literal() {
-        let a1 = parse_from_string("3+4i").unwrap();
-        assert_eq!(
-            a1,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Literal(
-                    Literal::Complex(Complex {
-                        real: 3.0,
-                        imaginary: 4.0,
-                        range: new_range()
-                    })
-                ))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a1.to_string(), "3+4i\n");
+        let n1 = parse_from_string("3+4i").unwrap();
+        assert_eq!(n1.to_string(), "3+4i\n");
 
-        let a2 = parse_from_string("0+2i").unwrap();
-        assert_eq!(a2.to_string(), "0+2i\n");
+        let n2 = parse_from_string("0+2i").unwrap();
+        assert_eq!(n2.to_string(), "0+2i\n");
 
-        let a3 = parse_from_string("5i").unwrap();
-        assert_eq!(a3.to_string(), "0+5i\n");
+        let n3 = parse_from_string("5i").unwrap();
+        assert_eq!(n3.to_string(), "0+5i\n");
 
-        let a4 = parse_from_string("1.414+2.718i").unwrap();
-        assert_eq!(a4.to_string(), "1.414+2.718i\n");
+        let n4 = parse_from_string("1.414+2.718i").unwrap();
+        assert_eq!(n4.to_string(), "1.414+2.718i\n");
 
-        let a5 = parse_from_string("3.14i").unwrap();
-        assert_eq!(a5.to_string(), "0+3.14i\n");
+        let n5 = parse_from_string("3.14i").unwrap();
+        assert_eq!(n5.to_string(), "0+3.14i\n");
 
-        let a6 = parse_from_string("3.14e2i").unwrap();
-        assert_eq!(a6.to_string(), "0+314i\n");
+        let n6 = parse_from_string("3.14e2i").unwrap();
+        assert_eq!(n6.to_string(), "0+314i\n");
 
-        let a7 = parse_from_string("3.14e-1i").unwrap();
-        assert_eq!(a7.to_string(), "0+0.314i\n");
+        let n7 = parse_from_string("3.14e-1i").unwrap();
+        assert_eq!(n7.to_string(), "0+0.314i\n");
     }
 
     #[test]
     fn test_bit_literal() {
         // todo::
-        //         let a1 = parse_from_string("16'x08cd").unwrap();
-        //         assert_eq!(a1.to_string(), "16'x08cd\n");
+        // let n1 = parse_from_string("16'x08cd").unwrap();
+        // assert_eq!(n1.to_string(), "16'x08cd\n");
         //
-        //         let a2 = parse_from_string("8'b10000001").unwrap();
-        //         assert_eq!(a2.to_string(), "8'x81\n");
+        // let n2 = parse_from_string("8'b10000001").unwrap();
+        // assert_eq!(n2.to_string(), "8'x81\n");
     }
 
     #[test]
     fn test_boolean_literal() {
-        // todo::
+        let n1 = parse_from_string("true").unwrap();
+        assert_eq!(n1.to_string(), "true\n");
+
+        let n2 = parse_from_string("false").unwrap();
+        assert_eq!(n2.to_string(), "false\n");
     }
 
     #[test]
     fn test_char_literal() {
-        // todo::
+        let n1 = parse_from_string("'a'").unwrap();
+        assert_eq!(n1.to_string(), "'a'\n");
+
+        let n2 = parse_from_string("'文'").unwrap();
+        assert_eq!(n2.to_string(), "'文'\n");
+
+        // todo:: 测试转义字符，转义希腊字符
+        // todo:: 测试 Unicode
     }
 
     #[test]
     fn test_general_string_literal() {
-        // todo::
+        let n1 = parse_from_string("\"abc\"").unwrap();
+        assert_eq!(n1.to_string(), "\"abc\"\n");
+
+        let n2 = parse_from_string("\"中文🐱\"").unwrap();
+        assert_eq!(n2.to_string(), "\"中文🐱\"\n");
+
+        // 测试多行文本
+        let n3 = parse_from_string("\"foo\nbar\n  baz\"").unwrap();
+        assert_eq!(n3.to_string(), "\"foo\nbar\n  baz\"\n");
+
+        // todo:: 测试转义字符
     }
 
     #[test]
@@ -1550,21 +1558,147 @@ mod tests {
 
     #[test]
     fn test_hash_string_literal() {
-        // todo::
+        let n1 = parse_from_string("#abc").unwrap();
+        assert_eq!(n1.to_string(), "#abc\n");
+
+        let n2 = parse_from_string("#foo_bar").unwrap();
+        assert_eq!(n2.to_string(), "#foo_bar\n");
+
+        // todo:: 添加中文的支持
+        // let n3 = parse_from_string("#中文🐱").unwrap();
+        // assert_eq!(n3.to_string(), "#中文🐱\n");
     }
 
     #[test]
     fn test_named_operator_string_literal() {
-        // todo::
+        let n1 = parse_from_string(":abc:").unwrap();
+        assert_eq!(n1.to_string(), ":abc:\n");
+
+        let n2 = parse_from_string(":foo_bar:").unwrap();
+        assert_eq!(n2.to_string(), ":foo_bar:\n");
+
+        // todo:: 添加中文的支持
+        // let n3 = parse_from_string(":中文🐱:").unwrap();
+        // assert_eq!(n3.to_string(), ":中文🐱:\n");
     }
 
     // primary expressions
 
     #[test]
+    fn test_prefix_identifier() {
+        let n1 = parse_from_string("!foo").unwrap();
+        assert_eq!(n1.to_string(), "!foo\n");
+
+        let n2 = parse_from_string("!foo::bar").unwrap();
+        assert_eq!(n2.to_string(), "!foo::bar\n");
+    }
+
+    #[test]
+    fn test_tuple() {
+        let n1 = parse_from_string("(123,)").unwrap(); // 括号内的逗号不能省略
+        assert_eq!(n1.to_string(), "(123,)\n");
+
+        // 多个元素
+        let n2 = parse_from_string("(123,1.732)").unwrap();
+        assert_eq!(n2.to_string(), "(123, 1.732,)\n");
+
+        // 元素列表以逗号结尾
+        let n3 = parse_from_string("(123,1.732,)").unwrap();
+        assert_eq!(n3.to_string(), "(123, 1.732,)\n");
+
+        // 空元组
+        let n4 = parse_from_string("()").unwrap();
+        assert_eq!(n4.to_string(), "()\n");
+
+        // 带有省略号元素的元组
+        let n5 = parse_from_string("(123,...)").unwrap();
+        assert_eq!(n5.to_string(), "(123, ...,)\n");
+
+        // 带有省略号标识符元素的元组
+        let n6 = parse_from_string("(123,...abc)").unwrap();
+        assert_eq!(n6.to_string(), "(123, ...abc,)\n");
+
+        // 逗号结尾
+        let n7 = parse_from_string("(123,...abc,)").unwrap();
+        assert_eq!(n7.to_string(), "(123, ...abc,)\n");
+    }
+
+    #[test]
+    fn test_list() {
+        let n1 = parse_from_string("[123]").unwrap();
+        assert_eq!(n1.to_string(), "[123,]\n");
+
+        // 元素列表以 `逗号` 结尾
+        let n2 = parse_from_string("[123,]").unwrap();
+        assert_eq!(n2.to_string(), "[123,]\n");
+
+        // 多个元素
+        let n3 = parse_from_string("[123,1.732]").unwrap();
+        assert_eq!(n3.to_string(), "[123, 1.732,]\n");
+
+        // 元素列表以逗号结尾
+        let n4 = parse_from_string("[123,1.732,]").unwrap();
+        assert_eq!(n4.to_string(), "[123, 1.732,]\n");
+
+        // 空列表
+        let n5 = parse_from_string("[]").unwrap();
+        assert_eq!(n5.to_string(), "[]\n");
+
+        // 带有省略号元素的列表
+        let n6 = parse_from_string("[123,...]").unwrap();
+        assert_eq!(n6.to_string(), "[123, ...,]\n");
+
+        // 带有省略号标识符元素的列表
+        let n7 = parse_from_string("[123,...abc]").unwrap();
+        assert_eq!(n7.to_string(), "[123, ...abc,]\n");
+
+        // 逗号结尾
+        let n8 = parse_from_string("[123,...abc,]").unwrap();
+        assert_eq!(n8.to_string(), "[123, ...abc,]\n");
+
+        // 范围表达式的列表
+        let n9 = parse_from_string("[1..10]").unwrap();
+        assert_eq!(n9.to_string(), "[1..10,]\n");
+
+        // 逗号结尾
+        let n10 = parse_from_string("[1..10,]").unwrap();
+        assert_eq!(n10.to_string(), "[1..10,]\n");
+
+        // "省略了范围结束值的范围表达式" 的列表
+        let n11 = parse_from_string("[1..]").unwrap();
+        assert_eq!(n11.to_string(), "[1..,]\n");
+
+        // 逗号结尾
+        let n12 = parse_from_string("[1..,]").unwrap();
+        assert_eq!(n12.to_string(), "[1..,]\n");
+
+        // 一个元素，以及一个范围表达式的列表
+        let n13 = parse_from_string("[1,3..10]").unwrap();
+        assert_eq!(n13.to_string(), "[1, 3..10,]\n");
+
+        // 一个元素，以及一个省略了结束值的范围表达式的列表
+        let n14 = parse_from_string("[1,3..]").unwrap();
+        assert_eq!(n14.to_string(), "[1, 3..,]\n");
+
+        // 闭区间
+        let n15 = parse_from_string("[1..=10]").unwrap();
+        assert_eq!(n15.to_string(), "[1..=10,]\n");
+
+        // 一个元素，以及一个闭区间范围表达式的列表
+        let n16 = parse_from_string("[1,3..=9]").unwrap();
+        assert_eq!(n16.to_string(), "[1, 3..=9,]\n");
+    }
+
+    #[test]
+    fn test_map() {
+        //
+    }
+
+    #[test]
     fn test_identifier() {
-        let a1 = parse_from_string("foo").unwrap();
+        let n1 = parse_from_string("foo").unwrap();
         assert_eq!(
-            a1,
+            n1,
             Node::Program(Program {
                 body: vec![Statement::Expression(Expression::Identifier(Identifier {
                     dirs: vec![],
@@ -1575,314 +1709,57 @@ mod tests {
                 range: new_range()
             })
         );
-        assert_eq!(a1.to_string(), "foo\n");
+        assert_eq!(n1.to_string(), "foo\n");
 
-        let a2 = parse_from_string("foo::bar").unwrap();
-        assert_eq!(
-            a2,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Identifier(Identifier {
-                    dirs: vec!["foo".to_string()],
-                    name: "bar".to_string(),
-                    generic_names: vec![],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a2.to_string(), "foo::bar\n");
+        let n2 = parse_from_string("foo::bar").unwrap();
+        assert_eq!(n2.to_string(), "foo::bar\n");
 
-        let a3 = parse_from_string("foo::bar::baz").unwrap();
-        assert_eq!(a3.to_string(), "foo::bar::baz\n");
+        let n3 = parse_from_string("foo::bar::baz").unwrap();
+        assert_eq!(n3.to_string(), "foo::bar::baz\n");
     }
 
     #[test]
-    fn test_prefix_identifier() {
-        let a1 = parse_from_string("!foo").unwrap();
-        assert_eq!(
-            a1,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::PrefixIdentifier(
-                    PrefixIdentifier {
-                        identifier: Identifier {
-                            dirs: vec![],
-                            name: "foo".to_string(),
-                            generic_names: vec![],
-                            range: new_range()
-                        },
-                        range: new_range()
-                    }
-                ))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a1.to_string(), "!foo\n");
-
-        let a2 = parse_from_string("!foo::bar").unwrap();
-        assert_eq!(a2.to_string(), "!foo::bar\n");
-    }
-
-    #[test]
-    fn test_tuple() {
-        let a1 = parse_from_string("(123,)").unwrap();
-        assert_eq!(
-            a1,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Tuple(Tuple {
-                    elements: vec![Expression::Literal(Literal::Integer(Integer {
-                        value: 123,
-                        range: new_range()
-                    }))],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a1.to_string(), "(123,)\n");
-
-        // 多个元素
-        let a2 = parse_from_string("(123,1.732)").unwrap();
-        assert_eq!(
-            a2,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Tuple(Tuple {
-                    elements: vec![
-                        Expression::Literal(Literal::Integer(Integer {
-                            value: 123,
-                            range: new_range()
-                        })),
-                        Expression::Literal(Literal::Float(Float {
-                            value: 1.732,
-                            range: new_range()
-                        }))
-                    ],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a2.to_string(), "(123, 1.732,)\n");
-
-        // 元素列表以逗号结尾
-        let a3 = parse_from_string("(123,1.732,)").unwrap();
-        assert_eq!(a3.to_string(), "(123, 1.732,)\n");
-
-        // 空元组
-        let a4 = parse_from_string("()").unwrap();
-        assert_eq!(
-            a4,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Tuple(Tuple {
-                    elements: vec![],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a4.to_string(), "()\n");
-
-        // 带有省略号元素的元组
-        let a5 = parse_from_string("(123,...)").unwrap();
-        assert_eq!(
-            a5,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Tuple(Tuple {
-                    elements: vec![
-                        Expression::Literal(Literal::Integer(Integer {
-                            value: 123,
-                            range: new_range()
-                        })),
-                        Expression::Ellipsis(Ellipsis {
-                            name: None,
-                            range: new_range()
-                        })
-                    ],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a5.to_string(), "(123, ...,)\n");
-
-        // 带有省略号标识符元素的元组
-        let a6 = parse_from_string("(123,...abc)").unwrap();
-        assert_eq!(
-            a6,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::Tuple(Tuple {
-                    elements: vec![
-                        Expression::Literal(Literal::Integer(Integer {
-                            value: 123,
-                            range: new_range()
-                        })),
-                        Expression::Ellipsis(Ellipsis {
-                            name: Some("abc".to_string()),
-                            range: new_range()
-                        })
-                    ],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a6.to_string(), "(123, ...abc,)\n");
-    }
-
-    #[test]
-    fn test_list() {
-        let a1 = parse_from_string("[123]").unwrap();
-        assert_eq!(
-            a1,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::List(List {
-                    elements: vec![Expression::Literal(Literal::Integer(Integer {
-                        value: 123,
-                        range: new_range()
-                    }))],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a1.to_string(), "[123,]\n");
-
-        // 元素列表以 `逗号` 结尾
-        let a2 = parse_from_string("[123,]").unwrap();
-        assert_eq!(a2.to_string(), "[123,]\n");
-
-        // 多个元素
-        let a3 = parse_from_string("[123,1.732]").unwrap();
-        assert_eq!(
-            a3,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::List(List {
-                    elements: vec![
-                        Expression::Literal(Literal::Integer(Integer {
-                            value: 123,
-                            range: new_range()
-                        })),
-                        Expression::Literal(Literal::Float(Float {
-                            value: 1.732,
-                            range: new_range()
-                        }))
-                    ],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a3.to_string(), "[123, 1.732,]\n");
-
-        // 元素列表以逗号结尾
-        let a4 = parse_from_string("[123,1.732,]").unwrap();
-        assert_eq!(a4.to_string(), "[123, 1.732,]\n");
-
-        // 空列表
-        let a5 = parse_from_string("[]").unwrap();
-        assert_eq!(
-            a5,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::List(List {
-                    elements: vec![],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a5.to_string(), "[]\n");
-
-        // 带有省略号元素的列表
-        let a6 = parse_from_string("[123,...]").unwrap();
-        assert_eq!(
-            a6,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::List(List {
-                    elements: vec![
-                        Expression::Literal(Literal::Integer(Integer {
-                            value: 123,
-                            range: new_range()
-                        })),
-                        Expression::Ellipsis(Ellipsis {
-                            name: None,
-                            range: new_range()
-                        })
-                    ],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a6.to_string(), "[123, ...,]\n");
-
-        // 带有省略号标识符元素的列表
-        let a7 = parse_from_string("[123,...abc]").unwrap();
-        assert_eq!(a7.to_string(), "[123, ...abc,]\n");
-
-        // 范围表达式的列表
-        let a8 = parse_from_string("[1..10]").unwrap();
-        assert_eq!(
-            a8,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::List(List {
-                    elements: vec![Expression::Interval(Interval {
-                        is_inclusive: false,
-                        from: Box::new(Expression::Literal(Literal::Integer(Integer {
-                            value: 1,
-                            range: new_range()
-                        }))),
-                        to: Some(Box::new(Expression::Literal(Literal::Integer(Integer {
-                            value: 10,
-                            range: new_range()
-                        })))),
-                        range: new_range()
-                    })],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a8.to_string(), "[1..10,]\n");
-
-        // "省略了范围结束值的范围表达式" 的列表
-        let a9 = parse_from_string("[1..]").unwrap();
-        assert_eq!(
-            a9,
-            Node::Program(Program {
-                body: vec![Statement::Expression(Expression::List(List {
-                    elements: vec![Expression::Interval(Interval {
-                        is_inclusive: false,
-                        from: Box::new(Expression::Literal(Literal::Integer(Integer {
-                            value: 1,
-                            range: new_range()
-                        }))),
-                        to: None,
-                        range: new_range()
-                    })],
-                    range: new_range()
-                }))],
-                range: new_range()
-            })
-        );
-        assert_eq!(a9.to_string(), "[1..,]\n");
-
-        // 闭区间
-        //         todo!();
+    fn test_sign() {
         //
-        //         // 带有一个元素以及一个范围表达式的列表
-        //         let a10 = parse_from_string("[1,3..9,]").unwrap();
-        //         assert_eq!(a10.to_string(), "[1, 3..9,]\n");
+    }
+
+    #[test]
+    fn test_anonymous_function() {
         //
-        //         let a11 = parse_from_string("[1,3..,]").unwrap();
-        //         assert_eq!(a11.to_string(), "[1, 3..,]\n");
     }
 
     // operating expressions
 
     #[test]
+    fn test_slice_expression() {
+        //
+    }
+
+    #[test]
+    fn test_member_expression() {
+        //
+    }
+
+    #[test]
+    fn test_constructor_expression() {
+        //
+    }
+
+    #[test]
+    fn test_function_call_expression() {
+        //
+    }
+
+    #[test]
+    fn test_unary_expression() {
+        //
+    }
+
+    #[test]
     fn test_binary_expression_additive() {
-        let a1 = parse_from_string("1+2").unwrap();
+        let n1 = parse_from_string("1+2").unwrap();
         assert_eq!(
-            a1,
+            n1,
             Node::Program(Program {
                 body: vec![Statement::Expression(Expression::BinaryExpression(
                     BinaryExpression {
@@ -1901,61 +1778,60 @@ mod tests {
                 range: new_range()
             })
         );
+        assert_eq!(n1.to_string(), "(1 + 2)\n"); // Statement 以符号 '\n' 结尾
 
-        assert_eq!(a1.to_string(), "(1 + 2)\n"); // Statement 以符号 '\n' 结尾
+        let n2 = parse_from_string("1+2+3").unwrap();
+        assert_eq!(n2.to_string(), "((1 + 2) + 3)\n");
 
-        let a2 = parse_from_string("1+2+3").unwrap();
-        assert_eq!(a2.to_string(), "((1 + 2) + 3)\n");
+        let n3 = parse_from_string("1.414+1.732").unwrap();
+        assert_eq!(n3.to_string(), "(1.414 + 1.732)\n");
 
-        let a3 = parse_from_string("1.414+1.732").unwrap();
-        assert_eq!(a3.to_string(), "(1.414 + 1.732)\n");
-
-        let a4 = parse_from_string("3+4i+9i").unwrap();
-        assert_eq!(a4.to_string(), "(3+4i + 0+9i)\n");
+        // 测试复数和加法并存的情况
+        let n4 = parse_from_string("3+4i+9i").unwrap();
+        assert_eq!(n4.to_string(), "(3+4i + 0+9i)\n");
     }
 
     #[test]
     fn test_binary_expression_precedence() {
-        // 测试优先级
-        let a1 = parse_from_string("1|2||3").unwrap();
-        assert_eq!(a1.to_string(), "(1 | (2 || 3))\n");
+        let n1 = parse_from_string("1|2||3").unwrap();
+        assert_eq!(n1.to_string(), "(1 | (2 || 3))\n");
 
-        let a2 = parse_from_string("1||2&&3").unwrap();
-        assert_eq!(a2.to_string(), "(1 || (2 && 3))\n");
+        let n2 = parse_from_string("1||2&&3").unwrap();
+        assert_eq!(n2.to_string(), "(1 || (2 && 3))\n");
 
-        let a3 = parse_from_string("1&&2==3").unwrap();
-        assert_eq!(a3.to_string(), "(1 && (2 == 3))\n");
+        let n3 = parse_from_string("1&&2==3").unwrap();
+        assert_eq!(n3.to_string(), "(1 && (2 == 3))\n");
 
-        let a4 = parse_from_string("1==2>3").unwrap();
-        assert_eq!(a4.to_string(), "(1 == (2 > 3))\n");
+        let n4 = parse_from_string("1==2>3").unwrap();
+        assert_eq!(n4.to_string(), "(1 == (2 > 3))\n");
 
-        let a5 = parse_from_string("1>2:bit_or:3").unwrap();
-        assert_eq!(a5.to_string(), "(1 > (2 :bit_or: 3))\n");
+        let n5 = parse_from_string("1>2:bit_or:3").unwrap();
+        assert_eq!(n5.to_string(), "(1 > (2 :bit_or: 3))\n");
 
-        let a6 = parse_from_string("1:bit_and:2++3").unwrap();
-        assert_eq!(a6.to_string(), "(1 :bit_and: (2 ++ 3))\n");
+        let n6 = parse_from_string("1:bit_and:2++3").unwrap();
+        assert_eq!(n6.to_string(), "(1 :bit_and: (2 ++ 3))\n");
 
-        let a7 = parse_from_string("1++2+3").unwrap();
-        assert_eq!(a7.to_string(), "(1 ++ (2 + 3))\n");
+        let n7 = parse_from_string("1++2+3").unwrap();
+        assert_eq!(n7.to_string(), "(1 ++ (2 + 3))\n");
 
-        let a8 = parse_from_string("1+2*3").unwrap();
-        assert_eq!(a8.to_string(), "(1 + (2 * 3))\n");
+        let n8 = parse_from_string("1+2*3").unwrap();
+        assert_eq!(n8.to_string(), "(1 + (2 * 3))\n");
 
-        let a9 = parse_from_string("1*2??3").unwrap();
-        assert_eq!(a9.to_string(), "(1 * (2 ?? 3))\n");
+        let n9 = parse_from_string("1*2??3").unwrap();
+        assert_eq!(n9.to_string(), "(1 * (2 ?? 3))\n");
 
-        let a10 = parse_from_string("1??2>>3").unwrap();
-        assert_eq!(a10.to_string(), "(1 ?? (2 >> 3))\n");
+        let n10 = parse_from_string("1??2>>3").unwrap();
+        assert_eq!(n10.to_string(), "(1 ?? (2 >> 3))\n");
 
-        let a11 = parse_from_string("1>>2&3").unwrap();
-        assert_eq!(a11.to_string(), "(1 >> (2 & 3))\n");
+        let n11 = parse_from_string("1>>2&3").unwrap();
+        assert_eq!(n11.to_string(), "(1 >> (2 & 3))\n");
     }
 
     #[test]
-    fn test_parenthesized_expression() {
-        let a1 = parse_from_string("(123)").unwrap();
+    fn test_binary_expression_parenthesized() {
+        let n1 = parse_from_string("(123)").unwrap();
         assert_eq!(
-            a1,
+            n1,
             Node::Program(Program {
                 body: vec![Statement::Expression(Expression::Literal(
                     Literal::Integer(Integer {
@@ -1966,29 +1842,33 @@ mod tests {
                 range: new_range()
             })
         );
+        assert_eq!(n1.to_string(), "123\n");
 
-        assert_eq!(a1.to_string(), "123\n");
+        let n2 = parse_from_string("(1+2)").unwrap();
+        assert_eq!(n2.to_string(), "(1 + 2)\n");
 
-        let a2 = parse_from_string("(1+2)").unwrap();
-        assert_eq!(a2.to_string(), "(1 + 2)\n");
-
-        let a3 = parse_from_string("(1+2)*3").unwrap();
-        assert_eq!(a3.to_string(), "((1 + 2) * 3)\n");
+        let n3 = parse_from_string("(1+2)*3").unwrap();
+        assert_eq!(n3.to_string(), "((1 + 2) * 3)\n");
     }
 
     #[test]
     fn test_binary_expression_associativitye() {
-        // 从结合方向
+        // 测试结合方向
+
+        // 操作符 `+` 从左向右结合
+        let n1 = parse_from_string("1+2+3").unwrap();
+        assert_eq!(n1.to_string(), "((1 + 2) + 3)\n");
+
         // 操作符 `&` 从右向左结合
-        let a1 = parse_from_string("1&2&3").unwrap();
-        assert_eq!(a1.to_string(), "(1 & (2 & 3))\n");
+        let n2 = parse_from_string("1&2&3").unwrap();
+        assert_eq!(n2.to_string(), "(1 & (2 & 3))\n");
     }
 
     // genernal expression
 
     #[test]
     fn test_do_expression() {
-        let a1 = parse_from_string(
+        let n1 = parse_from_string(
             "do {
                 123
                 abc
@@ -1996,7 +1876,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            a1,
+            n1,
             Node::Program(Program {
                 body: vec![Statement::Expression(Expression::BlockExpression(
                     BlockExpression {
@@ -2021,7 +1901,7 @@ mod tests {
         );
 
         assert_eq!(
-            a1.to_string(),
+            n1.to_string(),
             trim_left_margin(
                 "do {
                     123
@@ -2031,147 +1911,45 @@ mod tests {
         );
     }
 
-    // statement
+    #[test]
+    fn test_let_expression() {
+        // todo::
+    }
 
-    // operating expressions
-    //
-    //     #[test]
-    //     fn test_display_binary_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_unary_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_function_call_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_member_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_slice_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_constructor_expression() {
-    //         // todo::
-    //     }
-    //
-    //     // general expressions
-    //
-    //     #[test]
-    //     fn test_display_block_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_let_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_for_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_branch_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_match_expression() {
-    //         // todo::
-    //     }
-    //
-    //     #[test]
-    //     fn test_display_if_expression() {
-    //         let e1 = Expression::IfExpression(IfExpression {
-    //             condition: Box::new(Expression::Literal(Literal::Boolean(Boolean {
-    //                 value: true,
-    //                 range: new_range(),
-    //             }))),
-    //             consequent: Box::new(Expression::Literal(Literal::Integer(Integer {
-    //                 value: 1,
-    //                 range: new_range(),
-    //             }))),
-    //             alternate: Some(Box::new(Expression::Literal(Literal::Integer(Integer {
-    //                 value: 2,
-    //                 range: new_range(),
-    //             })))),
-    //             range: new_range(),
-    //         });
-    //
-    //         assert_eq!(e1.to_string(), "if true then 1 else 2")
-    //     }
+    #[test]
+    fn test_join_expression() {
+        // todo::
+    }
+
+    #[test]
+    fn test_if_expression() {
+        // todo::
+    }
+
+    #[test]
+    fn test_for_expression() {
+        // todo::
+    }
+
+    #[test]
+    fn test_each_expression() {
+        // todo::
+    }
+
+    #[test]
+    fn test_branch_expression() {
+        // todo::
+    }
+
+    #[test]
+    fn test_match_expression() {
+        // todo::
+    }
 
     // statements
 
-    // #[test]
-    // fn test_display_function_declaration_statement() {
-    //             let s1 = Statement::FunctionDeclaration(FunctionDeclaration {
-    //                 name: "inc".to_string(),
-    //                 params: vec![(
-    //                     Identifier {
-    //                         dirs: vec![],
-    //                         name: "Int".to_string(),
-    //                         generic_names: vec![],
-    //                         range: new_range(),
-    //                     },
-    //                     Expression::Identifier(Identifier {
-    //                         dirs: vec![],
-    //                         name: "a".to_string(),
-    //                         generic_names: vec![],
-    //                         range: new_range(),
-    //                     }),
-    //                 )],
-    //                 return_type: Identifier {
-    //                     dirs: vec![],
-    //                     name: "Int".to_string(),
-    //                     generic_names: vec![],
-    //                     range: new_range(),
-    //                 },
-    //                 body: Box::new(Expression::BinaryExpression(BinaryExpression {
-    //                     operator: Token::Plus,
-    //                     left: Box::new(Expression::Identifier(Identifier {
-    //                         dirs: vec![],
-    //                         name: "a".to_string(),
-    //                         range: new_range(),
-    //                     })),
-    //                     right: Box::new(Expression::Literal(Literal::Integer(Integer {
-    //                         value: 1,
-    //                         range: new_range(),
-    //                     }))),
-    //                     range: new_range(),
-    //                 })),
-    //                 range: new_range(),
-    //             });
-    //
-    //             assert_eq!(s1.to_string(), "function inc (Int a) type Int = (a + 1)\n")
-    // }
-
-    // nodes
-
-    //     #[test]
-    //     fn test_display_node_program() {
-    //         let p1 = Node::Program(Program {
-    //             body: vec![Statement::Expression(Expression::Literal(
-    //                 Literal::Integer(Integer {
-    //                     value: 123,
-    //                     range: new_range(),
-    //                 }),
-    //             ))],
-    //             range: new_range(),
-    //         });
-    //
-    //         assert_eq!(p1.to_string(), "123\n");
-    //     }
+    #[test]
+    fn test_function_declaration_statement() {
+        // todo::
+    }
 }

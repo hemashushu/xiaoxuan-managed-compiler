@@ -22,9 +22,10 @@ pub enum Token {
     Identifier(String), // 标识符
 
     // 字面量
-    Integer(i64),           // 123, 1_001, 0xab, 0b1001
-    Float(f64),             // 3.14, 1.6e-23,
-    Imaginary(f64),         // 3i, 9.9i
+    Integer(i64),   // 123, 1_001, 0xab, 0b1001
+    Float(f64),     // 3.14, 1.6e-23。考虑将指数（指数只支持整数）分离出来
+    Imaginary(f64), // 3i, 9.9i。考虑将指数（指数只支持整数）分离出来
+
     Bit(usize, Vec<u8>),    // 4'b1010, 8'xff, 8'd10
     Boolean(bool),          // true, false
     Char(char),             // 'a', '\x41', '\u{6587}'
