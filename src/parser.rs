@@ -7,13 +7,13 @@
  */
 use crate::{
     ast::{
-        BinaryExpression, Bit, BlockExpression, Boolean, Char, Complex, Ellipsis, Expression,
-        Float, GeneralString, HashString, Identifier, Integer, Interval, List, Literal, Map,
-        MapEntry, NamedOperator, Node, PrefixIdentifier, Program, Range, Statement, Tuple,
-        UnaryExpression,
+        AnonymousFunction, AnonymousParameter, BinaryExpression, Bit, BlockExpression, Boolean,
+        Char, Complex, ConstructorExpression, DataType, Ellipsis, Expression, Float, GeneralString,
+        HashString, Identifier, Integer, Interval, List, Literal, Map, MapEntry, NamedOperator,
+        Node, PrefixIdentifier, Program, Range, Statement, Tuple, UnaryExpression, WhichEntry,
     },
     error::Error,
-    token::{Token, TokenDetail},
+    token::{self, Token, TokenDetail},
 };
 
 pub fn parse(source_token_details: &[TokenDetail]) -> Result<Node, Error> {
@@ -56,6 +56,21 @@ fn parse_program(source_token_details: &[TokenDetail]) -> Result<Program, Error>
 
 // Statement
 //  : FunctionDeclaration
+//  | EmptyFunctionDeclaration
+//  | PatternFunctionDeclaration
+//
+//  | NamespaceStatement
+//  | UseStatement
+//  | ConstDeclaration
+//
+//  | MemberStructDeclaration
+//  | TupleStructDeclaration
+//  | EmptyStructDeclaration
+//
+//  | UnionDeclaration
+//  | TraitDeclaration
+//  | ImplStatement
+//  | AliasStatement
 //  | Expression
 //  ;
 fn parse_statement(
@@ -63,10 +78,17 @@ fn parse_statement(
 ) -> Result<(Statement, &[TokenDetail]), Error> {
     let first = &source_token_details[0];
     match first.token {
-        Token::Function => {
-            // 函数声明语句
-            parse_function_declaration(source_token_details)
-        }
+        Token::Function => parse_function_declaration(source_token_details),
+        Token::Empty => parse_empty_function_declaration(source_token_details),
+        Token::Pattern => parse_pattern_function_declaration(source_token_details),
+        Token::Namespace => parse_namespace_statement(source_token_details),
+        Token::Use => parse_use_statement(source_token_details),
+        Token::Const => parse_const_statement(source_token_details),
+        Token::Struct => parse_struct(source_token_details),
+        Token::Union => parse_union(source_token_details),
+        Token::Trait => parse_trait_declaration(source_token_details),
+        Token::Impl => parse_impl_statement(source_token_details),
+        Token::Alias => parse_alias_statement(source_token_details),
         _ => {
             // 表达式语句
             parse_expression_statement(source_token_details)
@@ -74,16 +96,65 @@ fn parse_statement(
     }
 }
 
-// * FunctionDeclaration
-// *  : 'function' IDENTIFIER '(' OptionalFormalParameterList ')' BlockStatement
-// *  ;
-//
-// * FormalParameterList
-// *  : Identifier
-// *  | FormalParameterList ',' Identifier
-// *  ;
-
 fn parse_function_declaration(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_empty_function_declaration(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_pattern_function_declaration(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_namespace_statement(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_use_statement(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_const_statement(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_struct(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_union(source_token_details: &[TokenDetail]) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_trait_declaration(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_impl_statement(
+    source_token_details: &[TokenDetail],
+) -> Result<(Statement, &[TokenDetail]), Error> {
+    todo!()
+}
+
+fn parse_alias_statement(
     source_token_details: &[TokenDetail],
 ) -> Result<(Statement, &[TokenDetail]), Error> {
     todo!()
@@ -105,23 +176,29 @@ fn parse_expression_statement(
 
 // Expression
 //  : BlockExpression
-//  |
+//  | JoinExpression
 //  | LetExpression
+//
+//  | IfExpression
 //  | ForExpression
+//  | NextExpression
+//  | EachExpression
 //  | BranchExpression
 //  | MatchExpression
-//  | IfExpression
+//  | SignExpression
+//
 //  | BinaryExpression
 //  | UnaryExpression
 //  | FunctionCallExpression
 //  | MemberExpression
+//  | SliceExpression
 //  | ConstructorExpression
+//
+//  | AnonymousFunction
 //  | Identifier
 //  | PrefixIdentifier
-//  | Ellipsis
-//  | Interval
-//  | List
 //  | Tuple
+//  | List
 //  | Map
 //  | Literal
 //  ;
@@ -131,38 +208,16 @@ fn parse_expression(
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     if let Some(first) = source_token_details.first() {
         match first.token {
-            Token::Do => {
-                // do 表达式
-                parse_do_expression(source_token_details)
-            }
-            Token::Join => {
-                // join 表达式
-                parse_join_expression(source_token_details)
-            }
-            Token::Let => {
-                // let 表达式
-                parse_let_expression(source_token_details)
-            }
-            Token::For => {
-                // for 表达式
-                parse_for_expression(source_token_details)
-            }
-            Token::Each => {
-                // each 表达式
-                parse_each_expression(source_token_details)
-            }
-            Token::Branch => {
-                // branch 表达式
-                parse_branch_expression(source_token_details)
-            }
-            Token::Match => {
-                // match 表达式
-                parse_match_expression(source_token_details)
-            }
-            Token::If => {
-                // if 表达式
-                parse_if_expression(source_token_details)
-            }
+            Token::Do => parse_do_expression(source_token_details),
+            Token::Join => parse_join_expression(source_token_details),
+            Token::Let => parse_let_expression(source_token_details),
+            Token::If => parse_if_expression(source_token_details),
+            Token::For => parse_for_expression(source_token_details),
+            Token::Next => parse_next_expression(source_token_details),
+            Token::Each => parse_each_expression(source_token_details),
+            Token::Branch => parse_branch_expression(source_token_details),
+            Token::Match => parse_match_expression(source_token_details),
+            Token::Sign => parse_sign_expression(source_token_details),
             _ => {
                 // 二元运算表达式的开始
                 parse_pipe_expression(source_token_details)
@@ -237,8 +292,9 @@ fn continue_parse_expression_block(
         }
     }
 
-    let post_consume_token_right_brace =
-        skip_new_lines_and_consume_token(&Token::RightBrace, token_details)?;
+    // 消除空行
+    let post_consume_new_lines = skip_new_lines(token_details);
+    let post_consume_token_right_brace = consume_token(&Token::RightBrace, post_consume_new_lines)?;
 
     Ok((expressions, post_consume_token_right_brace))
 }
@@ -284,43 +340,28 @@ fn parse_join_expression(
     todo!()
 }
 
-// * VariableStatementInit
-// *  : 'let' VariableDeclarationList
-// *  ;
-//
-// * VariableStatement
-// *  : 'let' VariableDeclarationList ';'
-// *  ;
-//
-// * VariableDeclarationList
-// *  : VariableDeclaration
-// *  | VariableDeclarationList ',' VariableDeclaration
-
-// * VariableDeclaration
-// *  : Identifier OptionalVariableInitializer
-// *  ;
-//
-// * VariableInitializer
-// *  : SIMPLE_ASSIGN AssignmentExpression
-// *  ;
-
 fn parse_let_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // let left =/match right
+    // let left = right
     todo!()
 }
 
-// * ForStatement
-// *  : 'for' '(' OptionalForStatementInit ';' OptionalExpression ';' OptionalExpression ')' Statement
-// *  ;
-//
-// * ForStatementInit
-// *  : VariableStatementInit
-// *  | Expression
-// *  ;
+fn parse_if_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // if ... then ... else ...
+    todo!()
+}
 
 fn parse_for_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // for let ... = ... {... next}
+    todo!()
+}
+
+fn parse_next_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // for let ... = ... {... next}
@@ -348,15 +389,56 @@ fn parse_match_expression(
     todo!()
 }
 
-// * IfStatement
-// *  : 'if' '(' Expression ')' Statement
-// *  | 'if' '(' Expression ')' Statement 'else' Statement
-// *  ;
-
-fn parse_if_expression(
+fn parse_sign_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // if ... then ... else ...
+    // `sign (Int x, Int y) type Int`
+    // `sign <T, E> (T x, E y) type T`
+    // `sign (T a, String s) which {T: Int}`
+    todo!()
+}
+
+fn continue_parse_generic_names(
+    source_token_details: &[TokenDetail],
+) -> Result<(Vec<String>, &[TokenDetail]), Error> {
+    // <A, B, C>
+    // ^--- 当前位置
+    todo!()
+}
+
+fn continue_parse_type_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(DataType, &[TokenDetail]), Error> {
+    // type ...
+    // ~~~~
+    //    |-- 当前位置
+
+    // 消除 `type` 关键字
+    let post_type_token = consume_token(&Token::Type, source_token_details)?;
+    // 消除空行
+    let post_new_lines = skip_new_lines(post_type_token);
+
+    let (data_type_expression, post_parse_data_type_expression) = parse_expression(post_new_lines)?;
+    let data_type = convert_expression_to_data_type(data_type_expression)?;
+    Ok((data_type, post_parse_data_type_expression))
+}
+
+fn continue_parse_which_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Vec<WhichEntry>, &[TokenDetail]), Error> {
+    // which ...
+    // which {...}
+    // ~~~~~
+    //     |-- 当前位置
+    todo!()
+}
+
+fn continue_parse_where_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // which ...
+    // ~~~~~
+    //     |-- 当前位置
     todo!()
 }
 
@@ -685,19 +767,6 @@ fn parse_unwrap_expression(
     }
 }
 
-// * CallOrMemberExpression
-// *  : MemberExpression
-// *  | CallExpression
-// *  ;
-//
-// * CallExpression
-// *  : Callee Arguments
-// *  ;
-// *
-// * Callee
-// *  : MemberExpression
-// *  | CallExpression
-
 fn parse_function_call_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
@@ -705,11 +774,6 @@ fn parse_function_call_expression(
     // todo::
     parse_member_or_slice_expression(source_token_details)
 }
-
-// * MemberExpression
-// *  : PrimaryExpression
-// *  | MemberExpression '.' Identifier
-// *  | MemberExpression '[' Expression ']'
 
 fn parse_member_or_slice_expression(
     source_token_details: &[TokenDetail],
@@ -719,38 +783,50 @@ fn parse_member_or_slice_expression(
     parse_constructor_expression(source_token_details)
 }
 
-// * ConstructorExpression
-// *  : Identifier {...}
-// *  ;
-
 fn parse_constructor_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // object {name: vale, ...}
-    // todo::
-    parse_primary_expression(source_token_details)
+
+    let (object, post_parse_primary_expression) = parse_primary_expression(source_token_details)?;
+    if is_token(&Token::LeftBrace, post_parse_primary_expression) {
+        let (initializer, post_continue_parse_map) =
+            continue_parse_map(post_parse_primary_expression)?;
+
+        if let Expression::Identifier(identifier) = object {
+            let exp = Expression::ConstructorExpression(ConstructorExpression {
+                object: identifier,
+                value: initializer,
+                range: new_range(),
+            });
+
+            Ok((exp, post_continue_parse_map))
+        } else {
+            Err(Error::ParserError("invalid constructor object".to_string()))
+        }
+    } else {
+        Ok((object, post_parse_primary_expression))
+    }
 }
 
 // PrimaryExpression
-//  : List
+//  : Fn
 //  | Tuple/Parenthesized
+//  | List
 //  | Map
 //  | Identifier
+//  | Literal
 //  ;
 fn parse_primary_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     match source_token_details.first() {
         Some(first) => match first.token {
-            Token::Fn => todo!(),
-            Token::Sign => todo!(),
-            Token::Exclamation => {
-                parse_prefix_identifier(source_token_details) // 函数的前置调用
-            }
-            Token::Ellipsis => todo!(),
+            Token::Fn => parse_anonymous_function(source_token_details),
             Token::LeftParen => parse_tuple_or_parenthesized(source_token_details),
             Token::LeftBracket => parse_list(source_token_details),
             Token::LeftBrace => parse_map(source_token_details),
+            Token::Exclamation => parse_prefix_identifier(source_token_details), // 函数的前置调用
             Token::Identifier(_) => parse_identifier(source_token_details),
             _ => {
                 let (literal, post_parse_literal) = parse_literal(source_token_details)?;
@@ -763,247 +839,218 @@ fn parse_primary_expression(
     }
 }
 
-fn parse_prefix_identifier(
+fn parse_anonymous_function(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // prefix identifier
-    let post_consume_token_exclamation = consume_token(&Token::Exclamation, source_token_details)?;
+    // 匿名函数
+    // fn (Int a, Int b) type Int = ...
+    // fn (Int a, Int b) = ...
+    // fn (a, b) = ...
+    // fn x = ...            // 当参数只有一个，且省略数据类型时，可以省略参数的括号
+    // fn x {...}            // 匿名函数的主体也有可能是 `隠式 do 表达式`
 
-    let (identifier, post_continue_parse_identifier) =
-        continue_parse_identifier(post_consume_token_exclamation)?;
-
-    Ok((
-        Expression::PrefixIdentifier(PrefixIdentifier {
-            identifier: identifier,
-            range: new_range(),
-        }),
-        post_continue_parse_identifier,
-    ))
-}
-
-fn parse_identifier(
-    source_token_details: &[TokenDetail],
-) -> Result<(Expression, &[TokenDetail]), Error> {
-    // identifier
-    //
-    // One::Two::Three::Name
-    let (identifier, post_continue_parse_identifier) =
-        continue_parse_identifier(source_token_details)?;
-
-    Ok((
-        Expression::Identifier(identifier),
-        post_continue_parse_identifier,
-    ))
-}
-
-fn continue_parse_identifier(
-    source_token_details: &[TokenDetail],
-) -> Result<(Identifier, &[TokenDetail]), Error> {
-    // identifier
-    //
-    // e.g.
-    // One::Two::Three::Name
     let mut token_details = source_token_details;
-    let mut names: Vec<String> = vec![];
 
-    if let Some((
-        TokenDetail {
-            token: Token::Identifier(name),
-            ..
-        },
-        rest,
-    )) = token_details.split_first()
-    {
-        // 获取第一个 identifier
-        names.push(name.clone());
-        token_details = rest;
+    let mut parameters: Vec<AnonymousParameter> = vec![];
+    let mut return_data_type: Option<DataType> = None;
+    let mut which_entries: Vec<WhichEntry> = vec![];
+    let mut where_exp: Option<Box<Expression>> = None;
 
-        // 获取其余的 identifier
-        loop {
-            token_details = match token_details.split_first() {
-                Some((first, post_token_separator)) if first.token == Token::Separator => {
-                    // 检测到 namespace path 分隔符 `::`
-                    if let Some((
-                        TokenDetail {
-                            token: Token::Identifier(name),
+    let mut is_expected_end = false;
+
+    token_details = consume_token(&Token::Fn, token_details)?;
+    token_details = skip_new_lines(token_details); // 关键字后允许换行
+
+    let post_parameters = match token_details.split_first() {
+        Some((maybe_left_paren, post_left_paren)) if maybe_left_paren.token == Token::LeftParen => {
+            // 参数列表有括号包围
+            token_details = post_left_paren;
+
+            // 解析参数列表
+            loop {
+                token_details = match token_details.first() {
+                    Some(first) => {
+                        if let TokenDetail {
+                            token: Token::RightParen,
                             ..
-                        },
-                        post_token_identifier,
-                    )) = post_token_separator.split_first()
-                    {
-                        // 检测到一个 identifier
-                        names.push(name.clone());
-                        post_token_identifier
-                    } else {
-                        // 在 namespace path 分隔符 `::` 后面必须是一个 identifier
-                        return Err(Error::ParserError("expected identifier".to_string()));
+                        } = first
+                        {
+                            // 找到了结束符号————右括号，退出循环
+                            break;
+                        } else {
+                            if is_expected_end {
+                                // 当前的状态是一心寻找结束符号 ———— 右括号
+                                return Err(Error::ParserError(
+                                    "expected the right paren symbol \")\"".to_string(),
+                                ));
+                            } else {
+                                // 先尝试寻找参数的数据类型
+                                let (part_one, post_part_one) = parse_expression(token_details)?;
+
+                                let post_one_parameter = match post_part_one.split_first() {
+                                    Some((maybe_comma_or_right_paren, _))
+                                        if maybe_comma_or_right_paren.token == Token::Comma
+                                            || maybe_comma_or_right_paren.token
+                                                == Token::RightParen =>
+                                    {
+                                        // 当前参数无数据类型
+                                        if let Expression::Identifier(Identifier { name, .. }) =
+                                            part_one
+                                        {
+                                            parameters.push(AnonymousParameter {
+                                                data_type: None,
+                                                name: name,
+                                                range: new_range(),
+                                            });
+                                            post_part_one
+                                        } else {
+                                            return Err(Error::ParserError(
+                                                "invalid anonymous function parameter name"
+                                                    .to_string(),
+                                            ));
+                                        }
+                                    }
+                                    Some((
+                                        TokenDetail {
+                                            token: Token::Identifier(name),
+                                            ..
+                                        },
+                                        post_part_two,
+                                    )) => {
+                                        // 当前参数有数据类型
+                                        let data_type = convert_expression_to_data_type(part_one)?;
+                                        parameters.push(AnonymousParameter {
+                                            data_type: Some(data_type),
+                                            name: name.clone(),
+                                            range: new_range(),
+                                        });
+                                        post_part_two
+                                    }
+                                    _ => {
+                                        return Err(Error::ParserError(
+                                            "incomplete anonymous function parameter".to_string(),
+                                        ));
+                                    }
+                                };
+
+                                // 消除逗号
+                                let post_consume_comma =
+                                    if is_token(&Token::Comma, post_one_parameter) {
+                                        consume_token(&Token::Comma, post_one_parameter)?
+                                    } else {
+                                        // 设置标记，表示如果项目后面没有逗号，则表示当前已经是最后一项
+                                        // 后面只能允许列表结束
+                                        is_expected_end = true;
+                                        post_one_parameter
+                                    };
+
+                                // 消除空行
+                                let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                                post_consume_new_lines
+                            }
+                        }
+                    }
+                    None => {
+                        return Err(Error::ParserError(
+                            "expected the right paren symbol \")\"".to_string(),
+                        ));
                     }
                 }
-                _ => {
-                    break;
-                }
             }
-        }
-    }
 
-    if names.len() == 0 {
-        Err(Error::ParserError("expected identifier".to_string()))
-    } else {
-        let len = names.len();
-        Ok((
-            Identifier {
-                dirs: names[..len - 1].iter().map(|n| n.clone()).collect(),
-                name: names[len - 1].clone(),
-                generic_names: vec![],
+            // 消除右括号
+            consume_token(&Token::RightParen, token_details)?
+        }
+        Some((
+            TokenDetail {
+                token: Token::Identifier(name),
+                ..
+            },
+            post_left_paren,
+        )) => {
+            // 参数列表只有一个参数，且无括号包围
+            parameters.push(AnonymousParameter {
+                data_type: None,
+                name: name.clone(),
                 range: new_range(),
-            },
-            token_details,
-        ))
-    }
-}
-
-// Literal
-//  : Integer
-//  | Float
-//  | Complex
-//  | Bit
-//  | Boolean
-//  | Char
-//  | GeneralString
-//  | TemplateString
-//  | HashString
-//  | NamedOperator
-//  ;
-
-fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
-    // literal
-    match source_token_details.split_first() {
-        Some((first, rest)) => match &first.token {
-            Token::Integer(v) => match continue_parse_imaginary(rest) {
-                // 整数或复数
-                Ok((f, post_rest)) => Ok((
-                    Literal::Complex(Complex {
-                        real: *v as f64,
-                        imaginary: f,
-                        range: new_range(),
-                    }),
-                    post_rest,
-                )),
-                _ => Ok((
-                    Literal::Integer(Integer {
-                        value: *v,
-                        range: new_range(),
-                    }),
-                    rest,
-                )),
-            },
-            Token::Float(v) => match continue_parse_imaginary(rest) {
-                // 浮点数或复数
-                Ok((f, post_rest)) => Ok((
-                    Literal::Complex(Complex {
-                        real: *v,
-                        imaginary: f,
-                        range: new_range(),
-                    }),
-                    post_rest,
-                )),
-                _ => Ok((
-                    Literal::Float(Float {
-                        value: *v,
-                        range: new_range(),
-                    }),
-                    rest,
-                )),
-            },
-            Token::Imaginary(v) => {
-                // 只有单独虚部的复数
-                Ok((
-                    Literal::Complex(Complex {
-                        real: 0f64,
-                        imaginary: *v,
-                        range: new_range(),
-                    }),
-                    rest,
-                ))
-            }
-            Token::Bit(width, bytes) => Ok((
-                Literal::Bit(Bit {
-                    width: *width,
-                    bytes: bytes.clone(),
-                    range: new_range(),
-                }),
-                rest,
-            )),
-            Token::Boolean(v) => Ok((
-                Literal::Boolean(Boolean {
-                    value: *v,
-                    range: new_range(),
-                }),
-                rest,
-            )),
-            Token::Char(v) => Ok((
-                Literal::Char(Char {
-                    value: *v,
-                    range: new_range(),
-                }),
-                rest,
-            )),
-            Token::GeneralString(v) => Ok((
-                Literal::GeneralString(GeneralString {
-                    value: v.clone(),
-                    range: new_range(),
-                }),
-                rest,
-            )),
-            Token::TemplateString(v) => {
-                // todo::
-                // 这里需要重新 tokenize 模板字符串里面的占位符表达式，
-                // 然后重新解析这些表达式
-                todo!()
-            }
-            Token::HashString(v) => Ok((
-                Literal::HashString(HashString {
-                    value: v.clone(),
-                    range: new_range(),
-                }),
-                rest,
-            )),
-            Token::NamedOperator(v) => Ok((
-                Literal::NamedOperator(NamedOperator {
-                    value: v.clone(),
-                    range: new_range(),
-                }),
-                rest,
-            )),
-            _ => Err(Error::ParserError("unexpected literal".to_string())),
-        },
-        None => Err(Error::ParserError("expected literal".to_string())),
-    }
-}
-
-// 尝试解析复数，如果成功则返回虚数及剩余的 token，
-// 如果不成功则返回空元
-fn continue_parse_imaginary(
-    source_token_details: &[TokenDetail],
-) -> Result<(f64, &[TokenDetail]), ()> {
-    match source_token_details.split_first() {
-        Some((first, rest)) if first.token == Token::Plus => match rest.split_first() {
-            Some((
-                TokenDetail {
-                    token: Token::Imaginary(f),
-                    ..
-                },
-                post_rest,
-            )) => Ok((*f, post_rest)),
-            _ => {
-                // 当前表达式并非复数（但不是错误）
-                Err(())
-            }
-        },
-        _ => {
-            // 当前表达式并非复数（但不是错误）
-            Err(())
+            });
+            post_left_paren
         }
+        _ => {
+            return Err(Error::ParserError(
+                "expected anonymous function parameter".to_string(),
+            ));
+        }
+    };
+
+    token_details = post_parameters;
+
+    loop {
+        // 消除参数列表后面（首次运行 loop 主体时），以及各个从属表达式后面的空行
+        let post_new_lines = skip_new_lines(token_details);
+
+        // 尝试解析 type, which, where 等从属表达式
+        token_details = match post_new_lines.first() {
+            Some(t) if t.token == Token::Type => {
+                let (data_type, post_parse_data_type_expression) =
+                    continue_parse_type_expression(post_new_lines)?;
+
+                return_data_type = Some(data_type);
+                post_parse_data_type_expression
+            }
+            Some(t) if t.token == Token::Which => {
+                let (entries, post_parse_which_expression) =
+                    continue_parse_which_expression(post_new_lines)?;
+
+                which_entries = entries;
+                post_parse_which_expression
+            }
+            Some(t) if t.token == Token::Where => {
+                let (exp, post_parse_where_expression) =
+                    continue_parse_where_expression(post_new_lines)?;
+
+                where_exp = Some(Box::new(exp));
+                post_parse_where_expression
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+
+    // 消除赋值符号（如果存在的话）
+    let post_assignment = if is_token(&Token::Assign, token_details) {
+        let post_assignment_token = consume_token(&Token::Assign, token_details)?;
+        // 消除空行
+        skip_new_lines(post_assignment_token)
+    } else {
+        token_details
+    };
+
+    // 解析函数主体
+    let (body, post_body) = continue_parse_expression_block_or_single_expression(post_assignment)?;
+
+    // 构造匿名函数对象
+    let anonymous_function = AnonymousFunction {
+        parameters: parameters,
+        return_data_type: return_data_type,
+        which_entries: which_entries,
+        where_exp: where_exp,
+        body: Box::new(body),
+        range: new_range(),
+    };
+
+    Ok((Expression::AnonymousFunction(anonymous_function), post_body))
+}
+
+fn convert_expression_to_data_type(exp: Expression) -> Result<DataType, Error> {
+    match exp {
+        Expression::Identifier(identifier) => Ok(DataType::Identifier(identifier)),
+        Expression::Sign(sign) => Ok(DataType::Sign(sign)),
+        Expression::Tuple(tuple) => Ok(DataType::Tuple(tuple)),
+        _ => Err(Error::ParserError(
+            "invalid anonymous function parameter data type".to_string(),
+        )),
     }
 }
 
@@ -1343,10 +1390,10 @@ fn continue_parse_interval(
         Token::Interval
     };
 
-    // 消除范围符号 ".."
+    // 消除范围符号 ".." 或者 "..="
     let post_consume_token_interval = consume_token(&operator_token, source_token_details)?;
 
-    // 范围符号 ".." 后面允许换行
+    // 范围符号 ".."  或者 "..=" 后面允许换行
     let post_new_lines = skip_new_lines(post_consume_token_interval);
 
     match post_new_lines.first() {
@@ -1373,6 +1420,13 @@ fn continue_parse_interval(
 }
 
 fn parse_map(source_token_details: &[TokenDetail]) -> Result<(Expression, &[TokenDetail]), Error> {
+    let (map, post_continue_parse_map) = continue_parse_map(source_token_details)?;
+    Ok((Expression::Map(map), post_continue_parse_map))
+}
+
+fn continue_parse_map(
+    source_token_details: &[TokenDetail],
+) -> Result<(Map, &[TokenDetail]), Error> {
     // map
     //
     // e.g.
@@ -1523,12 +1577,255 @@ fn parse_map(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Toke
     token_details = consume_token(&Token::RightBrace, token_details)?;
 
     Ok((
-        Expression::Map(Map {
+        Map {
             elements: entries,
             range: new_range(),
-        }),
+        },
         token_details,
     ))
+}
+
+fn parse_prefix_identifier(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // prefix identifier
+    let post_consume_token_exclamation = consume_token(&Token::Exclamation, source_token_details)?;
+
+    let (identifier, post_continue_parse_identifier) =
+        continue_parse_identifier(post_consume_token_exclamation)?;
+
+    Ok((
+        Expression::PrefixIdentifier(PrefixIdentifier {
+            identifier: identifier,
+            range: new_range(),
+        }),
+        post_continue_parse_identifier,
+    ))
+}
+
+fn parse_identifier(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // identifier
+    //
+    // One::Two::Three::Name
+    let (identifier, post_continue_parse_identifier) =
+        continue_parse_identifier(source_token_details)?;
+
+    Ok((
+        Expression::Identifier(identifier),
+        post_continue_parse_identifier,
+    ))
+}
+
+fn continue_parse_identifier(
+    source_token_details: &[TokenDetail],
+) -> Result<(Identifier, &[TokenDetail]), Error> {
+    // identifier
+    //
+    // e.g.
+    // One::Two::Three::Name
+    let mut token_details = source_token_details;
+    let mut names: Vec<String> = vec![];
+
+    if let Some((
+        TokenDetail {
+            token: Token::Identifier(name),
+            ..
+        },
+        rest,
+    )) = token_details.split_first()
+    {
+        // 获取第一个 identifier
+        names.push(name.clone());
+        token_details = rest;
+
+        // 获取其余的 identifier
+        loop {
+            token_details = match token_details.split_first() {
+                Some((first, post_token_separator)) if first.token == Token::Separator => {
+                    // 检测到 namespace path 分隔符 `::`
+                    if let Some((
+                        TokenDetail {
+                            token: Token::Identifier(name),
+                            ..
+                        },
+                        post_token_identifier,
+                    )) = post_token_separator.split_first()
+                    {
+                        // 检测到一个 identifier
+                        names.push(name.clone());
+                        post_token_identifier
+                    } else {
+                        // 在 namespace path 分隔符 `::` 后面必须是一个 identifier
+                        return Err(Error::ParserError("expected identifier".to_string()));
+                    }
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+    }
+
+    if names.len() == 0 {
+        Err(Error::ParserError("expected identifier".to_string()))
+    } else {
+        let len = names.len();
+        Ok((
+            Identifier {
+                dirs: names[..len - 1].iter().map(|n| n.clone()).collect(),
+                name: names[len - 1].clone(),
+                generic_names: vec![],
+                range: new_range(),
+            },
+            token_details,
+        ))
+    }
+}
+
+// Literal
+//  : Integer
+//  | Float
+//  | Complex
+//  | Bit
+//  | Boolean
+//  | Char
+//  | GeneralString
+//  | TemplateString
+//  | HashString
+//  | NamedOperator
+//  ;
+
+fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[TokenDetail]), Error> {
+    match source_token_details.split_first() {
+        Some((first, rest)) => match &first.token {
+            Token::Integer(v) => match continue_parse_imaginary(rest) {
+                // 整数或复数
+                Ok((f, post_rest)) => Ok((
+                    Literal::Complex(Complex {
+                        real: *v as f64,
+                        imaginary: f,
+                        range: new_range(),
+                    }),
+                    post_rest,
+                )),
+                _ => Ok((
+                    Literal::Integer(Integer {
+                        value: *v,
+                        range: new_range(),
+                    }),
+                    rest,
+                )),
+            },
+            Token::Float(v) => match continue_parse_imaginary(rest) {
+                // 浮点数或复数
+                Ok((f, post_rest)) => Ok((
+                    Literal::Complex(Complex {
+                        real: *v,
+                        imaginary: f,
+                        range: new_range(),
+                    }),
+                    post_rest,
+                )),
+                _ => Ok((
+                    Literal::Float(Float {
+                        value: *v,
+                        range: new_range(),
+                    }),
+                    rest,
+                )),
+            },
+            Token::Imaginary(v) => {
+                // 只有单独虚部的复数
+                Ok((
+                    Literal::Complex(Complex {
+                        real: 0f64,
+                        imaginary: *v,
+                        range: new_range(),
+                    }),
+                    rest,
+                ))
+            }
+            Token::Bit(width, bytes) => Ok((
+                Literal::Bit(Bit {
+                    width: *width,
+                    bytes: bytes.clone(),
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::Boolean(v) => Ok((
+                Literal::Boolean(Boolean {
+                    value: *v,
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::Char(v) => Ok((
+                Literal::Char(Char {
+                    value: *v,
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::GeneralString(v) => Ok((
+                Literal::GeneralString(GeneralString {
+                    value: v.clone(),
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::TemplateString(v) => {
+                // todo::
+                // 这里需要重新 tokenize 模板字符串里面的占位符表达式，
+                // 然后重新解析这些表达式
+                todo!()
+            }
+            Token::HashString(v) => Ok((
+                Literal::HashString(HashString {
+                    value: v.clone(),
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            Token::NamedOperator(v) => Ok((
+                Literal::NamedOperator(NamedOperator {
+                    value: v.clone(),
+                    range: new_range(),
+                }),
+                rest,
+            )),
+            _ => Err(Error::ParserError("unexpected literal".to_string())),
+        },
+        None => Err(Error::ParserError("expected literal".to_string())),
+    }
+}
+
+// 尝试解析复数，如果成功则返回虚数及剩余的 token，
+// 如果不成功则返回空元
+fn continue_parse_imaginary(
+    source_token_details: &[TokenDetail],
+) -> Result<(f64, &[TokenDetail]), ()> {
+    match source_token_details.split_first() {
+        Some((first, rest)) if first.token == Token::Plus => match rest.split_first() {
+            Some((
+                TokenDetail {
+                    token: Token::Imaginary(f),
+                    ..
+                },
+                post_rest,
+            )) => Ok((*f, post_rest)),
+            _ => {
+                // 当前表达式并非复数（但不是错误）
+                Err(())
+            }
+        },
+        _ => {
+            // 当前表达式并非复数（但不是错误）
+            Err(())
+        }
+    }
 }
 
 // 跳过空白的行，在 lexer 里产生的 Token 序列当中，有可能存在多行连续的空行，
@@ -1548,13 +1845,13 @@ fn skip_new_lines(source_token_details: &[TokenDetail]) -> &[TokenDetail] {
     token_details
 }
 
-fn skip_new_lines_and_consume_token<'a>(
-    expected: &Token,
-    source_token_details: &'a [TokenDetail],
-) -> Result<&'a [TokenDetail], Error> {
-    let token_details = skip_new_lines(source_token_details);
-    consume_token(expected, token_details)
-}
+// fn skip_new_lines_and_consume_token<'a>(
+//     expected: &Token,
+//     source_token_details: &'a [TokenDetail],
+// ) -> Result<&'a [TokenDetail], Error> {
+//     let token_details = skip_new_lines(source_token_details);
+//     consume_token(expected, token_details)
+// }
 
 fn is_token(expected: &Token, source_token_details: &[TokenDetail]) -> bool {
     match source_token_details.first() {
@@ -1581,15 +1878,15 @@ fn consume_token<'a>(
     }
 }
 
-fn consume_token_if_exists<'a>(
-    expected: &Token,
-    source_token_details: &'a [TokenDetail],
-) -> &'a [TokenDetail] {
-    match source_token_details.split_first() {
-        Some((first, rest)) if &first.token == expected => rest,
-        _ => source_token_details,
-    }
-}
+// fn consume_token_if_exists<'a>(
+//     expected: &Token,
+//     source_token_details: &'a [TokenDetail],
+// ) -> &'a [TokenDetail] {
+//     match source_token_details.split_first() {
+//         Some((first, rest)) if &first.token == expected => rest,
+//         _ => source_token_details,
+//     }
+// }
 
 fn consume_new_line_or_end_of_file(
     source_token_details: &[TokenDetail],
@@ -2078,7 +2375,52 @@ mod tests {
 
     #[test]
     fn test_anonymous_function() {
-        //
+        let n1 = parse_from_string("fn (Int a, Boolean b) type String = 1 + 2").unwrap();
+        assert_eq!(
+            n1.to_string(),
+            "fn (Int a, Boolean b) type String = (1 + 2)\n"
+        );
+
+        // 无返回类型
+        let n2 = parse_from_string("fn (Int a, Boolean b) = 1 + 2 * 3").unwrap();
+        assert_eq!(n2.to_string(), "fn (Int a, Boolean b) = (1 + (2 * 3))\n");
+
+        // 无数据类型
+        let n3 = parse_from_string("fn (a, b) = a + b").unwrap();
+        assert_eq!(n3.to_string(), "fn (a, b) = (a + b)\n");
+
+        // 单独一个参数
+        let n4 = parse_from_string("fn (a) = a + 1").unwrap();
+        assert_eq!(n4.to_string(), "fn (a) = (a + 1)\n");
+
+        // 单独一个参数且省略参数列表的括号
+        let n5 = parse_from_string("fn a = a + 1").unwrap();
+        assert_eq!(n5.to_string(), "fn (a) = (a + 1)\n");
+
+        // 函数体为表达式块
+        let n5 = parse_from_string("fn a {a + 1}").unwrap();
+        assert_eq!(
+            n5.to_string(),
+            trim_left_margin(
+                "fn (a) {
+                    (a + 1)
+                }
+                "
+            )
+        );
+
+        // 函数体为多行表达式块
+        let n6 = parse_from_string("fn(a,b){a+b\na-b}").unwrap();
+        assert_eq!(
+            n6.to_string(),
+            trim_left_margin(
+                "fn (a, b) {
+                    (a + b)
+                    (a - b)
+                }
+                "
+            )
+        );
     }
 
     // operating expressions
