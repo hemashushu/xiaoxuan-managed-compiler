@@ -1319,13 +1319,13 @@ fn parse_anonymous_function(
                 which_entries = entries;
                 post_parse_which_expression
             }
-            Some(t) if t.token == Token::Where => {
-                let (exp, post_parse_where_expression) =
-                    continue_parse_where_expression(post_new_lines)?;
-
-                where_exp = Some(Box::new(exp));
-                post_parse_where_expression
-            }
+//             Some(t) if t.token == Token::Where => {
+//                 let (exp, post_parse_where_expression) =
+//                     continue_parse_where_expression(post_new_lines)?;
+//
+//                 where_exp = Some(Box::new(exp));
+//                 post_parse_where_expression
+//             }
             _ => {
                 break;
             }
@@ -1349,7 +1349,7 @@ fn parse_anonymous_function(
         parameters: parameters,
         return_data_type: return_data_type,
         which_entries: which_entries,
-        where_exp: where_exp,
+        // where_exp: where_exp,
         body: Box::new(body),
         range: new_range(),
     };
@@ -2712,21 +2712,21 @@ mod tests {
             )
         );
 
-        // 测试单行 where
-        let n7 = parse_from_string("fn (a,b) where a+b = 1+2").unwrap();
-        assert_eq!(n7.to_string(), "fn (a, b) where (a + b) = (1 + 2)\n");
-
-        // 测试多行 where
-        let n8 = parse_from_string("fn(a,b)where{a+b\nc+d}=1+2").unwrap();
-        assert_eq!(
-            n8.to_string(),
-            trim_left_margin(
-                "fn (a, b) where {
-                            (a + b)
-                            (c + d)
-                        } = (1 + 2)\n"
-            )
-        );
+//         // 测试单行 where
+//         let n7 = parse_from_string("fn (a,b) where a+b = 1+2").unwrap();
+//         assert_eq!(n7.to_string(), "fn (a, b) where (a + b) = (1 + 2)\n");
+//
+//         // 测试多行 where
+//         let n8 = parse_from_string("fn(a,b)where{a+b\nc+d}=1+2").unwrap();
+//         assert_eq!(
+//             n8.to_string(),
+//             trim_left_margin(
+//                 "fn (a, b) where {
+//                             (a + b)
+//                             (c + d)
+//                         } = (1 + 2)\n"
+//             )
+//         );
 
         // 测试单行 which
         let n8 = parse_from_string("fn (T a) which T:Int=1+2").unwrap();

@@ -87,7 +87,7 @@ pub struct FunctionDeclaration {
     pub parameters: Vec<FunctionParameter>,
     pub return_data_type: Option<DataType>,
     pub which_entries: Vec<WhichEntry>,
-    pub where_exp: Option<Expression>, // 作用域为整个函数的表达式块
+    // pub where_exp: Option<Expression>, // 作用域为整个函数的表达式块
     pub body: Expression,
     pub range: Range,
 }
@@ -129,7 +129,7 @@ pub struct PatternFunctionDeclaration {
     pub generic_names: Vec<String>,
     pub parameters: Vec<PatternFunctionParameter>,
     pub return_data_type: Option<DataType>,
-    pub where_exp: Option<Expression>, // 作用域为整个函数的表达式块，但在各参数解析完毕之后生效
+    // pub where_exp: Option<Expression>, // 作用域为整个函数的表达式块，但在各参数解析完毕之后生效
     pub only_exp: Option<Expression>,  // 在各个参数匹配后，模式函数的最后一道防线
     pub which_entries: Vec<WhichEntry>,
     pub range: Range,
@@ -297,9 +297,9 @@ impl Display for FunctionDeclaration {
             ));
         }
 
-        if let Some(e) = &self.where_exp {
-            segments.push(format!("where {}", e));
-        }
+        // if let Some(e) = &self.where_exp {
+        //     segments.push(format!("where {}", e));
+        // }
 
         match &self.body {
             Expression::BlockExpression(b) if !(b.is_explicit) => {
@@ -675,7 +675,7 @@ pub struct AnonymousFunction {
     pub parameters: Vec<AnonymousParameter>,
     pub return_data_type: Option<DataType>,
     pub which_entries: Vec<WhichEntry>,
-    pub where_exp: Option<Box<Expression>>, // 作用域为整个函数的表达式块
+    // pub where_exp: Option<Box<Expression>>, // 作用域为整个函数的表达式块
     pub body: Box<Expression>,
     pub range: Range,
 }
@@ -1136,9 +1136,9 @@ impl Display for AnonymousFunction {
             ));
         }
 
-        if let Some(e) = &self.where_exp {
-            segments.push(format!("where {}", e));
-        }
+        // if let Some(e) = &self.where_exp {
+        //     segments.push(format!("where {}", e));
+        // }
 
         match self.body.as_ref() {
             Expression::BlockExpression(e) if e.is_explicit == false => {
@@ -2418,7 +2418,7 @@ mod tests {
             body: Box::new(new_addition_expression(1, 2)),
             return_data_type: Some(DataType::Identifier(new_identifier("String"))),
             which_entries: vec![],
-            where_exp: None,
+            // where_exp: None,
             range: new_range(),
         };
         assert_eq!(
@@ -2443,7 +2443,7 @@ mod tests {
             body: Box::new(new_addition_expression(1, 2)),
             return_data_type: None,
             which_entries: vec![],
-            where_exp: None,
+            // where_exp: None,
             range: new_range(),
         };
         assert_eq!(e2.to_string(), "fn (Int a, Boolean b) = (1 + 2)");
@@ -2465,7 +2465,7 @@ mod tests {
             body: Box::new(new_addition_expression(1, 2)),
             return_data_type: None,
             which_entries: vec![],
-            where_exp: None,
+            // where_exp: None,
             range: new_range(),
         };
         assert_eq!(e3.to_string(), "fn (a, b) = (1 + 2)");
@@ -2484,7 +2484,7 @@ mod tests {
             })),
             return_data_type: None,
             which_entries: vec![],
-            where_exp: None,
+            // where_exp: None,
             range: new_range(),
         };
         assert_eq!(
@@ -2524,7 +2524,7 @@ mod tests {
                     range: new_range(),
                 }),
             ],
-            where_exp: None,
+            // where_exp: None,
             body: Box::new(new_addition_expression(1, 2)),
             range: new_range(),
         };
@@ -2538,48 +2538,48 @@ mod tests {
             )
         );
 
-        // 测试默认值和 where 从属表达式
-        let e6 = AnonymousFunction {
-            parameters: vec![
-                AnonymousParameter {
-                    data_type: None,
-                    name: "a".to_string(),
-                    range: new_range(),
-                },
-                AnonymousParameter {
-                    data_type: None,
-                    name: "b".to_string(),
-                    range: new_range(),
-                },
-            ],
-            return_data_type: None,
-            which_entries: vec![],
-            where_exp: Some(Box::new(Expression::LetExpression(LetExpression {
-                data_type: None,
-                object: Box::new(Expression::Identifier(new_identifier("c"))),
-                value: Box::new(Expression::BinaryExpression(BinaryExpression {
-                    operator: Token::Plus,
-                    left: Box::new(Expression::Identifier(new_identifier("a"))),
-                    right: Box::new(Expression::Identifier(new_identifier("b"))),
-                    range: new_range(),
-                })),
-                range: new_range(),
-            }))),
-            body: Box::new(Expression::BlockExpression(BlockExpression {
-                is_explicit: false,
-                body: vec![Expression::Identifier(new_identifier("c"))],
-                range: new_range(),
-            })),
-            range: new_range(),
-        };
-        assert_eq!(
-            e6.to_string(),
-            trim_left_margin(
-                "fn (a, b) where let c = (a + b) {
-                    c
-                }"
-            )
-        );
+        // 测试 where 从属表达式
+        // let e6 = AnonymousFunction {
+        //     parameters: vec![
+        //         AnonymousParameter {
+        //             data_type: None,
+        //             name: "a".to_string(),
+        //             range: new_range(),
+        //         },
+        //         AnonymousParameter {
+        //             data_type: None,
+        //             name: "b".to_string(),
+        //             range: new_range(),
+        //         },
+        //     ],
+        //     return_data_type: None,
+        //     which_entries: vec![],
+        //     where_exp: Some(Box::new(Expression::LetExpression(LetExpression {
+        //         data_type: None,
+        //         object: Box::new(Expression::Identifier(new_identifier("c"))),
+        //         value: Box::new(Expression::BinaryExpression(BinaryExpression {
+        //             operator: Token::Plus,
+        //             left: Box::new(Expression::Identifier(new_identifier("a"))),
+        //             right: Box::new(Expression::Identifier(new_identifier("b"))),
+        //             range: new_range(),
+        //         })),
+        //         range: new_range(),
+        //     }))),
+        //     body: Box::new(Expression::BlockExpression(BlockExpression {
+        //         is_explicit: false,
+        //         body: vec![Expression::Identifier(new_identifier("c"))],
+        //         range: new_range(),
+        //     })),
+        //     range: new_range(),
+        // };
+        // assert_eq!(
+        //     e6.to_string(),
+        //     trim_left_margin(
+        //         "fn (a, b) where let c = (a + b) {
+        //             c
+        //         }"
+        //     )
+        // );
     }
 
     #[test]
@@ -3459,7 +3459,7 @@ mod tests {
             ],
             return_data_type: Some(DataType::Identifier(new_identifier("Int"))),
             which_entries: vec![],
-            where_exp: None,
+            // where_exp: None,
             body: Expression::BinaryExpression(BinaryExpression {
                 operator: Token::Plus,
                 left: Box::new(Expression::Identifier(new_identifier("a"))),
@@ -3525,7 +3525,7 @@ mod tests {
                 ],
                 range: new_range(),
             }),
-            where_exp: None,
+            // where_exp: None,
             range: new_range(),
         };
         assert_eq!(
@@ -3559,17 +3559,17 @@ mod tests {
             ],
             return_data_type: Some(DataType::Identifier(new_identifier("Int"))),
             which_entries: vec![],
-            where_exp: Some(Expression::LetExpression(LetExpression {
-                data_type: None,
-                object: Box::new(Expression::Identifier(new_identifier("c"))),
-                value: Box::new(Expression::BinaryExpression(BinaryExpression {
-                    operator: Token::Plus,
-                    left: Box::new(Expression::Identifier(new_identifier("a"))),
-                    right: Box::new(Expression::Identifier(new_identifier("b"))),
-                    range: new_range(),
-                })),
-                range: new_range(),
-            })),
+            // where_exp: Some(Expression::LetExpression(LetExpression {
+            //     data_type: None,
+            //     object: Box::new(Expression::Identifier(new_identifier("c"))),
+            //     value: Box::new(Expression::BinaryExpression(BinaryExpression {
+            //         operator: Token::Plus,
+            //         left: Box::new(Expression::Identifier(new_identifier("a"))),
+            //         right: Box::new(Expression::Identifier(new_identifier("b"))),
+            //         range: new_range(),
+            //     })),
+            //     range: new_range(),
+            // })),
             body: Expression::BlockExpression(BlockExpression {
                 is_explicit: false,
                 body: vec![Expression::Identifier(new_identifier("c"))],
@@ -3580,7 +3580,7 @@ mod tests {
         assert_eq!(
             s3.to_string(),
             trim_left_margin(
-                "function test (Int a = 10, Int b = 20) type Int where let c = (a + b) {
+                "function test (Int a = 10, Int b = 20) type Int {
                     c
                 }
                 "

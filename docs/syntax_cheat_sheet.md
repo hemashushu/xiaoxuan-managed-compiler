@@ -35,14 +35,12 @@
 - [语句](#语句-1)
   - [函数定义](#函数定义)
     - [返回值类型 `type 从属表达式`](#返回值类型-type-从属表达式)
-    - [函数的补充段落 `where 从属表达式`](#函数的补充段落-where-从属表达式)
     - [函数参数的类型说明 `which 从属表达式`](#函数参数的类型说明-which-从属表达式)
     - [函数重载](#函数重载)
     - [参数的默认值](#参数的默认值)
     - [重载冲突](#重载冲突)
   - [函数签名](#函数签名)
   - [空函数](#空函数)
-  - [模式函数](#模式函数)
   - [关联函数/方法](#关联函数方法)
   - [特性](#特性)
     - [关联类型](#关联类型)
@@ -78,6 +76,7 @@
     - [regular 从属表达式](#regular-从属表达式)
     - [template 从属表达式](#template-从属表达式)
     - [嵌套匹配](#嵌套匹配)
+  - [模式函数](#模式函数)
   - [fn 表达式（匿名函数/子函数）](#fn-表达式匿名函数子函数)
   - [函数调用](#函数调用)
     - [普通形式](#普通形式)
@@ -93,7 +92,7 @@
 
 ## 程序的组成
 
-- 程序由 `语句`（`statement`） 和 `表达式`（`expression`） 组成；
+- 程序由 `语句`（`statement`） 和 `表达式`（`expression`） 组成； **语句构成了程序的结构，表达式构成了程序的内容。**
 - 语句无返回值；
 - 表达式有返回值；
 - 除了定义性质的内容（比如结构体定义、常量定义、函数定义）是语句之外，其他都是表达式（比如 `if 表达式`、`for 表达式` 是表达式，而不是语句）；
@@ -123,8 +122,6 @@
   - `]` 右中括号（方括号）
   - `}` 右花括号
   - 各种从属表达式
-  <!-- - `then`, `else` 等从属表达式
-  - `which`, `where`, `only`, `in`, `regular`, `template` 等从属表达式 -->
 
 - 使用 `do 表达式` 可以创建一个 `表达式块`，表达式块允许包含一个或多个表达式，表达式会被依次求值（或者说执行），最后一个表达式的值将会作为表达式块的值而返回；
 - 在某些关键字（比如 `then`，`else`）后面书写 `do 表达式` 时，可以省略 `do` 关键字而直接写一对花括号，这种表达式块称为 `隠式 do 表达式`，一般直接称为 `表达式块`。
@@ -557,24 +554,6 @@ function name (...) type type_name = expression
 
 `type` 用于指示返回值的数据类型，当缺省 `type` 时，返回值数据类型为 `std::Unit`，其值只有 `std::Unit`，字面量为空元组 `()`。
 
-#### 函数的补充段落 `where 从属表达式`
-
-函数后面可以添加 `where 从属表达式`，用于创建作用范围为整个函数的表达式，比如：
-
-```js
-function test(Int a) type Int where let Int b = a * 2 = b + 1
-```
-
-where 表达式的值为多条表达式的情况：
-
-```js
-function test(Int a, Int b)
-    where {
-        let Int x = a + b
-        let Int y = a - b
-    } = power(x, 2) + power(y, 2)
-```
-
 #### 函数参数的类型说明 `which 从属表达式`
 
 ```js
@@ -600,7 +579,7 @@ function name (T t, F f) type T
 
 > 同样使用花括号作为主体的 `映射表`/`which`/`branch`/`match`/ 结构格式保持一致。
 
-> 注：type, where, which 等从属表达式的顺序不重要。
+> 注：type, which 等从属表达式的顺序不重要。
 
 #### 函数重载
 
@@ -666,46 +645,9 @@ sign (T, String) which {T: Int}
 `empty function name (...) type type_name`
 `empty function name (...)`
 
-空函数比较像函数签名，比如，空函数不支持 `where 从属表达式`，也无函数主体。参数不能指定默认值，但需要写出名称。
+空函数除了无函数主体，参数不能指定默认值（但参数名称需要写出）。
 
 在实现空函数时，函数的签名、参数的名称都必须一致。因为空函数不支持指定参数默认值，所以其实现也无法指定参数的默认值。
-
-### 模式函数
-
-添加了关键字 `pattern` 的函数，其参数可以使用模式匹配表达式（包括 match 表达式 case 关键字后面的各种从属表达式）。模式函数必须同名、同参数、同返回类型（指：函数名称相同，参数个数、参数出现的顺序和数据类型都必须相同，返回数据类型也必须相同，仅每个参数的模式表达式不同）。
-
-```js
-pattern function test (String s @ parse Email email, String s @ parse Phone phone) {
-    ...
-}
-```
-
-同名的模式匹配函数会被编译器转换为 branch 结构。编译器会把它们全部组合为一个函数。
-
-跟 `match 表达式` 的 `case` 不同，模式函数的参数需要指出参数的数据类型，除非出现了 `regular`、`template` 这两种从属表达式。因为它们要求被匹配的数据只能是 `String` 类型。
-
-```js
-pattern function test (
-    Int i @ in [1..10],
-    Point (x, y) only x + y > c
-        where let c = x - y),
-    User {id, name} only id > 100
-    {
-    ...
-}
-```
-
-另外，模式函数也支持函数范围的 `where` 从属表达式（注意，模式函数的 `where` 从属表达式的生效在所有参数解析完之后），以及作为模式匹配最后一道防线的 `only` 从属表达式。
-
-```js
-pattern function test(Int x, Int y)
-    where let z = x+y
-    only z > 10 {
-        ...
-}
-```
-
-> 模式函数的参数不能是可选参数。
 
 ### 关联函数/方法
 
@@ -979,7 +921,7 @@ join to format(_, "date") {
 
 `if ... then ... else ...`
 
-一共三个从属表达式，其中 else 可以再省略，每个从属表达式也可以是表达式块，其中第一个从属表达式需要返回 Boolean 类型的值，比如：
+一共三个从属表达式，其中 else 可以省略，每个从属表达式可以是单一一个表达式，也可以是表达式块，其中 `if 子表达式`（即第一个从属表达式）要求返回 Boolean 类型的值，比如：
 
 ```js
 if {let a = c * 2; a > b} then
@@ -1000,6 +942,8 @@ if a > b where {
     let a = 2
     let b = 1 } then ...
 ```
+
+注意 `where 子表达式` 先于 `if 子表达式（即 if 表达式的第一部分）` 执行，所以在 `where 子表达式` 里无法访问 `if 子表达式` 里的内容，但反过来是可以的。
 
 > 因为 `if 表达式` 的各子表达式的作用域限制，类似 rust lang 的 `if let 表达式` 是不支持的。原因有两个：其一是因为它会根据条件是否成立而创建或者不创建标识符，xiaoxuan 语言不支持这种不确定的标识符。其二是如果将条件成立后所创建的标识符的作用范围覆盖到 `then` 子表达式，则破坏一致性。
 
@@ -1031,13 +975,17 @@ branch where let a = 2 {
 }
 ```
 
-case 后面用于创建当前 case 有效的作用域，比如
+case 后面可以加 where 从属表达式：
 
 ```js
 branch {
-    case b>a where let a = 1: ...
+    case b>a where let a = 1:
+        a + 1
 }
 ```
+
+- case 后面用于创建当前 case 有效的作用域，比如
+- 跟 `if 表达式` 的 `where 从属表达式` 的情况类似，case 的 `where 从属表达式` 也是先于 case 条件表达式执行。
 
 ### for 表达式
 
@@ -1114,13 +1062,15 @@ match v where ... {
 
 ```js
 match v {
-    case Some(a)
-        only a.val > avg
+    case a where let b = a + 1:
+        b
+
 
 }
 ```
 
-`case` 后面的 `where 从属表达式` 的作用域仅覆盖当前 `case`。
+- `case` 后面的 `where 从属表达式` 的作用域仅覆盖当前 `case`。
+- 跟 `if 表达式` 的 `where 从属表达式` 的情况类似，case 的 `where 从属表达式` 也是先于当前 case 条件表达式以及当前 case 的所有其他从属表达式执行。
 
 #### only 从属表达式
 
@@ -1128,10 +1078,12 @@ match v {
 
 ```js
 match v {
-    case a only a>0: ...
-    case a only a>b where let b = 10: ...
+    case a only b > 10 where let b = sqrt(a):
+        b + 1
 }
 ```
+
+`only 从属表达式` 可以是单一一个表达式，也可以是一个表达式块，只需返回值为 `Boolean 类型` 即可。
 
 #### in 从属表达式
 
@@ -1228,6 +1180,42 @@ match u {
 
 ```
 
+### 模式函数
+
+添加了关键字 `pattern` 的函数，其参数可以使用模式匹配表达式（包括 match 表达式 case 关键字后面的各种从属表达式）。模式函数必须同名、同参数、同返回类型（指：函数名称相同，参数个数、参数出现的顺序和数据类型都必须相同，返回数据类型也必须相同，仅每个参数的模式表达式不同）。
+
+```js
+pattern function test (String s @ parse Email email, String s @ parse Phone phone) {
+    ...
+}
+```
+
+同名的模式匹配函数会被编译器转换为 branch 结构。编译器会把它们全部组合为一个函数。
+
+跟 `match 表达式` 的 `case` 不同，模式函数的参数需要指出参数的数据类型，除非出现了 `regular`、`template` 这两种从属表达式。因为它们要求被匹配的数据只能是 `String` 类型。
+
+```js
+pattern function test (
+    Int i @ in [1..10],
+    Point (x, y) only x + y > c
+        where let c = x - y),
+    User {id, name} only id > 100
+    {
+    ...
+}
+```
+
+另外，模式函数也支持函数范围的 `only 从属表达式`（注意，模式函数的 `only 从属表达式` 生效在所有参数解析完之后），它作为模式匹配函数最后的一道防线。
+
+```js
+pattern function test(Int x, Int y)
+    only x > y {
+        ...
+}
+```
+
+> 模式函数的参数不能是可选参数。
+
 ### fn 表达式（匿名函数/子函数）
 
 `fn (type_name param_name) type type_name = ...`
@@ -1253,9 +1241,14 @@ let s = [1,2,3]
     .join("")
 ```
 
-跟普通函数一样，匿名函数也支持 `where`、`which` 从属表达式。
+跟普通函数一样，匿名函数也支持 `which` 从属表达式。
 
-跟普通函数不同的是：匿名函数没有函数名称、不支持泛型、不支持参数默认值。
+跟普通函数不同的是：
+
+- 匿名函数没有函数名称；
+- 参数和返回值的类型可以省略，由上下文推导出来；
+- 不支持泛型
+- 不支持参数默认值。
 
 ### 函数调用
 
