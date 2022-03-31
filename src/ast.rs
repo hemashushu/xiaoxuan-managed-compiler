@@ -595,8 +595,20 @@ pub struct SignParameter {
 
 // 函数数据类型的补充说明从属表达式
 #[derive(Debug, Clone, PartialEq)]
-pub struct WhichEntry {
-    pub is_limit: bool, // false == 一般的类型说明，true == 泛型类型约束
+pub enum WhichEntry {
+    Type(WhichEntryType),
+    Limit(WhichEntryLimit),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WhichEntryType {
+    pub name: String,
+    pub data_type: DataType,
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WhichEntryLimit {
     pub name: String,
     pub data_types: Vec<DataType>,
     pub range: Range,
@@ -1010,22 +1022,41 @@ impl Display for WhichEntry {
     // e.g.
     // `T: Int`
     // `T: limit Display`
-    // `T: limit Display, Clone`
+    // `T: limit Display + Clone`
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WhichEntry::Type(v) => write!(f, "{}", v),
+            WhichEntry::Limit(v) => write!(f, "{}", v),
+        }
+    }
+}
+
+impl Display for WhichEntryType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.name, self.data_type)
+    }
+}
+
+impl Display for WhichEntryLimit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut segments = Vec::<String>::new();
         segments.push(format!("{}:", self.name.clone()));
 
-        if self.is_limit {
-            segments.push("limit".to_string());
-        }
+        segments.push("limit".to_string());
 
         let mut type_segments = Vec::<String>::new();
         for dt in &self.data_types {
             type_segments.push(dt.to_string())
         }
-
         let type_text = type_segments.join(", ");
-        segments.push(type_text);
+
+        if self.data_types.len() > 1 {
+            // 多个数据类型
+            segments.push(format!("({})", type_text));
+        } else {
+            // 单个数据类型
+            segments.push(type_text);
+        }
 
         write!(f, "{}", segments.join(" "))
     }
@@ -1557,7 +1588,8 @@ mod tests {
             Argument, Bit, Complex, Ellipsis, Expression, FunctionCallExpression, GeneralString,
             HashString, Identifier, JoinExpression, List, MatchCase, MatchExpression,
             NamedOperator, NextExpression, PatternAdditional, PrefixIdentifier,
-            RegularExpressionLiteral, SignParameter, UnaryExpression, WhichEntry,
+            RegularExpressionLiteral, SignParameter, UnaryExpression, WhichEntry, WhichEntryLimit,
+            WhichEntryType,
         },
         token::Token,
     };
@@ -2481,18 +2513,16 @@ mod tests {
             ],
             return_data_type: None,
             which_entries: vec![
-                WhichEntry {
-                    is_limit: false,
+                WhichEntry::Type(WhichEntryType {
                     name: "D".to_string(),
-                    data_types: vec![DataType::Identifier(new_identifier("Display"))],
+                    data_type: DataType::Identifier(new_identifier("Display")),
                     range: new_range(),
-                },
-                WhichEntry {
-                    is_limit: false,
+                }),
+                WhichEntry::Type(WhichEntryType {
                     name: "W".to_string(),
-                    data_types: vec![DataType::Identifier(new_identifier("Writer"))],
+                    data_type: DataType::Identifier(new_identifier("Writer")),
                     range: new_range(),
-                },
+                }),
             ],
             where_exp: None,
             body: Box::new(new_addition_expression(1, 2)),
@@ -3238,12 +3268,11 @@ mod tests {
             }],
             return_data_type: None,
             generic_names: vec!["T".to_string()],
-            which_entries: vec![WhichEntry {
-                is_limit: false,
+            which_entries: vec![WhichEntry::Type(WhichEntryType {
                 name: "T".to_string(),
-                data_types: vec![DataType::Identifier(new_identifier("Int"))],
+                data_type: DataType::Identifier(new_identifier("Int")),
                 range: new_range(),
-            }],
+            })],
             range: new_range(),
         };
         assert_eq!(s1.to_string(), "sign <T> (List<T>) which {\nT: Int\n}");
@@ -3263,18 +3292,16 @@ mod tests {
             return_data_type: None,
             generic_names: vec!["T".to_string(), "E".to_string()],
             which_entries: vec![
-                WhichEntry {
-                    is_limit: false,
+                WhichEntry::Type(WhichEntryType {
                     name: "T".to_string(),
-                    data_types: vec![DataType::Identifier(new_identifier("Int"))],
+                    data_type: DataType::Identifier(new_identifier("Int")),
                     range: new_range(),
-                },
-                WhichEntry {
-                    is_limit: false,
+                }),
+                WhichEntry::Type(WhichEntryType {
                     name: "E".to_string(),
-                    data_types: vec![DataType::Identifier(new_identifier("Error"))],
+                    data_type: DataType::Identifier(new_identifier("Error")),
                     range: new_range(),
-                },
+                }),
             ],
             range: new_range(),
         };
@@ -3305,10 +3332,9 @@ mod tests {
             return_data_type: None,
             generic_names: vec!["T".to_string()],
             which_entries: vec![
-                WhichEntry {
-                    is_limit: false,
+                WhichEntry::Type(WhichEntryType {
                     name: "F".to_string(),
-                    data_types: vec![DataType::Sign(Sign {
+                    data_type: DataType::Sign(Sign {
                         parameters: vec![
                             SignParameter {
                                 data_type: DataType::Identifier(new_identifier("Int")),
@@ -3327,18 +3353,17 @@ mod tests {
                         which_entries: vec![],
                         generic_names: vec![],
                         range: new_range(),
-                    })],
+                    }),
                     range: new_range(),
-                },
-                WhichEntry {
-                    is_limit: true,
+                }),
+                WhichEntry::Limit(WhichEntryLimit {
                     name: "T".to_string(),
                     data_types: vec![
                         DataType::Identifier(new_identifier("Eq")),
                         DataType::Identifier(new_identifier("Display")),
                     ],
                     range: new_range(),
-                },
+                }),
             ],
             range: new_range(),
         };
@@ -3347,7 +3372,7 @@ mod tests {
             trim_left_margin(
                 "sign <T> (F, List<T>) which {
                 F: sign (Int, Boolean) type Int
-                T: limit Eq, Display
+                T: limit (Eq, Display)
                 }"
             )
         );
@@ -3468,18 +3493,16 @@ mod tests {
             ],
             return_data_type: None,
             which_entries: vec![
-                WhichEntry {
-                    is_limit: true,
+                WhichEntry::Limit(WhichEntryLimit {
                     name: "D".to_string(),
                     data_types: vec![DataType::Identifier(new_identifier("Display"))],
                     range: new_range(),
-                },
-                WhichEntry {
-                    is_limit: true,
+                }),
+                WhichEntry::Limit(WhichEntryLimit {
                     name: "W".to_string(),
                     data_types: vec![DataType::Identifier(new_identifier("Writer"))],
                     range: new_range(),
-                },
+                }),
             ],
             body: Expression::FunctionCallExpression(FunctionCallExpression {
                 callee: Box::new(Expression::Identifier(new_identifier("write"))),
