@@ -62,7 +62,7 @@ pub enum Token {
     Slash,                 // /
 
     OptionalOr,  // ??
-    OptionalAnd, // >>
+    OptionalAnd, // ->
 
     Combine, // &
     Cast,    // ^
@@ -108,7 +108,7 @@ pub enum Token {
     Default,
     Where,
     Only,
-    As,
+    // As,
     Into,
     Regular,
     Template,
@@ -191,7 +191,7 @@ impl fmt::Display for Token {
             Token::Slash => write!(f, "/"),               // / Divide
 
             Token::OptionalOr => write!(f, "??"),  // ??
-            Token::OptionalAnd => write!(f, ">>"), // >>
+            Token::OptionalAnd => write!(f, "->"), // ->
 
             Token::Combine => write!(f, "&"), // &
             Token::Cast => write!(f, "^"),    // ^
@@ -237,7 +237,7 @@ impl fmt::Display for Token {
             Token::Default => write!(f, "default"),
             Token::Where => write!(f, "where"),
             Token::Only => write!(f, "only"),
-            Token::As => write!(f, "as"),
+            // Token::As => write!(f, "as"),
             Token::Into => write!(f, "into"),
             Token::Regular => write!(f, "regular"),
             Token::Template => write!(f, "template"),
@@ -349,7 +349,7 @@ mod tests {
         assert_eq!(Token::Slash.to_string(), "/");
 
         assert_eq!(Token::OptionalOr.to_string(), "??");
-        assert_eq!(Token::OptionalAnd.to_string(), ">>");
+        assert_eq!(Token::OptionalAnd.to_string(), "->");
 
         assert_eq!(Token::Combine.to_string(), "&");
         assert_eq!(Token::Cast.to_string(), "^");
@@ -392,7 +392,7 @@ mod tests {
         assert_eq!(Token::Default.to_string(), "default");
         assert_eq!(Token::Where.to_string(), "where");
         assert_eq!(Token::Only.to_string(), "only");
-        assert_eq!(Token::As.to_string(), "as");
+        // assert_eq!(Token::As.to_string(), "as");
         assert_eq!(Token::Into.to_string(), "into");
         assert_eq!(Token::Regular.to_string(), "regular");
         assert_eq!(Token::Template.to_string(), "template");

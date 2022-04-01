@@ -83,11 +83,10 @@ pub enum Statement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
     pub name: String,
-    pub generic_names: Vec<String>,
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub parameters: Vec<FunctionParameter>,
     pub return_data_type: Option<DataType>,
     pub which_entries: Vec<WhichEntry>,
-    // pub where_exp: Option<Expression>, // 作用域为整个函数的表达式块
     pub body: Expression,
     pub range: Range,
 }
@@ -107,7 +106,7 @@ pub struct FunctionParameter {
 #[derive(Debug, Clone, PartialEq)]
 pub struct EmptyFunctionDeclaration {
     pub name: String,
-    pub generic_names: Vec<String>,
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub parameters: Vec<EmptyFunctionParameter>,
     pub return_data_type: Option<DataType>,
     pub which_entries: Vec<WhichEntry>,
@@ -126,11 +125,10 @@ pub struct EmptyFunctionParameter {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PatternFunctionDeclaration {
     pub name: String,
-    pub generic_names: Vec<String>,
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub parameters: Vec<PatternFunctionParameter>,
     pub return_data_type: Option<DataType>,
-    // pub where_exp: Option<Expression>, // 作用域为整个函数的表达式块，但在各参数解析完毕之后生效
-    pub only_exp: Option<Expression>,  // 在各个参数匹配后，模式函数的最后一道防线
+    pub only_exp: Option<Expression>, // 在各个参数匹配后，模式函数的最后一道防线
     pub which_entries: Vec<WhichEntry>,
     pub range: Range,
 }
@@ -181,7 +179,7 @@ pub struct ConstDeclaration {
 pub struct MemberStructDeclaration {
     pub name: String,
     pub members: Vec<StructMember>,
-    pub generic_names: Vec<String>,
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub range: Range,
 }
 
@@ -189,7 +187,7 @@ pub struct MemberStructDeclaration {
 pub struct TupleStructDeclaration {
     pub name: String,
     pub members: Vec<DataType>,
-    pub generic_names: Vec<String>,
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub range: Range,
 }
 
@@ -209,7 +207,7 @@ pub struct StructMember {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnionDeclaration {
     pub members: Vec<UnionMember>,
-    pub generic_names: Vec<String>,
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub range: Range,
 }
 
@@ -254,7 +252,7 @@ pub struct ImplStatement {
 pub struct AliasStatement {
     pub name: String,
     pub data_type: DataType,
-    pub generic_names: Vec<String>,
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub range: Range,
 }
 
@@ -277,8 +275,8 @@ impl Display for FunctionDeclaration {
         segments.push("function".to_string());
         segments.push(self.name.clone());
 
-        if self.generic_names.len() > 0 {
-            segments.push(format!("<{}>", format_generic_names(&self.generic_names)));
+        if self.generics.len() > 0 {
+            segments.push(format!("<{}>", format_generics(&self.generics)));
         }
 
         segments.push(format!(
@@ -296,10 +294,6 @@ impl Display for FunctionDeclaration {
                 format_which_entries(&self.which_entries)
             ));
         }
-
-        // if let Some(e) = &self.where_exp {
-        //     segments.push(format!("where {}", e));
-        // }
 
         match &self.body {
             Expression::BlockExpression(b) if !(b.is_explicit) => {
@@ -581,9 +575,15 @@ pub enum RegularExpressionLiteral {
 pub struct Sign {
     pub parameters: Vec<SignParameter>,
     pub return_data_type: Option<Box<DataType>>,
-    pub generic_names: Vec<String>,
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub which_entries: Vec<WhichEntry>,
     pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum GenericName {
+    Plain(String),
+    Nested(Vec<GenericName>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -648,10 +648,22 @@ pub struct Argument {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MemberExpression {
-    pub is_computed: bool, // false == 'foo.bar', true == '[...]'
+pub enum MemberExpression {
+    Property(MemberProperty),
+    Index(MemberIndex),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MemberProperty {
     pub object: Box<Expression>,
-    pub property: Box<Expression>,
+    pub property: Box<Expression>, // 只允许 `（无符号）整数` 以及 `标识符` 两种类型
+    pub range: Range,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MemberIndex {
+    pub object: Box<Expression>,
+    pub index: Box<Expression>,
     pub range: Range,
 }
 
@@ -675,7 +687,6 @@ pub struct AnonymousFunction {
     pub parameters: Vec<AnonymousParameter>,
     pub return_data_type: Option<DataType>,
     pub which_entries: Vec<WhichEntry>,
-    // pub where_exp: Option<Box<Expression>>, // 作用域为整个函数的表达式块
     pub body: Box<Expression>,
     pub range: Range,
 }
@@ -696,7 +707,7 @@ pub struct AnonymousParameter {
 pub struct Identifier {
     pub dirs: Vec<String>,
     pub name: String,
-    pub generic_names: Vec<String>, // 泛型代号列表
+    pub generics: Vec<DataType>, // 泛型类型列表
     pub range: Range,
 }
 
@@ -997,8 +1008,8 @@ impl Display for Sign {
 
         segments.push("sign".to_string());
 
-        if self.generic_names.len() > 0 {
-            segments.push(format!("<{}>", format_generic_names(&self.generic_names)));
+        if self.generics.len() > 0 {
+            segments.push(format!("<{}>", format_generics(&self.generics)));
         }
 
         segments.push(format!("({})", format_sign_parameters(&self.parameters)));
@@ -1048,15 +1059,17 @@ impl Display for WhichEntryLimit {
         for dt in &self.data_types {
             type_segments.push(dt.to_string())
         }
-        let type_text = type_segments.join(", ");
+        let type_text = type_segments.join(" + ");
 
-        if self.data_types.len() > 1 {
-            // 多个数据类型
-            segments.push(format!("({})", type_text));
-        } else {
-            // 单个数据类型
-            segments.push(type_text);
-        }
+        // if self.data_types.len() > 1 {
+        //     // 多个数据类型
+        //    segments.push(format!("({})", type_text));
+        // } else {
+        //     // 单个数据类型
+        //     segments.push(type_text);
+        // }
+
+        segments.push(type_text);
 
         write!(f, "{}", segments.join(" "))
     }
@@ -1095,11 +1108,22 @@ impl Display for FunctionCallExpression {
 
 impl Display for MemberExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.is_computed {
-            write!(f, "{}[{}]", self.object, self.property)
-        } else {
-            write!(f, "{}.{}", self.object, self.property)
+        match self {
+            MemberExpression::Property(v) => write!(f, "{}", v),
+            MemberExpression::Index(v) => write!(f, "{}", v),
         }
+    }
+}
+
+impl Display for MemberProperty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}", self.object, self.property)
+    }
+}
+
+impl Display for MemberIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}[{}]", self.object, self.index)
     }
 }
 
@@ -1168,9 +1192,9 @@ impl Display for Identifier {
         // 名称
         segments.push(self.name.clone());
 
-        // 泛型代号
-        if self.generic_names.len() > 0 {
-            segments.push(format!("<{}>", format_generic_names(&self.generic_names)));
+        // 泛型
+        if self.generics.len() > 0 {
+            segments.push(format!("<{}>", format_generics(&self.generics)));
         }
 
         write!(f, "{}", segments.join(""))
@@ -1540,8 +1564,12 @@ fn format_arguments(arguments: &[Argument]) -> String {
         .join(", ")
 }
 
-fn format_generic_names(generic_names: &[String]) -> String {
-    generic_names.join(", ")
+fn format_generics(generics: &[DataType]) -> String {
+    generics
+        .iter()
+        .map(|n| n.to_string())
+        .collect::<Vec<String>>()
+        .join(", ")
 }
 
 // 返回所有 WhichEntry 表达式以逗号 ", " 的拼接，不包含花括号
@@ -1586,8 +1614,8 @@ mod tests {
     use crate::{
         ast::{
             Argument, Bit, Complex, Ellipsis, Expression, FunctionCallExpression, GeneralString,
-            HashString, Identifier, JoinExpression, List, MatchCase, MatchExpression,
-            NamedOperator, NextExpression, PatternAdditional, PrefixIdentifier,
+            HashString, Identifier, JoinExpression, List, MatchCase, MatchExpression, MemberIndex,
+            MemberProperty, NamedOperator, NextExpression, PatternAdditional, PrefixIdentifier,
             RegularExpressionLiteral, SignParameter, UnaryExpression, WhichEntry, WhichEntryLimit,
             WhichEntryType,
         },
@@ -1615,7 +1643,7 @@ mod tests {
     fn new_identifier(name: &str) -> Identifier {
         Identifier {
             dirs: vec![],
-            generic_names: vec![],
+            generics: vec![],
             name: name.to_string(),
             range: new_range(),
         }
@@ -1794,13 +1822,13 @@ mod tests {
             expressions: vec![
                 Expression::Identifier(Identifier {
                     dirs: vec![],
-                    generic_names: vec![],
+                    generics: vec![],
                     name: "name".to_string(),
                     range: new_range(),
                 }),
                 Expression::Identifier(Identifier {
                     dirs: vec![],
-                    generic_names: vec![],
+                    generics: vec![],
                     name: "number".to_string(),
                     range: new_range(),
                 }),
@@ -1867,7 +1895,7 @@ mod tests {
         let e1 = Identifier {
             dirs: vec![],
             name: "User".to_string(),
-            generic_names: vec![],
+            generics: vec![],
             range: new_range(),
         };
         assert_eq!(e1.to_string(), "User");
@@ -1876,32 +1904,49 @@ mod tests {
         let e2 = Identifier {
             dirs: vec!["User".to_string(), "Address".to_string()],
             name: "City".to_string(),
-            generic_names: vec![],
+            generics: vec![],
             range: new_range(),
         };
         assert_eq!(e2.to_string(), "User::Address::City");
 
+        // 测试辅助函数
+        let e3 = new_identifier("foo");
+        assert_eq!(e3.to_string(), "foo");
+
         // 测试泛型
-        let e3 = Identifier {
+        let e4 = Identifier {
             dirs: vec!["Collection".to_string()],
             name: "LinkList".to_string(),
-            generic_names: vec!["String".to_string()],
+            generics: vec![DataType::Identifier(new_identifier("String"))],
             range: new_range(),
         };
-        assert_eq!(e3.to_string(), "Collection::LinkList<String>");
+        assert_eq!(e4.to_string(), "Collection::LinkList<String>");
 
-        // 测试多泛型
-        let e4 = Identifier {
+        // 测试多个泛型类型
+        let e5 = Identifier {
             dirs: vec![],
             name: "Result".to_string(),
-            generic_names: vec!["T".to_string(), "E".to_string()],
+            generics: vec![
+                DataType::Identifier(new_identifier("T")),
+                DataType::Identifier(new_identifier("E")),
+            ],
             range: new_range(),
         };
-        assert_eq!(e4.to_string(), "Result<T, E>");
+        assert_eq!(e5.to_string(), "Result<T, E>");
 
-        // 测试辅助函数
-        let e5 = new_identifier("foo");
-        assert_eq!(e5.to_string(), "foo");
+        // 测试嵌套泛型
+        let e6 = Identifier {
+            dirs: vec![],
+            name: "List".to_string(),
+            generics: vec![DataType::Identifier(Identifier {
+                dirs: vec![],
+                name: "Option".to_string(),
+                generics: vec![DataType::Identifier(new_identifier("String"))],
+                range: new_range(),
+            })],
+            range: new_range(),
+        };
+        assert_eq!(e6.to_string(), "List<Option<String>>");
     }
 
     #[test]
@@ -2329,30 +2374,36 @@ mod tests {
 
     #[test]
     fn test_member_expression() {
-        let e1 = MemberExpression {
-            is_computed: false,
+        let e1 = MemberExpression::Property(MemberProperty {
             object: Box::new(Expression::Identifier(new_identifier("foo"))),
             property: Box::new(Expression::Identifier(new_identifier("bar"))),
             range: new_range(),
-        };
+        });
         assert_eq!(e1.to_string(), "foo.bar");
 
-        let e2 = MemberExpression {
-            is_computed: true,
-            object: Box::new(Expression::Identifier(new_identifier("foo"))),
-            property: Box::new(Expression::Identifier(new_identifier("bar"))),
+        // 属性为数字
+        let e2 = MemberExpression::Property(MemberProperty {
+            object: Box::new(Expression::Tuple(new_tuple(&vec![1,2,3]))),
+            property: Box::new(Expression::Literal(new_literal_integer(1))),
             range: new_range(),
-        };
-        assert_eq!(e2.to_string(), "foo[bar]");
+        });
+        assert_eq!(e2.to_string(), "(1, 2, 3,).1");
+
+        // 索引
+        let e3 = MemberExpression::Index(MemberIndex {
+            object: Box::new(Expression::Identifier(new_identifier("foo"))),
+            index: Box::new(Expression::Identifier(new_identifier("bar"))),
+            range: new_range(),
+        });
+        assert_eq!(e3.to_string(), "foo[bar]");
 
         // 索引为一个表达式
-        let e3 = MemberExpression {
-            is_computed: true,
+        let e4 = MemberExpression::Index(MemberIndex {
             object: Box::new(Expression::Identifier(new_identifier("foo"))),
-            property: Box::new(new_addition_expression(1, 2)),
+            index: Box::new(new_addition_expression(1, 2)),
             range: new_range(),
-        };
-        assert_eq!(e3.to_string(), "foo[(1 + 2)]");
+        });
+        assert_eq!(e4.to_string(), "foo[(1 + 2)]");
     }
 
     #[test]
@@ -3176,7 +3227,7 @@ mod tests {
             ],
             return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Int")))),
             which_entries: vec![],
-            generic_names: vec![],
+            generics: vec![],
             range: new_range(),
         };
         assert_eq!(s1.to_string(), "sign (Int, Boolean) type Int");
@@ -3197,7 +3248,7 @@ mod tests {
             ],
             return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Boolean")))),
             which_entries: vec![],
-            generic_names: vec![],
+            generics: vec![],
             range: new_range(),
         };
         assert_eq!(
@@ -3210,7 +3261,7 @@ mod tests {
             parameters: vec![],
             return_data_type: None,
             which_entries: vec![],
-            generic_names: vec![],
+            generics: vec![],
             range: new_range(),
         };
         assert_eq!(s2.to_string(), "sign ()");
@@ -3221,7 +3272,7 @@ mod tests {
                 SignParameter {
                     data_type: DataType::Identifier(Identifier {
                         dirs: vec![],
-                        generic_names: vec!["T".to_string()],
+                        generics: vec![DataType::Identifier(new_identifier("T"))],
                         name: "List".to_string(),
                         range: new_range(),
                     }),
@@ -3241,12 +3292,15 @@ mod tests {
             ],
             return_data_type: Some(Box::new(DataType::Identifier(Identifier {
                 dirs: vec![],
-                generic_names: vec!["U".to_string()],
+                generics: vec![DataType::Identifier(new_identifier("U"))],
                 name: "List".to_string(),
                 range: new_range(),
             }))),
             which_entries: vec![],
-            generic_names: vec!["T".to_string(), "U".to_string()],
+            generics: vec![
+                DataType::Identifier(new_identifier("T")),
+                DataType::Identifier(new_identifier("U")),
+            ],
             range: new_range(),
         };
         assert_eq!(s3.to_string(), "sign <T, U> (List<T>, U, Int) type List<U>");
@@ -3259,7 +3313,7 @@ mod tests {
             parameters: vec![SignParameter {
                 data_type: DataType::Identifier(Identifier {
                     dirs: vec![],
-                    generic_names: vec!["T".to_string()],
+                    generics: vec![DataType::Identifier(new_identifier("T"))],
                     name: "List".to_string(),
                     range: new_range(),
                 }),
@@ -3267,7 +3321,7 @@ mod tests {
                 range: new_range(),
             }],
             return_data_type: None,
-            generic_names: vec!["T".to_string()],
+            generics: vec![DataType::Identifier(new_identifier("T"))],
             which_entries: vec![WhichEntry::Type(WhichEntryType {
                 name: "T".to_string(),
                 data_type: DataType::Identifier(new_identifier("Int")),
@@ -3282,7 +3336,10 @@ mod tests {
             parameters: vec![SignParameter {
                 data_type: DataType::Identifier(Identifier {
                     dirs: vec![],
-                    generic_names: vec!["T".to_string(), "E".to_string()],
+                    generics: vec![
+                        DataType::Identifier(new_identifier("T")),
+                        DataType::Identifier(new_identifier("E")),
+                    ],
                     name: "Result".to_string(),
                     range: new_range(),
                 }),
@@ -3290,7 +3347,10 @@ mod tests {
                 range: new_range(),
             }],
             return_data_type: None,
-            generic_names: vec!["T".to_string(), "E".to_string()],
+            generics: vec![
+                DataType::Identifier(new_identifier("T")),
+                DataType::Identifier(new_identifier("E")),
+            ],
             which_entries: vec![
                 WhichEntry::Type(WhichEntryType {
                     name: "T".to_string(),
@@ -3321,7 +3381,7 @@ mod tests {
                 SignParameter {
                     data_type: DataType::Identifier(Identifier {
                         dirs: vec![],
-                        generic_names: vec!["T".to_string()],
+                        generics: vec![DataType::Identifier(new_identifier("T"))],
                         name: "List".to_string(),
                         range: new_range(),
                     }),
@@ -3330,7 +3390,7 @@ mod tests {
                 },
             ],
             return_data_type: None,
-            generic_names: vec!["T".to_string()],
+            generics: vec![DataType::Identifier(new_identifier("T"))],
             which_entries: vec![
                 WhichEntry::Type(WhichEntryType {
                     name: "F".to_string(),
@@ -3351,7 +3411,7 @@ mod tests {
                             "Int",
                         )))),
                         which_entries: vec![],
-                        generic_names: vec![],
+                        generics: vec![],
                         range: new_range(),
                     }),
                     range: new_range(),
@@ -3372,7 +3432,7 @@ mod tests {
             trim_left_margin(
                 "sign <T> (F, List<T>) which {
                 F: sign (Int, Boolean) type Int
-                T: limit (Eq, Display)
+                T: limit Eq + Display
                 }"
             )
         );
@@ -3386,7 +3446,7 @@ mod tests {
         // 带命名空间路径和泛型的 DataType
         let d2 = DataType::Identifier(Identifier {
             dirs: vec!["Shape".to_string()],
-            generic_names: vec!["Int".to_string()],
+            generics: vec![DataType::Identifier(new_identifier("Int"))],
             name: "Point".to_string(),
             range: new_range(),
         });
@@ -3410,11 +3470,11 @@ mod tests {
                 ],
                 return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Int")))),
                 which_entries: vec![],
-                generic_names: vec![],
+                generics: vec![],
                 range: new_range(),
             }))),
             which_entries: vec![],
-            generic_names: vec![],
+            generics: vec![],
             range: new_range(),
         };
         assert_eq!(d3.to_string(), "sign () type sign (Int, Boolean) type Int");
@@ -3430,7 +3490,7 @@ mod tests {
                 range: new_range(),
             }))),
             which_entries: vec![],
-            generic_names: vec![],
+            generics: vec![],
             range: new_range(),
         };
         assert_eq!(d4.to_string(), "sign () type (Int, Boolean,)");
@@ -3442,7 +3502,7 @@ mod tests {
     fn test_function_declaration() {
         let s1 = FunctionDeclaration {
             name: "test".to_string(),
-            generic_names: vec![],
+            generics: vec![],
             parameters: vec![
                 FunctionParameter {
                     data_type: DataType::Identifier(new_identifier("Int")),
@@ -3476,7 +3536,10 @@ mod tests {
         // 测试泛型和 which 从属表达式
         let s2 = FunctionDeclaration {
             name: "writeLine".to_string(),
-            generic_names: vec!["D".to_string(), "W".to_string()],
+            generics: vec![
+                DataType::Identifier(new_identifier("D")),
+                DataType::Identifier(new_identifier("W")),
+            ],
             parameters: vec![
                 FunctionParameter {
                     data_type: DataType::Identifier(new_identifier("D")),
@@ -3542,7 +3605,7 @@ mod tests {
         // 测试默认值和 where 从属表达式
         let s3 = FunctionDeclaration {
             name: "test".to_string(),
-            generic_names: vec![],
+            generics: vec![],
             parameters: vec![
                 FunctionParameter {
                     data_type: DataType::Identifier(new_identifier("Int")),

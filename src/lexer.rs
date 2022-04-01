@@ -84,14 +84,15 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                         }
                     }
                     '>' => {
-                        if is_char('>', rest) {
-                            // `>>`
-                            add_token_detail(
-                                &mut token_details,
-                                new_token_detail(Token::OptionalAnd),
-                            );
-                            move_forword(rest, 1)
-                        } else if is_char('=', rest) {
+                        // if is_char('>', rest) {
+                        //     // `>>`
+                        //     add_token_detail(
+                        //         &mut token_details,
+                        //         new_token_detail(Token::OptionalAnd),
+                        //     );
+                        //     move_forword(rest, 1)
+                        // } else
+                        if is_char('=', rest) {
                             // `>=`
                             add_token_detail(
                                 &mut token_details,
@@ -169,8 +170,16 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                         }
                     }
                     '-' => {
-                        add_token_detail(&mut token_details, new_token_detail(Token::Minus));
-                        rest
+                        if is_char('>', rest) {
+                            add_token_detail(
+                                &mut token_details,
+                                new_token_detail(Token::OptionalAnd),
+                            );
+                            move_forword(rest, 1)
+                        } else {
+                            add_token_detail(&mut token_details, new_token_detail(Token::Minus));
+                            rest
+                        }
                     }
                     '*' => {
                         add_token_detail(&mut token_details, new_token_detail(Token::Asterisk));
@@ -1307,9 +1316,10 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         // 关键字
         "do" => Some(Token::Do),
         "join" => Some(Token::Join),
-        // "to" => Some(Token::To),
+
         "let" => Some(Token::Let),
         "fn" => Some(Token::Fn),
+        "sign" => Some(Token::Sign),
 
         "if" => Some(Token::If),
         "then" => Some(Token::Then),
@@ -1325,7 +1335,7 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         "default" => Some(Token::Default),
         "where" => Some(Token::Where),
         "only" => Some(Token::Only),
-        "as" => Some(Token::As),
+        // "as" => Some(Token::As),
         "into" => Some(Token::Into),
         "regular" => Some(Token::Regular),
         "template" => Some(Token::Template),
@@ -1574,11 +1584,11 @@ mod tests {
 
     #[test]
     fn test_symbols_and_operators() {
-        let tokens1 = tokenize("{ } = | || && == != > >= < <= >> ++ + - * /").unwrap();
+        let tokens1 = tokenize("{ } = | || && == != > >= < <= -> ++ + - * /").unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
             vec![
-                "{", "}", "=", "|", "||", "&&", "==", "!=", ">", ">=", "<", "<=", ">>", "++", "+",
+                "{", "}", "=", "|", "||", "&&", "==", "!=", ">", ">=", "<", "<=", "->", "++", "+",
                 "-", "*", "/",
             ]
         );
@@ -1603,10 +1613,10 @@ mod tests {
             ]
         );
 
-        let tokens2 = tokenize("where only as into regular template").unwrap();
+        let tokens2 = tokenize("where only into regular template").unwrap();
         assert_eq!(
             token_details_to_string(&tokens2),
-            vec!["where", "only", "as", "into", "regular", "template",]
+            vec!["where", "only", "into", "regular", "template",]
         );
 
         let tokens3 = tokenize("function type which empty pattern limit").unwrap();
