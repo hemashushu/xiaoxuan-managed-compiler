@@ -73,10 +73,6 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                             // `==`
                             add_token_detail(&mut token_details, new_token_detail(Token::Equal));
                             move_forword(rest, 1)
-                        // } else if is_char('>', rest) {
-                        //     // `=>`
-                        //     add_token_detail(&mut token_details, new_token_detail(Token::Arrow));
-                        //     move_forword(rest, 1)
                         } else {
                             // `=`
                             add_token_detail(&mut token_details, new_token_detail(Token::Assign));
@@ -84,14 +80,6 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                         }
                     }
                     '>' => {
-                        // if is_char('>', rest) {
-                        //     // `>>`
-                        //     add_token_detail(
-                        //         &mut token_details,
-                        //         new_token_detail(Token::OptionalAnd),
-                        //     );
-                        //     move_forword(rest, 1)
-                        // } else
                         if is_char('=', rest) {
                             // `>=`
                             add_token_detail(
@@ -297,28 +285,30 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                             add_token_detail(&mut token_details, token_detail);
                             post_rest
                         } else if is_char('.', rest) {
-                            // `0.xx`， 整数部分为 0 的浮点数
-                            let (token_detail, post_rest) = lex_zero_point_float(rest)?;
-                            add_token_detail(&mut token_details, token_detail);
-                            post_rest
+                            if is_char('.', rest) {
+                                // 遇到范围符号，此时的 `0` 作为普通整数
+                                add_token_detail(
+                                    &mut token_details,
+                                    new_token_detail(Token::Integer(0)),
+                                );
+                                rest
+                            } else {
+                                // `0.xx`， 整数部分为 0 的浮点数
+                                let (token_detail, post_rest) = lex_zero_point_float(rest)?;
+                                add_token_detail(&mut token_details, token_detail);
+                                post_rest
+                            }
                         } else {
                             match rest.first() {
-                                Some(second_char) => {
-                                    if is_valid_letter_of_identifier_or_keyword(*second_char) {
-                                        // 数字 0 开头的符号（不是合法的标识符，所以抛出错误）
-                                        return Err(Error::LexerError(
-                                            "invalid identifier".to_string(),
-                                        ));
-                                    } else {
-                                        // 普通整数 0
-                                        add_token_detail(
-                                            &mut token_details,
-                                            new_token_detail(Token::Integer(0)),
-                                        );
-                                        rest
-                                    }
+                                Some(second_char)
+                                    if is_valid_letter_of_identifier_or_keyword(*second_char) =>
+                                {
+                                    // 数字 0 开头的符号（不是合法的标识符，所以抛出错误）
+                                    return Err(Error::LexerError(
+                                        "invalid identifier".to_string(),
+                                    ));
                                 }
-                                None => {
+                                _ => {
                                     // 普通整数 0
                                     add_token_detail(
                                         &mut token_details,
@@ -1453,18 +1443,30 @@ mod tests {
         );
         assert_eq!(token_details_to_string(&tokens1), vec!["3.14"]);
 
-        let tokens2 = tokenize("5e2").unwrap();
-        assert_eq!(token_details_to_string(&tokens2), vec!["500"]);
+        let tokens2 = tokenize("27.182818").unwrap();
+        assert_eq!(token_details_to_string(&tokens2), vec!["27.182818"]);
 
-        let tokens3 = tokenize("1.6e2").unwrap();
-        assert_eq!(token_details_to_string(&tokens3), vec!["160"]);
+        let tokens3 = tokenize("5e2").unwrap();
+        assert_eq!(token_details_to_string(&tokens3), vec!["500"]);
 
-        let tokens4 = tokenize("1.6e-2").unwrap();
-        assert_eq!(token_details_to_string(&tokens4), vec!["0.016"]);
+        let tokens4 = tokenize("1.6e2").unwrap();
+        assert_eq!(token_details_to_string(&tokens4), vec!["160"]);
+
+        let tokens5 = tokenize("1.6e-2").unwrap();
+        assert_eq!(token_details_to_string(&tokens5), vec!["0.016"]);
 
         // 测试范围表达式，测试点号是否被正确解析
-        let tokens5 = tokenize("1..10").unwrap();
-        assert_eq!(token_details_to_string(&tokens5), vec!["1", "..", "10"]);
+        let tokens6 = tokenize("1..10").unwrap();
+        assert_eq!(token_details_to_string(&tokens6), vec!["1", "..", "10"]);
+
+        let tokens7 = tokenize("1..=9").unwrap();
+        assert_eq!(token_details_to_string(&tokens7), vec!["1", "..=", "9"]);
+
+        let tokens8 = tokenize("[0..100]").unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens8),
+            vec!["[", "0", "..", "100", "]"]
+        );
     }
 
     #[test]

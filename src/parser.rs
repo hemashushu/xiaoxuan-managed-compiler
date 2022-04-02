@@ -9,9 +9,10 @@ use crate::{
     ast::{
         AnonymousFunction, AnonymousParameter, BinaryExpression, Bit, BlockExpression, Boolean,
         Char, Complex, ConstructorExpression, DataType, Ellipsis, Expression, Float, GeneralString,
-        HashString, Identifier, Integer, Interval, List, Literal, Map, MapEntry, NamedOperator,
-        Node, PrefixIdentifier, Program, Range, Sign, SignParameter, Statement, Tuple,
-        UnaryExpression, WhichEntry, WhichEntryLimit, WhichEntryType,
+        HashString, Identifier, Integer, Interval, List, Literal, Map, MapEntry, MemberExpression,
+        MemberIndex, MemberProperty, NamedOperator, Node, PrefixIdentifier, Program, Range, Sign,
+        SignParameter, Statement, Tuple, UnaryExpression, WhichEntry, WhichEntryLimit,
+        WhichEntryType,
     },
     error::Error,
     token::{self, Token, TokenDetail},
@@ -45,7 +46,8 @@ fn parse_program(source_token_details: &[TokenDetail]) -> Result<Program, Error>
         let (statement, post_parse_statement) = parse_statement(post_new_lines)?;
         statements.push(statement);
 
-        // 再解析剩余的 token，直到解析完所有 token 为止
+        // 解析剩余的 token
+        // 直到解析完所有 token 为止
         token_details = post_parse_statement;
     }
 
@@ -1053,9 +1055,119 @@ fn parse_function_call_expression(
 fn parse_member_or_slice_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // object.property, object["foo"]
-    // todo::
-    parse_constructor_expression(source_token_details)
+    // 对象的成员（包括属性和索引）以及对象的切片，有相似的结构，
+    // 且优先级相同：
+    //
+    // object["foo"]
+    // object[0]
+    // object[0..10]
+    // object[0..=9]
+    // object.name
+    // object.1
+    // object[other[1]][2]
+    // object.name.subname
+
+    let mut token_details = source_token_details;
+    let (mut object, post_parse_constructor_expression) =
+        parse_constructor_expression(token_details)?;
+
+    token_details = post_parse_constructor_expression;
+
+    loop {
+        if is_token(&Token::LeftBracket, token_details) {
+            // 找到符号 `[`
+
+            let (index_or_slice, post_parse_index_or_slice) =
+                continue_parse_index_or_slice(token_details)?;
+
+            // 将解析好的对象重新赋值回对象，因为对象的成员（属性或索引）和切片会连续出现，
+            // 且都遵循从左向右的结合顺序。
+            object = Expression::MemberExpression(MemberExpression::Index(MemberIndex {
+                object: Box::new(object),
+                index: Box::new(index_or_slice),
+                range: new_range(),
+            }));
+
+            token_details = post_parse_index_or_slice;
+        } else if is_token_ignore_new_lines(&Token::Dot, token_details) {
+            // 找到符号 `.`
+
+            // 消除符号 `.` 前的空行以及符号 `.`
+            let post_dot = skip_new_lines_and_consume_token(&Token::Dot, token_details)?;
+
+            let (property, post_parse_property) = parse_primary_expression(post_dot)?;
+
+            // 对象的 `属性` 只允许 identifier 和 integer 两种
+            match property {
+                Expression::Identifier(_) | Expression::Literal(Literal::Integer(_)) => {
+                    // 将解析好的对象重新赋值回对象，因为对象的成员（属性或索引）和切片会连续出现，
+                    // 且都遵循从左向右的结合顺序。
+                    object =
+                        Expression::MemberExpression(MemberExpression::Property(MemberProperty {
+                            object: Box::new(object),
+                            property: Box::new(property),
+                            range: new_range(),
+                        }));
+
+                    token_details = post_parse_property;
+                }
+                _ => {
+                    return Err(Error::ParserError("invalid property name".to_string()));
+                }
+            }
+        } else {
+            break;
+        }
+    }
+
+    Ok((object, token_details))
+}
+
+fn continue_parse_index_or_slice(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // object["foo"]
+    // object[0]
+    // object[0..10]
+    // object[0..=9]
+    //       ^
+    //       |--- 当前所处的位置
+
+    let mut token_details = source_token_details;
+
+    // 消除符号 `[`
+    token_details = consume_token(&Token::LeftBracket, token_details)?;
+    // 消除符号 `[` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    let (mut index_or_slice_expression, post_parse_expression) = parse_expression(token_details)?;
+
+    // 检查是否存在 `范围表达式`
+    token_details = if is_token(&Token::Interval, post_parse_expression)
+        || is_token(&Token::IntervalInclusive, post_parse_expression)
+    {
+        let (is_inclusive, optional_to_expression, post_continue_parse_interval) =
+            continue_parse_interval(post_parse_expression)?;
+
+        index_or_slice_expression = Expression::Interval(Interval {
+            is_inclusive,
+            from: Box::new(index_or_slice_expression),
+            to: match optional_to_expression {
+                Some(end_expression) => Some(Box::new(end_expression)),
+                None => None,
+            },
+            range: new_range(),
+        });
+
+        post_continue_parse_interval
+    } else {
+        post_parse_expression
+    };
+
+    // 消除符号 `]`
+    token_details = consume_token(&Token::RightBracket, token_details)?;
+
+    Ok((index_or_slice_expression, token_details))
 }
 
 fn parse_constructor_expression(
@@ -1096,6 +1208,10 @@ fn parse_constructor_expression(
 fn parse_primary_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
+    // 注：
+    // 由于范围表达式 `A..B`、`A..=B` 和省略号表达式 `...A` 仅存在于
+    // 元组、列表、映射表、切片等场合，所以不单独解析，而是在解析以上节点
+    // 时同时解析。
     match source_token_details.first() {
         Some(first) => match first.token {
             Token::Fn => parse_anonymous_function(source_token_details),
@@ -1348,8 +1464,11 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
     let mut expressions: Vec<Expression> = vec![];
     let mut is_expected_end = false; // 标记当前是否处于一心寻找结束符的状态
 
-    token_details = consume_token(&Token::LeftBracket, token_details)?; // 消除左中括号（方括号）
-    token_details = skip_new_lines(token_details); // 左中括号（方括号）后面允许换行
+    // 消除左中括号（方括号） `[`
+    token_details = consume_token(&Token::LeftBracket, token_details)?;
+
+    // 消除左中括号（方括号） `[` 后面的空行
+    token_details = skip_new_lines(token_details);
 
     loop {
         token_details = match token_details.first() {
@@ -1372,7 +1491,7 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
                             expressions.push(Expression::Ellipsis(ellipsis));
                             is_expected_end = true; // 设置标记，`省略符表达式` 后面只能允许列表结束
 
-                            // 消除逗号
+                            // 消除逗号 `,`
                             let post_consume_comma = if is_token(&Token::Comma, post_parse_ellipsis)
                             {
                                 consume_token(&Token::Comma, post_parse_ellipsis)?
@@ -1380,7 +1499,7 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
                                 post_parse_ellipsis
                             };
 
-                            // 消除空行
+                            // 消除逗号 `,` 后面的空行
                             let post_consume_new_lines = skip_new_lines(post_consume_comma);
                             post_consume_new_lines
                         } else {
@@ -1419,7 +1538,7 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
                                     post_parse_expression
                                 };
 
-                            // 消除逗号
+                            // 消除逗号 `,`
                             let post_consume_comma = if is_token(&Token::Comma, post_check_interval)
                             {
                                 consume_token(&Token::Comma, post_check_interval)?
@@ -1430,7 +1549,7 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
                                 post_check_interval
                             };
 
-                            // 消除空行
+                            // 消除逗号 `,` 后面的空行
                             let post_consume_new_lines = skip_new_lines(post_consume_comma);
                             post_consume_new_lines
                         }
@@ -1445,7 +1564,7 @@ fn parse_list(source_token_details: &[TokenDetail]) -> Result<(Expression, &[Tok
         }
     }
 
-    // 消除右括号
+    // 消除右中括号（方括号） `]`
     token_details = consume_token(&Token::RightBracket, token_details)?;
 
     Ok((
@@ -1488,8 +1607,11 @@ fn parse_tuple_or_parenthesized(
     let mut is_tuple = false; // 标记当前是否元组（而不是表达式括号运算）
     let mut is_expected_end = false; // 标记当前是否处于一心寻找结束的状态
 
-    token_details = consume_token(&Token::LeftParen, token_details)?; // 消除左括号
-    token_details = skip_new_lines(token_details); // 左括号后面允许换行
+    // 消除左括号 `(`
+    token_details = consume_token(&Token::LeftParen, token_details)?;
+
+    // 消除左括号 `(` 后面的空行
+    token_details = skip_new_lines(token_details);
 
     loop {
         token_details = match token_details.first() {
@@ -1512,7 +1634,7 @@ fn parse_tuple_or_parenthesized(
                             expressions.push(Expression::Ellipsis(ellipsis));
                             is_expected_end = true; // 设置标记，`省略符表达式` 后面只能允许列表结束
 
-                            // 消除逗号
+                            // 消除逗号 `,`
                             let post_consume_comma = if is_token(&Token::Comma, post_parse_ellipsis)
                             {
                                 consume_token(&Token::Comma, post_parse_ellipsis)?
@@ -1520,7 +1642,7 @@ fn parse_tuple_or_parenthesized(
                                 post_parse_ellipsis
                             };
 
-                            // 消除空行
+                            // 消除逗号 `,` 后面的空行
                             let post_consume_new_lines = skip_new_lines(post_consume_comma);
                             post_consume_new_lines
                         } else {
@@ -1529,7 +1651,7 @@ fn parse_tuple_or_parenthesized(
                                 parse_expression(token_details)?;
                             expressions.push(expression);
 
-                            // 消除逗号
+                            // 消除逗号 `,`
                             let post_consume_comma =
                                 if is_token(&Token::Comma, post_parse_expression) {
                                     // 检测到逗号，设置标记，表明当前表达式是元组而非括号表达式
@@ -1542,7 +1664,7 @@ fn parse_tuple_or_parenthesized(
                                     post_parse_expression
                                 };
 
-                            // 消除空行
+                            // 消除逗号 `,` 后面的空行
                             let post_consume_new_lines = skip_new_lines(post_consume_comma);
                             post_consume_new_lines
                         }
@@ -1557,7 +1679,7 @@ fn parse_tuple_or_parenthesized(
         }
     }
 
-    // 消除右括号
+    // 消除右括号 `)`
     token_details = consume_token(&Token::RightParen, token_details)?;
 
     if expressions.len() == 0 {
@@ -1646,10 +1768,10 @@ fn continue_parse_interval(
         Token::Interval
     };
 
-    // 消除范围符号 ".." 或者 "..="
+    // 消除符号 ".." 或者 "..="
     let post_consume_token_interval = consume_token(&operator_token, source_token_details)?;
 
-    // 范围符号 ".."  或者 "..=" 后面允许换行
+    // 消除符号 ".."  或者 "..=" 后面的空行
     let post_new_lines = skip_new_lines(post_consume_token_interval);
 
     match post_new_lines.first() {
@@ -1698,8 +1820,11 @@ fn continue_parse_map(
     let mut entries: Vec<MapEntry> = vec![];
     let mut is_expected_end = false; // 标记当前是否处于一心找映射表结束的状态
 
-    token_details = consume_token(&Token::LeftBrace, token_details)?; // 消除左花括号
-    token_details = skip_new_lines(token_details); // 左花括号后面允许换行
+    // 消除左花括号 `{`
+    token_details = consume_token(&Token::LeftBrace, token_details)?;
+
+    // 消除左花括号 `{` 后面的空行
+    token_details = skip_new_lines(token_details);
 
     loop {
         token_details = match token_details.first() {
@@ -1749,11 +1874,11 @@ fn continue_parse_map(
                             let post_entry = if is_token(&Token::Colon, post_parse_key_expression) {
                                 // 当前存在 `value` 部分
 
-                                // 消除冒号
+                                // 消除冒号 `:`
                                 let post_consume_colon =
                                     consume_token(&Token::Colon, post_parse_key_expression)?;
 
-                                // 消除空行
+                                // 消除冒号 `:` 后面的空行
                                 let post_consume_new_lines_after_colon =
                                     skip_new_lines(post_consume_colon);
 
@@ -1821,7 +1946,7 @@ fn continue_parse_map(
         }
     }
 
-    // 消除右花括号
+    // 消除右花括号 `}`
     token_details = consume_token(&Token::RightBrace, token_details)?;
 
     Ok((
@@ -2275,13 +2400,13 @@ fn skip_new_lines(source_token_details: &[TokenDetail]) -> &[TokenDetail] {
     token_details
 }
 
-// fn skip_new_lines_and_consume_token<'a>(
-//     expected: &Token,
-//     source_token_details: &'a [TokenDetail],
-// ) -> Result<&'a [TokenDetail], Error> {
-//     let token_details = skip_new_lines(source_token_details);
-//     consume_token(expected, token_details)
-// }
+fn skip_new_lines_and_consume_token<'a>(
+    expected: &Token,
+    source_token_details: &'a [TokenDetail],
+) -> Result<&'a [TokenDetail], Error> {
+    let post_new_lines = skip_new_lines(source_token_details);
+    consume_token(expected, post_new_lines)
+}
 
 fn is_token(expected: &Token, source_token_details: &[TokenDetail]) -> bool {
     match source_token_details.first() {
@@ -3091,13 +3216,50 @@ mod tests {
     }
 
     #[test]
-    fn test_slice_expression() {
-        //
+    fn test_member_expression() {
+        let n1 = parse_from_string("user.name").unwrap();
+        assert_eq!(n1.to_string(), "(user.name)\n");
+
+        // 数字属性
+        let n2 = parse_from_string("user.0").unwrap();
+        assert_eq!(n2.to_string(), "(user.0)\n");
+
+        // 连续属性
+        let n3 = parse_from_string("user.name.first").unwrap();
+        assert_eq!(n3.to_string(), "((user.name).first)\n");
+
+        // 字符串索引
+        let n4 = parse_from_string("user[\"name\"]").unwrap();
+        assert_eq!(n4.to_string(), "(user[\"name\"])\n");
+
+        // 属性和索引混合
+        let n5 = parse_from_string("users[0].name").unwrap();
+        assert_eq!(n5.to_string(), "((users[0]).name)\n");
     }
 
     #[test]
-    fn test_member_expression() {
-        //
+    fn test_slice_expression() {
+        let n1 = parse_from_string("users[0]").unwrap();
+        assert_eq!(n1.to_string(), "(users[0])\n");
+
+        let n2 = parse_from_string("users[123]").unwrap();
+        assert_eq!(n2.to_string(), "(users[123])\n");
+
+        // 切片
+        let n3 = parse_from_string("users[0..10]").unwrap();
+        assert_eq!(n3.to_string(), "(users[0..10])\n");
+
+        // 闭区间切片
+        let n4 = parse_from_string("users[0..=9]").unwrap();
+        assert_eq!(n4.to_string(), "(users[0..=9])\n");
+
+        // 索引为表达式
+        let n5 = parse_from_string("users[ids[0]]").unwrap();
+        assert_eq!(n5.to_string(), "(users[(ids[0])])\n");
+
+        // 连续索引
+        let n6 = parse_from_string("users[0][1]").unwrap();
+        assert_eq!(n6.to_string(), "((users[0])[1])\n");
     }
 
     #[test]

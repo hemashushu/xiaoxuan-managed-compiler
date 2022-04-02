@@ -1117,19 +1117,19 @@ impl Display for MemberExpression {
 
 impl Display for MemberProperty {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}", self.object, self.property)
+        write!(f, "({}.{})", self.object, self.property)
     }
 }
 
 impl Display for MemberIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}[{}]", self.object, self.index)
+        write!(f, "({}[{}])", self.object, self.index)
     }
 }
 
 impl Display for SliceExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}[{}]", self.object, self.interval)
+        write!(f, "({}[{}])", self.object, self.interval)
     }
 }
 
@@ -2379,31 +2379,69 @@ mod tests {
             property: Box::new(Expression::Identifier(new_identifier("bar"))),
             range: new_range(),
         });
-        assert_eq!(e1.to_string(), "foo.bar");
+        assert_eq!(e1.to_string(), "(foo.bar)");
 
         // 属性为数字
         let e2 = MemberExpression::Property(MemberProperty {
-            object: Box::new(Expression::Tuple(new_tuple(&vec![1,2,3]))),
+            object: Box::new(Expression::Tuple(new_tuple(&vec![1, 2, 3]))),
             property: Box::new(Expression::Literal(new_literal_integer(1))),
             range: new_range(),
         });
-        assert_eq!(e2.to_string(), "(1, 2, 3,).1");
+        assert_eq!(e2.to_string(), "((1, 2, 3,).1)");
+
+        // 连续属性
+        let e3 = MemberExpression::Property(MemberProperty {
+            object: Box::new(Expression::MemberExpression(MemberExpression::Property(
+                MemberProperty {
+                    object: Box::new(Expression::Identifier(new_identifier("foo"))),
+                    property: Box::new(Expression::Identifier(new_identifier("bar"))),
+                    range: new_range(),
+                },
+            ))),
+            property: Box::new(Expression::Identifier(new_identifier("baz"))),
+            range: new_range(),
+        });
+        assert_eq!(e3.to_string(), "((foo.bar).baz)");
 
         // 索引
-        let e3 = MemberExpression::Index(MemberIndex {
+        let e4 = MemberExpression::Index(MemberIndex {
             object: Box::new(Expression::Identifier(new_identifier("foo"))),
             index: Box::new(Expression::Identifier(new_identifier("bar"))),
             range: new_range(),
         });
-        assert_eq!(e3.to_string(), "foo[bar]");
+        assert_eq!(e4.to_string(), "(foo[bar])");
 
         // 索引为一个表达式
-        let e4 = MemberExpression::Index(MemberIndex {
+        let e5 = MemberExpression::Index(MemberIndex {
             object: Box::new(Expression::Identifier(new_identifier("foo"))),
             index: Box::new(new_addition_expression(1, 2)),
             range: new_range(),
         });
-        assert_eq!(e4.to_string(), "foo[(1 + 2)]");
+        assert_eq!(e5.to_string(), "(foo[(1 + 2)])");
+
+        // 嵌套索引
+        let e6 = MemberExpression::Index(MemberIndex {
+            object: Box::new(Expression::Identifier(new_identifier("foo"))),
+            index: Box::new(Expression::MemberExpression(MemberExpression::Index(MemberIndex {
+                object: Box::new(Expression::Identifier(new_identifier("bar"))),
+                index: Box::new(Expression::Identifier(new_identifier("1"))),
+                range: new_range(),
+            }))),
+            range: new_range(),
+        });
+        assert_eq!(e6.to_string(), "(foo[(bar[1])])");
+
+        // 连续索引
+        let e6 = MemberExpression::Index(MemberIndex {
+            object: Box::new(Expression::MemberExpression(MemberExpression::Index(MemberIndex {
+                object: Box::new(Expression::Identifier(new_identifier("foo"))),
+                index: Box::new(Expression::Identifier(new_identifier("1"))),
+                range: new_range(),
+            }))),
+            index: Box::new(Expression::Identifier(new_identifier("2"))),
+            range: new_range(),
+        });
+        assert_eq!(e6.to_string(), "((foo[1])[2])");
     }
 
     #[test]
@@ -2418,7 +2456,7 @@ mod tests {
             },
             range: new_range(),
         };
-        assert_eq!(e1.to_string(), "foo[1..5]");
+        assert_eq!(e1.to_string(), "(foo[1..5])");
 
         let e2 = SliceExpression {
             object: Box::new(Expression::Identifier(new_identifier("foo"))),
@@ -2430,7 +2468,7 @@ mod tests {
             },
             range: new_range(),
         };
-        assert_eq!(e2.to_string(), "foo[1..=5]");
+        assert_eq!(e2.to_string(), "(foo[1..=5])");
 
         let e3 = SliceExpression {
             object: Box::new(Expression::Identifier(new_identifier("foo"))),
@@ -2442,7 +2480,7 @@ mod tests {
             },
             range: new_range(),
         };
-        assert_eq!(e3.to_string(), "foo[1..]");
+        assert_eq!(e3.to_string(), "(foo[1..])");
     }
 
     #[test]
