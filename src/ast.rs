@@ -1102,7 +1102,7 @@ impl Display for UnaryExpression {
 
 impl Display for FunctionCallExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({})", self.callee, format_arguments(&self.arguments))
+        write!(f, "({})({})", self.callee, format_arguments(&self.arguments))
     }
 }
 
@@ -2303,7 +2303,7 @@ mod tests {
             arguments: vec![],
             range: new_range(),
         };
-        assert_eq!(e1.to_string(), "foo ()");
+        assert_eq!(e1.to_string(), "(foo)()");
 
         let e2 = FunctionCallExpression {
             callee: Box::new(Expression::Identifier(new_identifier("foo"))),
@@ -2314,7 +2314,7 @@ mod tests {
             }],
             range: new_range(),
         };
-        assert_eq!(e2.to_string(), "foo (1)");
+        assert_eq!(e2.to_string(), "(foo)(1)");
 
         // 使用命名参数
         let e3 = FunctionCallExpression {
@@ -2326,7 +2326,7 @@ mod tests {
             }],
             range: new_range(),
         };
-        assert_eq!(e3.to_string(), "foo (width=2)");
+        assert_eq!(e3.to_string(), "(foo)(width=2)");
 
         // 表达式作为参数
         let e4 = FunctionCallExpression {
@@ -2345,7 +2345,7 @@ mod tests {
             ],
             range: new_range(),
         };
-        assert_eq!(e4.to_string(), "foo (length=(1 + 2), width=3)");
+        assert_eq!(e4.to_string(), "(foo)(length=(1 + 2), width=3)");
 
         // callee 为表达式的情况
         let e5 = FunctionCallExpression {
@@ -2369,7 +2369,7 @@ mod tests {
             ],
             range: new_range(),
         };
-        assert_eq!(e5.to_string(), "(foo & bar) (10, name=20)");
+        assert_eq!(e5.to_string(), "((foo & bar))(10, name=20)");
     }
 
     #[test]
@@ -3027,7 +3027,7 @@ mod tests {
             e2.to_string(),
             trim_left_margin(
                 "each let i in [1, 2, 3,] do {
-                    sqrt (i)
+                    (sqrt)(i)
                 }"
             )
         );
@@ -3635,7 +3635,7 @@ mod tests {
                 "function writeLine <D, W> (D data, W output) which {
                 D: limit Display
                 W: limit Writer
-            } = write (output, (data ++ \"\\n\"))
+            } = (write)(output, (data ++ \"\\n\"))
             "
             )
         );

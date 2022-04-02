@@ -7,12 +7,12 @@
  */
 use crate::{
     ast::{
-        AnonymousFunction, AnonymousParameter, BinaryExpression, Bit, BlockExpression, Boolean,
-        Char, Complex, ConstructorExpression, DataType, Ellipsis, Expression, Float, GeneralString,
-        HashString, Identifier, Integer, Interval, List, Literal, Map, MapEntry, MemberExpression,
-        MemberIndex, MemberProperty, NamedOperator, Node, PrefixIdentifier, Program, Range, Sign,
-        SignParameter, Statement, Tuple, UnaryExpression, WhichEntry, WhichEntryLimit,
-        WhichEntryType,
+        AnonymousFunction, AnonymousParameter, Argument, BinaryExpression, Bit, BlockExpression,
+        Boolean, Char, Complex, ConstructorExpression, DataType, Ellipsis, Expression, Float,
+        FunctionCallExpression, GeneralString, HashString, Identifier, Integer, Interval, List,
+        Literal, Map, MapEntry, MemberExpression, MemberIndex, MemberProperty, NamedOperator, Node,
+        PrefixIdentifier, Program, Range, Sign, SignParameter, Statement, Tuple, UnaryExpression,
+        WhichEntry, WhichEntryLimit, WhichEntryType,
     },
     error::Error,
     token::{self, Token, TokenDetail},
@@ -1047,9 +1047,158 @@ fn parse_unwrap_expression(
 fn parse_function_call_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // foo()
-    // todo::
-    parse_member_or_slice_expression(source_token_details)
+    // 函数调用表达式
+    // - 被调用者必须是一个标识符、一个对象的属性值或索引值；
+    // - 被调用者也可以是一个用括号包围起来的表达式或者表达式块，只要是返回函数即可；
+    // - 允许连续调用。
+    //
+    // foo(...)
+    // foo.bar(...)
+    // foo[0](...)
+    // (foo & bar)(...) // 被调用者是一个括号包围起来的表达式
+    // foo(...)(...)    // 连续调用
+
+    let mut token_details = source_token_details;
+    let (mut object, post_parse_member_expression) =
+        parse_member_or_slice_expression(token_details)?;
+
+    token_details = post_parse_member_expression;
+
+    loop {
+        if is_token(&Token::LeftParen, token_details) {
+            let (arguments, post_parse_arguments) = continue_parse_arguments(token_details)?;
+            object = Expression::FunctionCallExpression(FunctionCallExpression {
+                callee: Box::new(object),
+                arguments: arguments,
+                range: new_range(),
+            });
+
+            token_details = post_parse_arguments;
+        } else {
+            break;
+        }
+    }
+
+    Ok((object, token_details))
+}
+
+fn continue_parse_arguments(
+    source_token_details: &[TokenDetail],
+) -> Result<(Vec<Argument>, &[TokenDetail]), Error> {
+    // (value)
+    // (value1, value2)
+    // (value1, value2,) // 参数列表末尾也允许有逗号
+    //
+    // (
+    //    value1,
+    //    name2=value2,
+    // )                 // 参数列表也可以分多行写
+    //
+    // (value1, name2=value2, name3=value3)
+    // ^
+    // |--- 当前处于这个位置
+
+    let mut token_details = source_token_details;
+    let mut arguments: Vec<Argument> = vec![];
+    let mut is_expected_end = false; // 标记当前是否处于一心找映射表结束的状态
+
+    // 消除左括号 `(`
+    token_details = consume_token(&Token::LeftParen, token_details)?;
+
+    // 消除左括号 `(` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    loop {
+        token_details = match token_details.first() {
+            Some(first) => {
+                if first.token == Token::RightParen {
+                    // 找到了结束符号 `)`，退出循环
+                    break;
+                } else {
+                    if is_expected_end {
+                        // 当前的状态是一心寻找结束符号 `)`
+                        return Err(Error::ParserError(
+                            "expected the right paren symbol \")\"".to_string(),
+                        ));
+                    } else {
+                        // 当前是 `key = value` 表达式
+                        // 注意其中的 `key` 部分是可选的。
+
+                        let (part_one, post_parse_part_one) = parse_expression(token_details)?;
+
+                        let post_one_argument = if is_token(&Token::Assign, post_parse_part_one) {
+                            // 当前存在 `key` 部分
+
+                            // 检查 name 是否 identifier
+                            if let Expression::Identifier(Identifier { name, .. }) = part_one {
+                                // 消除等号 `=`
+                                let post_consume_equal =
+                                    consume_token(&Token::Assign, post_parse_part_one)?;
+
+                                // 消除冒号 `=` 后面的空行
+                                let post_consume_new_lines_after_equal =
+                                    skip_new_lines(post_consume_equal);
+
+                                let (value_expression, post_parse_value_expression) =
+                                    parse_expression(post_consume_new_lines_after_equal)?;
+
+                                // 构造 Argument
+                                let argument = Argument {
+                                    name: Some(name),
+                                    value: Box::new(value_expression),
+                                    range: new_range(),
+                                };
+
+                                arguments.push(argument);
+                                post_parse_value_expression
+                            } else {
+                                // 参数名称不正确
+                                return Err(Error::ParserError(
+                                    "invalid argument name".to_string(),
+                                ));
+                            }
+                        } else {
+                            // 当前不存在 `key` 部分
+
+                            // 构造 Argument
+                            let argument = Argument {
+                                name: None,
+                                value: Box::new(part_one),
+                                range: new_range(),
+                            };
+
+                            arguments.push(argument);
+
+                            post_parse_part_one
+                        };
+
+                        // 如果接下来是逗号，表明还有下一项，否则表示后面没有更多项目
+                        let post_consume_comma = if is_token(&Token::Comma, post_one_argument) {
+                            consume_token(&Token::Comma, post_one_argument)?
+                        } else {
+                            // 后面没有更多的参数项了
+                            is_expected_end = true;
+                            post_one_argument
+                        };
+
+                        // 消除一项参数后面的空行
+                        let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                        post_consume_new_lines
+                    }
+                }
+            }
+            None => {
+                return Err(Error::ParserError(
+                    "expected the right paren symbol \")\"".to_string(),
+                ));
+            }
+        }
+    }
+
+    // 消除右括号 `)`
+    token_details = consume_token(&Token::RightParen, token_details)?;
+
+    Ok((arguments, token_details))
 }
 
 fn parse_member_or_slice_expression(
@@ -1871,42 +2020,43 @@ fn continue_parse_map(
                             let (expression, post_parse_key_expression) =
                                 parse_expression(token_details)?;
 
-                            let post_entry = if is_token(&Token::Colon, post_parse_key_expression) {
-                                // 当前存在 `value` 部分
+                            let post_one_entry =
+                                if is_token(&Token::Colon, post_parse_key_expression) {
+                                    // 当前存在 `value` 部分
 
-                                // 消除冒号 `:`
-                                let post_consume_colon =
-                                    consume_token(&Token::Colon, post_parse_key_expression)?;
+                                    // 消除冒号 `:`
+                                    let post_consume_colon =
+                                        consume_token(&Token::Colon, post_parse_key_expression)?;
 
-                                // 消除冒号 `:` 后面的空行
-                                let post_consume_new_lines_after_colon =
-                                    skip_new_lines(post_consume_colon);
+                                    // 消除冒号 `:` 后面的空行
+                                    let post_consume_new_lines_after_colon =
+                                        skip_new_lines(post_consume_colon);
 
-                                let (value_expression, post_parse_value_expression) =
-                                    parse_expression(post_consume_new_lines_after_colon)?;
+                                    let (value_expression, post_parse_value_expression) =
+                                        parse_expression(post_consume_new_lines_after_colon)?;
 
-                                // 构造 MapEntry
-                                let entry = MapEntry {
-                                    key: Box::new(expression),
-                                    value: Some(Box::new(value_expression)),
-                                    range: new_range(),
+                                    // 构造 MapEntry
+                                    let entry = MapEntry {
+                                        key: Box::new(expression),
+                                        value: Some(Box::new(value_expression)),
+                                        range: new_range(),
+                                    };
+
+                                    entries.push(entry);
+                                    post_parse_value_expression
+                                } else {
+                                    // 当前不存在 `value` 部分
+
+                                    // 构造 MapEntry
+                                    let entry = MapEntry {
+                                        key: Box::new(expression),
+                                        value: None,
+                                        range: new_range(),
+                                    };
+
+                                    entries.push(entry);
+                                    post_parse_key_expression
                                 };
-
-                                entries.push(entry);
-                                post_parse_value_expression
-                            } else {
-                                // 当前不存在 `value` 部分
-
-                                // 构造 MapEntry
-                                let entry = MapEntry {
-                                    key: Box::new(expression),
-                                    value: None,
-                                    range: new_range(),
-                                };
-
-                                entries.push(entry);
-                                post_parse_key_expression
-                            };
 
                             // 如果接下来是：
                             // - 逗号
@@ -1915,19 +2065,19 @@ fn continue_parse_map(
                             //
                             // 表明还有下一项，否则表示后面没有更多项目
 
-                            let post_consume_comma = match post_entry.split_first() {
+                            let post_consume_comma = match post_one_entry.split_first() {
                                 Some((first, rest)) if first.token == Token::Comma => {
                                     // 消除逗号
                                     rest
                                 }
                                 Some((first, _)) if first.token == Token::NewLine => {
                                     // 等接下来的代码来统一来消除空行
-                                    post_entry
+                                    post_one_entry
                                 }
                                 _ => {
                                     // 没有下一项了，标记映射表的已经到达末尾
                                     is_expected_end = true;
-                                    post_entry
+                                    post_one_entry
                                 }
                             };
 
@@ -3264,7 +3414,69 @@ mod tests {
 
     #[test]
     fn test_function_call_expression() {
-        //
+        let n1 = parse_from_string("foo(1)").unwrap();
+        assert_eq!(n1.to_string(), "(foo)(1)\n");
+
+        // 多个参数
+        let n2 = parse_from_string("foo(1,2)").unwrap();
+        assert_eq!(n2.to_string(), "(foo)(1, 2)\n");
+
+        // 多个参数，末尾有逗号
+        let n3 = parse_from_string("foo(1,2,3,)").unwrap();
+        assert_eq!(n3.to_string(), "(foo)(1, 2, 3)\n");
+
+        // 参数换行
+        let n4 = parse_from_string(&trim_left_margin(
+            "foo(
+                        1,
+                        2,
+                        3,
+                    )",
+        ))
+        .unwrap();
+        assert_eq!(n4.to_string(), "(foo)(1, 2, 3)\n");
+
+        // 参数为表达式
+        let n5 = parse_from_string(&trim_left_margin(
+            "foo(
+                1+1,
+                true&&false,
+                bar(3),
+            )",
+        ))
+        .unwrap();
+        assert_eq!(
+            n5.to_string(),
+            "(foo)((1 + 1), (true && false), (bar)(3))\n"
+        );
+
+        // 带名称的参数
+        let n6 = parse_from_string("foo(id=1,count=2)").unwrap();
+        assert_eq!(n6.to_string(), "(foo)(id=1, count=2)\n");
+
+        // 位置参数和命名参数混合
+        let n7 = parse_from_string("foo(id=1,count=(2+3))").unwrap();
+        assert_eq!(n7.to_string(), "(foo)(id=1, count=(2 + 3))\n");
+
+        // 位置参数和命名参数混合
+        let n8 = parse_from_string("foo(1,count=2)").unwrap();
+        assert_eq!(n8.to_string(), "(foo)(1, count=2)\n");
+
+        // 连续调用
+        let n9 = parse_from_string("foo(1)(2)").unwrap();
+        assert_eq!(n9.to_string(), "((foo)(1))(2)\n");
+
+        // 被调用者为属性
+        let n10 = parse_from_string("foo.bar(1)").unwrap();
+        assert_eq!(n10.to_string(), "((foo.bar))(1)\n");
+
+        // 被调用者为索引
+        let n11 = parse_from_string("foo[1](2)").unwrap();
+        assert_eq!(n11.to_string(), "((foo[1]))(2)\n");
+
+        // 被调用者为索引
+        let n12 = parse_from_string("(foo & bar)(1)").unwrap();
+        assert_eq!(n12.to_string(), "((foo & bar))(1)\n");
     }
 
     #[test]
