@@ -9,10 +9,10 @@ use crate::{
     ast::{
         AnonymousFunction, AnonymousParameter, Argument, BinaryExpression, Bit, BlockExpression,
         Boolean, Char, Complex, ConstructorExpression, DataType, Ellipsis, Expression, Float,
-        FunctionCallExpression, GeneralString, HashString, Identifier, Integer, Interval, List,
-        Literal, Map, MapEntry, MemberExpression, MemberIndex, MemberProperty, NamedOperator, Node,
-        PrefixIdentifier, Program, Range, Sign, SignParameter, Statement, Tuple, UnaryExpression,
-        WhichEntry, WhichEntryLimit, WhichEntryType,
+        FunctionCallExpression, GeneralString, HashString, Identifier, Integer, Interval,
+        JoinExpression, LetExpression, List, Literal, Map, MapEntry, MemberExpression, MemberIndex,
+        MemberProperty, NamedOperator, Node, PrefixIdentifier, Program, Range, Sign, SignParameter,
+        Statement, Tuple, UnaryExpression, WhichEntry, WhichEntryLimit, WhichEntryType,
     },
     error::Error,
     token::{self, Token, TokenDetail},
@@ -338,15 +338,91 @@ fn continue_parse_expression_block_or_single_expression(
 fn parse_join_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
+    // 解析 join 表达式
     // join {...}
-    todo!()
+
+    // 消除 join
+    let post_consume_token_join = consume_token(&Token::Join, source_token_details)?;
+
+    // 消除换行符
+    // join 关键字后面允许换行
+    let post_consume_new_lines = skip_new_lines(post_consume_token_join);
+
+    let (expressions, post_parse_expression_block) =
+        continue_parse_expression_block(post_consume_new_lines)?;
+
+    Ok((
+        Expression::JoinExpression(JoinExpression {
+            body: expressions,
+            range: new_range(),
+        }),
+        post_parse_expression_block,
+    ))
 }
 
 fn parse_let_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // let left = right
-    todo!()
+    // 赋值表达式的左手边只允许如下几种表达式：
+    // - Identifier
+    // - Tuple
+    // - List
+    // - Map
+    // - 数字、字符串等字面量
+    //
+    // let data_type left = right
+    // let left = right // 数据类型可以省略
+    // ~~~
+    //   ^--- 当前所处的位置
+
+    let mut token_details = source_token_details;
+
+    // 消除关键字 `let`
+    token_details = consume_token(&Token::Let, token_details)?;
+    // 消除关键字 `let` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析左手边的数据类型或者值
+    let (lhs_part_one, post_lhs_part_one) = parse_primary_expression(token_details)?;
+
+    let (lhs_data_type, lhs_object) = if is_token(&Token::Assign, post_lhs_part_one) {
+        // 当前表达式没有数据类型
+        token_details = post_lhs_part_one;
+        (None, lhs_part_one)
+    } else {
+        // 当前表达式有数据类型
+
+        // 解析左手边值
+        let (lhs_object, post_lhs_object) = parse_primary_expression(post_lhs_part_one)?;
+        token_details = post_lhs_object;
+        (Some(lhs_part_one), lhs_object)
+    };
+
+    // 消除赋值符号 `=`
+    token_details = consume_token(&Token::Assign, token_details)?;
+
+    // 消除赋值符号 `=` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析右手边值
+    let (rhs_object, post_rhs_object) = parse_expression(token_details)?;
+
+    let data_type = match lhs_data_type {
+        Some(e) => {
+            let d = convert_expression_to_data_type(e)?;
+            Some(d)
+        }
+        None => None,
+    };
+
+    let exp = Expression::LetExpression(LetExpression {
+        data_type: data_type,
+        object: Box::new(lhs_object),
+        value: Box::new(rhs_object),
+        range: new_range(),
+    });
+
+    Ok((exp, post_rhs_object))
 }
 
 fn parse_if_expression(
@@ -354,6 +430,21 @@ fn parse_if_expression(
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // if ... then ... else ...
     todo!()
+}
+
+fn continue_parse_where_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // where ...
+    // ~~~~~
+    //     |-- 当前位置
+
+    // 消除 `where` 关键字
+    let post_type_token = consume_token(&Token::Where, source_token_details)?;
+    // 消除空行
+    let post_new_lines = skip_new_lines(post_type_token);
+
+    continue_parse_expression_block_or_single_expression(post_new_lines)
 }
 
 fn parse_for_expression(
@@ -617,8 +708,6 @@ fn continue_parse_which_entry(
                     // 消除 `limit` 之后的空行
                     let post_new_lines_after_limit = skip_new_lines(post_limit);
 
-                    // if is_token(&Token::LeftParen, post_new_lines_after_limit) {
-                    //     // 当前是多个数据类型约束
                     let (data_types, post_data_type_list) =
                         continue_parse_which_entry_data_type_list(post_new_lines_after_limit)?;
 
@@ -629,20 +718,6 @@ fn continue_parse_which_entry(
                     });
 
                     Ok((entry, post_data_type_list))
-                //                     } else {
-                //                         // 当前是单个数据类型约束
-                //                         let (data_type_expression, post_parse_expression) =
-                //                             parse_expression(post_new_lines_after_limit)?;
-                //                         let data_type = convert_expression_to_data_type(data_type_expression)?;
-                //
-                //                         let entry = WhichEntry::Limit(WhichEntryLimit {
-                //                             name: name.clone(),
-                //                             data_types: vec![data_type],
-                //                             range: new_range(),
-                //                         });
-                //
-                //                         Ok((entry, post_parse_expression))
-                //                     }
                 } else {
                     // 当前是单一数据类型说明
                     let (data_type_expression, post_parse_expression) =
@@ -702,21 +777,6 @@ fn continue_parse_which_entry_data_type_list(
     }
 
     Ok((data_types, token_details))
-}
-
-fn continue_parse_where_expression(
-    source_token_details: &[TokenDetail],
-) -> Result<(Expression, &[TokenDetail]), Error> {
-    // where ...
-    // ~~~~~
-    //     |-- 当前位置
-
-    // 消除 `where` 关键字
-    let post_type_token = consume_token(&Token::Where, source_token_details)?;
-    // 消除空行
-    let post_new_lines = skip_new_lines(post_type_token);
-
-    continue_parse_expression_block_or_single_expression(post_new_lines)
 }
 
 // 解析 `从左向右` 结合的二元运算的通用函数
@@ -1131,13 +1191,13 @@ fn continue_parse_arguments(
 
                             // 检查 name 是否 identifier
                             if let Expression::Identifier(Identifier { name, .. }) = part_one {
-                                // 消除等号 `=`
-                                let post_consume_equal =
+                                // 消除赋值符号 `=`
+                                let post_consume_assign =
                                     consume_token(&Token::Assign, post_parse_part_one)?;
 
-                                // 消除冒号 `=` 后面的空行
+                                // 消除赋值符号 `=` 后面的空行
                                 let post_consume_new_lines_after_equal =
-                                    skip_new_lines(post_consume_equal);
+                                    skip_new_lines(post_consume_assign);
 
                                 let (value_expression, post_parse_value_expression) =
                                     parse_expression(post_consume_new_lines_after_equal)?;
@@ -3642,12 +3702,44 @@ mod tests {
 
     #[test]
     fn test_let_expression() {
-        // todo::
+        let n1 = parse_from_string("let Int i=1").unwrap();
+        assert_eq!(n1.to_string(), "let Int i = 1\n");
+
+        // 省略数据类型
+        let n2 = parse_from_string("let i=100").unwrap();
+        assert_eq!(n2.to_string(), "let i = 100\n");
+
+        // 右手边值是一个表达式
+        let n3 = parse_from_string("let i=1+2*3").unwrap();
+        assert_eq!(n3.to_string(), "let i = (1 + (2 * 3))\n");
+
+        // 左手边值是一个元组
+        let n4 = parse_from_string("let (Int,Int) (x,y)=foo.point").unwrap();
+        assert_eq!(n4.to_string(), "let (Int, Int,) (x, y,) = (foo.point)\n");
+
+        // 左手边值是一个元组，省略数据类型
+        let n5 = parse_from_string("let (x,y)=foo.point").unwrap();
+        assert_eq!(n5.to_string(), "let (x, y,) = (foo.point)\n");
     }
 
     #[test]
     fn test_join_expression() {
-        // todo::
+        let n1 = parse_from_string(
+            "join {
+                    123
+                    abc
+                }",
+        )
+        .unwrap();
+        assert_eq!(
+            n1.to_string(),
+            trim_left_margin(
+                "join {
+                    123
+                    abc
+                }\n"
+            )
+        );
     }
 
     #[test]
