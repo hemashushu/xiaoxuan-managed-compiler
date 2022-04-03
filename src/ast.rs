@@ -492,16 +492,18 @@ pub struct LetExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfExpression {
-    pub condition: Box<Expression>,
+    pub testing: Box<Expression>,
+    pub where_exp: Option<Box<Expression>>, // `where` 从属表达式可选
     pub consequent: Box<Expression>,
-    pub alternate: Option<Box<Expression>>, // `else` 部分是可选的
+    pub alternate: Option<Box<Expression>>, // `else` 从属表达式可选
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ForExpression {
-    pub object: Box<Expression>,
-    pub value: Box<Expression>,
+    // pub object: Box<Expression>,
+    // pub value: Box<Expression>,
+    pub initializer: Box<LetExpression>,
     pub body: Box<Expression>,
     pub range: Range,
 }
@@ -531,7 +533,7 @@ pub struct BranchExpression {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BranchCase {
     pub where_exp: Option<Box<Expression>>,
-    pub condition: Box<Expression>,
+    pub testing: Box<Expression>,
     pub body: Box<Expression>,
     pub range: Range,
 }
@@ -827,31 +829,27 @@ impl Display for IfExpression {
             _ => format!("{}", e),
         };
 
-        match &self.alternate {
-            Some(a) => {
-                write!(
-                    f,
-                    "if {} then {} else {}",
-                    escape(&self.condition),
-                    escape(&self.consequent),
-                    escape(a)
-                )
-            }
-            None => {
-                write!(
-                    f,
-                    "if {} then {}",
-                    escape(&self.condition),
-                    escape(&self.consequent)
-                )
-            }
+        let mut segments: Vec<String> = vec![];
+
+        segments.push(format!("if {}", escape(&self.testing)));
+
+        if let Some(e) = &self.where_exp {
+            segments.push(format!("where {}", e));
         }
+
+        segments.push(format!("then {}", escape(&self.consequent)));
+
+        if let Some(e) = &self.alternate {
+            segments.push(format!("else {}", escape(e)));
+        }
+
+        write!(f, "{}", segments.join(" "))
     }
 }
 
 impl Display for ForExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "for let {} = {} {}", self.object, self.value, self.body)
+        write!(f, "for {} {}", self.initializer, self.body)
     }
 }
 
@@ -897,7 +895,7 @@ impl Display for BranchCase {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut segments = Vec::<String>::new();
 
-        segments.push(format!("case {}", &self.condition));
+        segments.push(format!("case {}", &self.testing));
 
         if let Some(e) = &self.where_exp {
             segments.push(format!("where {}", e));
@@ -1102,7 +1100,12 @@ impl Display for UnaryExpression {
 
 impl Display for FunctionCallExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({})({})", self.callee, format_arguments(&self.arguments))
+        write!(
+            f,
+            "({})({})",
+            self.callee,
+            format_arguments(&self.arguments)
+        )
     }
 }
 
@@ -2422,22 +2425,26 @@ mod tests {
         // 嵌套索引
         let e6 = MemberExpression::Index(MemberIndex {
             object: Box::new(Expression::Identifier(new_identifier("foo"))),
-            index: Box::new(Expression::MemberExpression(MemberExpression::Index(MemberIndex {
-                object: Box::new(Expression::Identifier(new_identifier("bar"))),
-                index: Box::new(Expression::Identifier(new_identifier("1"))),
-                range: new_range(),
-            }))),
+            index: Box::new(Expression::MemberExpression(MemberExpression::Index(
+                MemberIndex {
+                    object: Box::new(Expression::Identifier(new_identifier("bar"))),
+                    index: Box::new(Expression::Identifier(new_identifier("1"))),
+                    range: new_range(),
+                },
+            ))),
             range: new_range(),
         });
         assert_eq!(e6.to_string(), "(foo[(bar[1])])");
 
         // 连续索引
         let e6 = MemberExpression::Index(MemberIndex {
-            object: Box::new(Expression::MemberExpression(MemberExpression::Index(MemberIndex {
-                object: Box::new(Expression::Identifier(new_identifier("foo"))),
-                index: Box::new(Expression::Identifier(new_identifier("1"))),
-                range: new_range(),
-            }))),
+            object: Box::new(Expression::MemberExpression(MemberExpression::Index(
+                MemberIndex {
+                    object: Box::new(Expression::Identifier(new_identifier("foo"))),
+                    index: Box::new(Expression::Identifier(new_identifier("1"))),
+                    range: new_range(),
+                },
+            ))),
             index: Box::new(Expression::Identifier(new_identifier("2"))),
             range: new_range(),
         });
@@ -2868,7 +2875,8 @@ mod tests {
     #[test]
     fn test_if_expression() {
         let e1 = IfExpression {
-            condition: Box::new(Expression::Literal(new_literal_boolean(false))),
+            testing: Box::new(Expression::Literal(new_literal_boolean(false))),
+            where_exp: None,
             consequent: Box::new(Expression::Literal(new_literal_integer(10))),
             alternate: None,
             range: new_range(),
@@ -2876,7 +2884,8 @@ mod tests {
         assert_eq!(e1.to_string(), "if false then 10");
 
         let e2 = IfExpression {
-            condition: Box::new(new_relational_expression(1, 2)),
+            testing: Box::new(new_relational_expression(1, 2)),
+            where_exp: None,
             consequent: Box::new(new_addition_expression(3, 4)),
             alternate: Some(Box::new(new_addition_expression(5, 6))),
             range: new_range(),
@@ -2885,9 +2894,11 @@ mod tests {
 
         // 测试嵌套 if 表达式
         let e3 = IfExpression {
-            condition: Box::new(Expression::Literal(new_literal_boolean(true))),
+            testing: Box::new(Expression::Literal(new_literal_boolean(true))),
+            where_exp: None,
             consequent: Box::new(Expression::IfExpression(IfExpression {
-                condition: Box::new(new_relational_expression(1, 2)),
+                testing: Box::new(new_relational_expression(1, 2)),
+                where_exp: None,
                 consequent: Box::new(Expression::Literal(new_literal_integer(3))),
                 alternate: None,
                 range: new_range(),
@@ -2899,7 +2910,8 @@ mod tests {
 
         // 测试空子表达式
         let e4 = IfExpression {
-            condition: Box::new(Expression::Literal(new_literal_boolean(true))),
+            testing: Box::new(Expression::Literal(new_literal_boolean(true))),
+            where_exp: None,
             consequent: Box::new(Expression::BlockExpression(BlockExpression {
                 is_explicit: false,
                 body: vec![],
@@ -2909,13 +2921,27 @@ mod tests {
             range: new_range(),
         };
         assert_eq!(e4.to_string(), "if true then {} else 10");
+
+        // 测试 where 从属表达式
+        let e5 = IfExpression {
+            testing: Box::new(Expression::Literal(new_literal_boolean(false))),
+            where_exp: Some(Box::new(new_addition_expression(1, 2))),
+            consequent: Box::new(Expression::Literal(new_literal_integer(10))),
+            alternate: None,
+            range: new_range(),
+        };
+        assert_eq!(e5.to_string(), "if false where (1 + 2) then 10");
     }
 
     #[test]
     fn test_for_expression() {
         let e1 = ForExpression {
-            object: Box::new(Expression::Identifier(new_identifier("i"))),
-            value: Box::new(Expression::Literal(new_literal_integer(100))),
+            initializer: Box::new(LetExpression {
+                data_type: None,
+                object: Box::new(Expression::Identifier(new_identifier("i"))),
+                value: Box::new(Expression::Literal(new_literal_integer(100))),
+                range: new_range(),
+            }),
             body: Box::new(Expression::Literal(new_literal_string("value"))),
             range: new_range(),
         };
@@ -2936,16 +2962,20 @@ mod tests {
 
         // 测试 body 为表达式块
         let e4 = ForExpression {
-            object: Box::new(Expression::Tuple(Tuple {
-                elements: vec![
-                    Expression::Identifier(new_identifier("sum")),
-                    Expression::Identifier(new_identifier("step")),
-                ],
+            initializer: Box::new(LetExpression {
+                data_type: None,
+                object: Box::new(Expression::Tuple(Tuple {
+                    elements: vec![
+                        Expression::Identifier(new_identifier("sum")),
+                        Expression::Identifier(new_identifier("step")),
+                    ],
+                    range: new_range(),
+                })),
+                value: Box::new(Expression::Tuple(new_tuple(&vec![0, 2]))),
                 range: new_range(),
-            })),
-            value: Box::new(Expression::Tuple(new_tuple(&vec![0, 2]))),
+            }),
             body: Box::new(Expression::BlockExpression(BlockExpression {
-                is_explicit: false,
+                is_explicit: true,
                 body: vec![
                     Expression::LetExpression(LetExpression {
                         data_type: None,
@@ -2959,12 +2989,13 @@ mod tests {
                         range: new_range(),
                     }),
                     Expression::IfExpression(IfExpression {
-                        condition: Box::new(Expression::BinaryExpression(BinaryExpression {
+                        testing: Box::new(Expression::BinaryExpression(BinaryExpression {
                             operator: Token::LessThan,
                             left: Box::new(Expression::Identifier(new_identifier("i"))),
                             right: Box::new(Expression::Literal(new_literal_integer(100))),
                             range: new_range(),
                         })),
+                        where_exp: None,
                         consequent: Box::new(Expression::NextExpression(NextExpression {
                             value: Box::new(Expression::Tuple(Tuple {
                                 elements: vec![
@@ -2986,7 +3017,7 @@ mod tests {
         assert_eq!(
             e4.to_string(),
             trim_left_margin(
-                "for let (sum, step,) = (0, 2,) {
+                "for let (sum, step,) = (0, 2,) do {
                     let i = (sum + step)
                     if (i < 100) then next (i, step,)
                 }"
@@ -3040,12 +3071,12 @@ mod tests {
             cases: vec![
                 BranchCase {
                     where_exp: None,
-                    condition: Box::new(Expression::Literal(new_literal_boolean(false))),
+                    testing: Box::new(Expression::Literal(new_literal_boolean(false))),
                     body: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 BranchCase {
-                    condition: Box::new(Expression::Literal(new_literal_boolean(true))),
+                    testing: Box::new(Expression::Literal(new_literal_boolean(true))),
                     body: Box::new(Expression::Literal(new_literal_integer(2))),
                     where_exp: None,
                     range: new_range(),
@@ -3070,7 +3101,7 @@ mod tests {
             cases: vec![
                 BranchCase {
                     where_exp: Some(Box::new(new_let_expression("i", 20))),
-                    condition: Box::new(Expression::BinaryExpression(BinaryExpression {
+                    testing: Box::new(Expression::BinaryExpression(BinaryExpression {
                         operator: Token::GreaterThan,
                         left: Box::new(Expression::Identifier(new_identifier("foo"))),
                         right: Box::new(Expression::Identifier(new_identifier("i"))),
@@ -3080,7 +3111,7 @@ mod tests {
                     range: new_range(),
                 },
                 BranchCase {
-                    condition: Box::new(Expression::Literal(new_literal_boolean(true))),
+                    testing: Box::new(Expression::Literal(new_literal_boolean(true))),
                     body: Box::new(Expression::Literal(new_literal_integer(2))),
                     where_exp: None,
                     range: new_range(),

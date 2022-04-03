@@ -99,7 +99,7 @@ pub enum Token {
     Else,
     For,
     Next,
-    Each,
+    // Each,
     In,
 
     Branch,
@@ -228,7 +228,7 @@ impl fmt::Display for Token {
             Token::Else => write!(f, "else"),
             Token::For => write!(f, "for"),
             Token::Next => write!(f, "next"),
-            Token::Each => write!(f, "each"),
+            // Token::Each => write!(f, "each"),
             Token::In => write!(f, "in"),
 
             Token::Branch => write!(f, "branch"),
@@ -383,7 +383,7 @@ mod tests {
         assert_eq!(Token::Else.to_string(), "else");
         assert_eq!(Token::For.to_string(), "for");
         assert_eq!(Token::Next.to_string(), "next");
-        assert_eq!(Token::Each.to_string(), "each");
+        // assert_eq!(Token::Each.to_string(), "each");
         assert_eq!(Token::In.to_string(), "in");
 
         assert_eq!(Token::Branch.to_string(), "branch");

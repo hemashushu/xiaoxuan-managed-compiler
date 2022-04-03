@@ -9,10 +9,11 @@ use crate::{
     ast::{
         AnonymousFunction, AnonymousParameter, Argument, BinaryExpression, Bit, BlockExpression,
         Boolean, Char, Complex, ConstructorExpression, DataType, Ellipsis, Expression, Float,
-        FunctionCallExpression, GeneralString, HashString, Identifier, Integer, Interval,
-        JoinExpression, LetExpression, List, Literal, Map, MapEntry, MemberExpression, MemberIndex,
-        MemberProperty, NamedOperator, Node, PrefixIdentifier, Program, Range, Sign, SignParameter,
-        Statement, Tuple, UnaryExpression, WhichEntry, WhichEntryLimit, WhichEntryType,
+        ForExpression, FunctionCallExpression, GeneralString, HashString, Identifier, IfExpression,
+        Integer, Interval, JoinExpression, LetExpression, List, Literal, Map, MapEntry,
+        MemberExpression, MemberIndex, MemberProperty, NamedOperator, NextExpression, Node,
+        PrefixIdentifier, Program, Range, Sign, SignParameter, Statement, Tuple, UnaryExpression,
+        WhichEntry, WhichEntryLimit, WhichEntryType, EachExpression,
     },
     error::Error,
     token::{Token, TokenDetail},
@@ -217,7 +218,7 @@ fn parse_expression(
             Token::If => parse_if_expression(source_token_details),
             Token::For => parse_for_expression(source_token_details),
             Token::Next => parse_next_expression(source_token_details),
-            Token::Each => parse_each_expression(source_token_details),
+            // Token::Each => parse_each_expression(source_token_details),
             Token::Branch => parse_branch_expression(source_token_details),
             Token::Match => parse_match_expression(source_token_details),
             _ => {
@@ -363,6 +364,13 @@ fn parse_join_expression(
 fn parse_let_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
+    let (exp, post_expression) = continue_parse_let_expression(source_token_details)?;
+    Ok((Expression::LetExpression(exp), post_expression))
+}
+
+fn continue_parse_let_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(LetExpression, &[TokenDetail]), Error> {
     // 赋值表达式的左手边只允许如下几种表达式：
     // - Identifier
     // - Tuple
@@ -415,12 +423,12 @@ fn parse_let_expression(
         None => None,
     };
 
-    let exp = Expression::LetExpression(LetExpression {
+    let exp = LetExpression {
         data_type: data_type,
         object: Box::new(lhs_object),
         value: Box::new(rhs_object),
         range: new_range(),
-    });
+    };
 
     Ok((exp, post_rhs_object))
 }
@@ -440,69 +448,158 @@ fn parse_if_expression(
     // 消除关键字 `if` 后面的空行
     token_details = skip_new_lines(token_details);
 
-    let (condition, post_condition) = continue_parse_expression_block_or_single_expression(token_details)?;
+    let (testing, post_condition) =
+        continue_parse_expression_block_or_single_expression(token_details)?;
+
+    // 检查是否存在 `where` 子表达式
+    let where_exp = if is_token_ignore_new_lines(&Token::Where, post_condition) {
+        // 消除关键字 `where` (包括前缀空行)
+        token_details = skip_new_lines_and_consume_token(&Token::Where, post_condition)?;
+        // 消除关键字 `where` 后面的空行
+        token_details = skip_new_lines(token_details);
+
+        let (where_exp, post_where) =
+            continue_parse_expression_block_or_single_expression(token_details)?;
+
+        token_details = post_where;
+        Some(where_exp)
+    } else {
+        token_details = post_condition;
+        None
+    };
 
     // 消除关键字 `then` (包括前缀空行)
-    token_details = skip_new_lines_and_consume_token(&Token::Then, post_condition)?;
+    token_details = skip_new_lines_and_consume_token(&Token::Then, token_details)?;
     // 消除关键字 `then` 后面的空行
     token_details = skip_new_lines(token_details);
 
-    let (consequent, post_consequent) = continue_parse_expression_block_or_single_expression(token_details)?;
+    let (consequent, post_consequent) =
+        continue_parse_expression_block_or_single_expression(token_details)?;
 
     // 检查是否存在 `else` 子表达式
     let alternate = if is_token_ignore_new_lines(&Token::Else, post_consequent) {
         // 消除关键字 `else` (包括前缀空行)
-        token_details = skip_new_lines_and_consume_token(&Token::Then, post_consequent)?;
+        token_details = skip_new_lines_and_consume_token(&Token::Else, post_consequent)?;
         // 消除关键字 `else` 后面的空行
         token_details = skip_new_lines(token_details);
 
-        let (alternate, post_alternate) = continue_parse_expression_block_or_single_expression(token_details)?;
+        let (alternate, post_alternate) =
+            continue_parse_expression_block_or_single_expression(token_details)?;
 
         token_details = post_alternate;
         Some(alternate)
-    }else {
+    } else {
         token_details = post_consequent;
         None
     };
 
-    todo!()
+    let exp = Expression::IfExpression(IfExpression {
+        testing: Box::new(testing),
+        where_exp: where_exp.map(|e| Box::new(e)),
+        consequent: Box::new(consequent),
+        alternate: alternate.map(|e| Box::new(e)),
+        range: new_range(),
+    });
+
+    Ok((exp, token_details))
 }
 
-fn continue_parse_where_expression(
-    source_token_details: &[TokenDetail],
-) -> Result<(Expression, &[TokenDetail]), Error> {
-    // where ...
-    // ~~~~~
-    //     |-- 当前位置
-
-    // 消除 `where` 关键字
-    let post_type_token = consume_token(&Token::Where, source_token_details)?;
-    // 消除空行
-    let post_new_lines = skip_new_lines(post_type_token);
-
-    continue_parse_expression_block_or_single_expression(post_new_lines)
-}
+// fn continue_parse_where_expression(
+//     source_token_details: &[TokenDetail],
+// ) -> Result<(Expression, &[TokenDetail]), Error> {
+//     // where ...
+//     // ~~~~~
+//     //     |-- 当前位置
+//
+//     // 消除 `where` 关键字
+//     let post_type_token = consume_token(&Token::Where, source_token_details)?;
+//     // 消除空行
+//     let post_new_lines = skip_new_lines(post_type_token);
+//
+//     continue_parse_expression_block_or_single_expression(post_new_lines)
+// }
 
 fn parse_for_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // for let ... = ... {... next}
-    todo!()
+    // for let ... = ... ...
+
+    let mut token_details = source_token_details;
+
+    // 消除关键字 `for`
+    token_details = consume_token(&Token::For, token_details)?;
+    // 消除关键字 `for` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析 `初始化子表达式`
+    let (let_exp, post_let_exp) = continue_parse_let_expression(token_details)?;
+
+    // 消除 `初始化子表达式` 后面的空行
+    token_details = skip_new_lines(post_let_exp);
+
+    // 解析 `循环体表达式`
+    let (body_exp, post_body_exp) = parse_expression(token_details)?;
+
+    let exp = Expression::ForExpression(ForExpression {
+        initializer: Box::new(let_exp),
+        body: Box::new(body_exp),
+        range: new_range(),
+    });
+
+    Ok((exp, post_body_exp))
 }
 
 fn parse_next_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // for let ... = ... {... next}
-    todo!()
+    // next ...
+    let mut token_details = source_token_details;
+
+    // 消除关键字 `next`
+    token_details = consume_token(&Token::Next, token_details)?;
+    // 消除关键字 `next` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析表达式
+    let (expression, post_expression) = parse_expression(token_details)?;
+
+    Ok((
+        Expression::NextExpression(NextExpression {
+            value: Box::new(expression),
+            range: new_range(),
+        }),
+        post_expression,
+    ))
 }
 
-fn parse_each_expression(
-    source_token_details: &[TokenDetail],
-) -> Result<(Expression, &[TokenDetail]), Error> {
-    // each let ... in ... {...}
-    todo!()
-}
+// fn parse_each_expression(
+//     source_token_details: &[TokenDetail],
+// ) -> Result<(Expression, &[TokenDetail]), Error> {
+//     // each let ... in ... ...
+//     let mut token_details = source_token_details;
+//
+//     // 消除关键字 `each`
+//     token_details = consume_token(&Token::Each, token_details)?;
+//     // 消除关键字 `each` 后面的空行
+//     token_details = skip_new_lines(token_details);
+//
+//     // 解析 `初始化子表达式`
+//     let (let_exp, post_let_exp) = continue_parse_let_in_expression(token_details)?;
+//
+//     // 消除 `初始化子表达式` 后面的空行
+//     token_details = skip_new_lines(post_let_exp);
+//
+//     // 解析 `循环体表达式`
+//     let (body_exp, post_body_exp) = parse_expression(token_details)?;
+//
+//     let exp = Expression::EachExpression(EachExpression {
+//
+//         body: Box::new(body_exp),
+//         range: new_range(),
+//     });
+//
+//     Ok((exp, post_body_exp))
+// }
 
 fn parse_branch_expression(
     source_token_details: &[TokenDetail],
@@ -1618,7 +1715,7 @@ fn parse_anonymous_function(
         }
     };
 
-    // 消除参数列表后面
+    // 消除参数列表后面的空行
     token_details = skip_new_lines(post_parameters);
 
     loop {
@@ -2283,9 +2380,13 @@ fn continue_parse_identifier(
 
     // 解析泛型
     if is_token(&Token::LessThan, token_details) {
-        let (data_types, post_generics) = continue_parse_generic_names(token_details)?;
-        generics = data_types;
-        token_details = post_generics;
+        // 仅当泛型解析成功时才作为泛型解析，因为
+        // 泛型的开始符号 `<` 同时也用于大小比较，所以有可能会
+        // 出现诸如 `i < b` 这种比较表达式被当作泛型来解析的情况。
+        if let Ok((data_types, post_generics)) = continue_parse_generic_names(token_details) {
+            generics = data_types;
+            token_details = post_generics;
+        }
     }
 
     let len = names.len();
@@ -2429,7 +2530,7 @@ fn parse_sign_expression(
         }
     };
 
-    // 消除参数列表后面
+    // 消除参数列表后面的空行
     token_details = skip_new_lines(post_parameters);
 
     loop {
@@ -3806,12 +3907,191 @@ mod tests {
 
     #[test]
     fn test_if_expression() {
-        // todo::
+        let n1 = parse_from_string("if 1 then 2").unwrap();
+        assert_eq!(n1.to_string(), "if 1 then 2\n");
+
+        // 测试 else 子表达式
+        let n2 = parse_from_string("if 1 then 2 else 3").unwrap();
+        assert_eq!(n2.to_string(), "if 1 then 2 else 3\n");
+
+        // 测试子表达式为表达式
+        let n3 = parse_from_string("if a>b then a+1 else b+2").unwrap();
+        assert_eq!(n3.to_string(), "if (a > b) then (a + 1) else (b + 2)\n");
+
+        // 测试 where 从属表达式
+        let n4 = parse_from_string("if a>b where let i=a+b then a+1 else b+2").unwrap();
+        assert_eq!(
+            n4.to_string(),
+            "if (a > b) where let i = (a + b) then (a + 1) else (b + 2)\n"
+        );
+
+        // 测试换行
+        let n5 = parse_from_string(&trim_left_margin(
+            "if
+              a>b
+            then
+              a+1
+            else
+              b+2
+            ",
+        ))
+        .unwrap();
+        assert_eq!(n5.to_string(), "if (a > b) then (a + 1) else (b + 2)\n");
+
+        // 测试换行以及 where 从属表达式
+        let n6 = parse_from_string(&trim_left_margin(
+            "if
+              a>b
+            where
+              let i=a+b
+            then
+              a+1
+            else
+              b+2
+            ",
+        ))
+        .unwrap();
+        assert_eq!(
+            n6.to_string(),
+            "if (a > b) where let i = (a + b) then (a + 1) else (b + 2)\n"
+        );
+
+        // 测试表达式块
+        let n7 = parse_from_string(&trim_left_margin(
+            "if {
+              a>b
+            } where {
+              let i=a+b
+            } then {
+              a+1
+            } else {
+              b+2
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n7.to_string(),
+            trim_left_margin(
+                "if {
+                    (a > b)
+                } where {
+                    let i = (a + b)
+                } then {
+                    (a + 1)
+                } else {
+                    (b + 2)
+                }
+            "
+            )
+        );
+
+        // 测试连续 if 表达式
+        let n8 = parse_from_string(&trim_left_margin(
+            "if a>90 then
+                a
+            else if a>80 then
+                b
+            else if a>60 then
+                c
+            else
+                d
+            ",
+        ))
+        .unwrap();
+
+        assert_eq!(
+            n8.to_string(),
+            "if (a > 90) then a else {if (a > 80) then b else {if (a > 60) then c else d}}\n"
+        );
+
+        // 测试嵌套表达式
+        let n9 = parse_from_string(&trim_left_margin(
+            "if
+              if a>b then true else false
+            then
+              if a>10 then 100 else 101
+            else
+              if b>20 then 200 else 202
+            ",
+        ))
+        .unwrap();
+
+        assert_eq!(
+            n9.to_string(),
+            vec![
+                "if {if (a > b) then true else false}",
+                "then {if (a > 10) then 100 else 101}",
+                "else {if (b > 20) then 200 else 202}\n"
+            ]
+            .join(" ")
+        );
+
+        // 测试 if let 表达式
+        let n10 = parse_from_string("if let i=1 then i+2 else 3").unwrap();
+        assert_eq!(n10.to_string(), "if let i = 1 then (i + 2) else 3\n");
     }
 
     #[test]
     fn test_for_expression() {
-        // todo::
+        let n1 = parse_from_string("for let i=1 i+1").unwrap();
+        assert_eq!(n1.to_string(), "for let i = 1 (i + 1)\n");
+
+        // 测试循环体为 `do 表达式`
+        let n2 = parse_from_string(&trim_left_margin(
+            "for let i=1 do {
+                i+1
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n2.to_string(),
+            trim_left_margin(
+                "for let i = 1 do {
+                    (i + 1)
+                }
+                "
+            )
+        );
+
+        // 测试循环体为 `if 表达式`
+        let n3 = parse_from_string(&trim_left_margin(
+            "for let i=0 if i<10 then {
+                print(i)
+                next i+1
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n3.to_string(),
+            trim_left_margin(
+                "for let i = 0 if (i < 10) then {
+                    (print)(i)
+                    next (i + 1)
+                }
+                "
+            )
+        );
+
+        // 测试初始化表达式为元组赋值
+        let n4 = parse_from_string(&trim_left_margin(
+            "for let (sum, i)=(0, 1) if i<=100 then {
+                next (sum+i, i+1)
+            }else {
+                sum
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n4.to_string(),
+            trim_left_margin(
+                "for let (sum, i,) = (0, 1,) if (i <= 100) then {
+                    next ((sum + i), (i + 1),)
+                } else {
+                    sum
+                }
+                ",
+            )
+        );
     }
 
     #[test]
