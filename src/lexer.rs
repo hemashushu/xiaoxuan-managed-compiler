@@ -1316,7 +1316,8 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         "else" => Some(Token::Else),
         "for" => Some(Token::For),
         "next" => Some(Token::Next),
-        // "each" => Some(Token::Each),
+        "each" => Some(Token::Each),
+        "in" => Some(Token::In),
 
         "branch" => Some(Token::Branch),
         "match" => Some(Token::Match),
@@ -1325,7 +1326,6 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         "where" => Some(Token::Where),
         "only" => Some(Token::Only),
         // "as" => Some(Token::As),
-        "in" => Some(Token::In),
         "into" => Some(Token::Into),
         "regular" => Some(Token::Regular),
         "template" => Some(Token::Template),
@@ -1605,19 +1605,19 @@ mod tests {
     #[test]
     fn test_keywords() {
         let tokens1 =
-            tokenize("do join let fn if then else for next branch match case default").unwrap();
+            tokenize("do join let fn if then else for next each in branch match case default").unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
             vec![
-                "do", "join", "let", "fn", "if", "then", "else", "for", "next", "branch", "match",
+                "do", "join", "let", "fn", "if", "then", "else", "for", "next", "each", "in", "branch", "match",
                 "case", "default",
             ]
         );
 
-        let tokens2 = tokenize("where only in into regular template").unwrap();
+        let tokens2 = tokenize("where only into regular template").unwrap();
         assert_eq!(
             token_details_to_string(&tokens2),
-            vec!["where", "only", "in", "into", "regular", "template",]
+            vec!["where", "only", "into", "regular", "template",]
         );
 
         let tokens3 = tokenize("function type which empty pattern limit").unwrap();

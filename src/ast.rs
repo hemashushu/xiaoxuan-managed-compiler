@@ -501,8 +501,6 @@ pub struct IfExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ForExpression {
-    // pub object: Box<Expression>,
-    // pub value: Box<Expression>,
     pub initializer: Box<LetExpression>,
     pub body: Box<Expression>,
     pub range: Range,
@@ -516,8 +514,8 @@ pub struct NextExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EachExpression {
+    pub variable: Box<Expression>,
     pub object: Box<Expression>,
-    pub value: Box<Expression>,
     pub body: Box<Expression>,
     pub range: Range,
 }
@@ -526,7 +524,7 @@ pub struct EachExpression {
 pub struct BranchExpression {
     pub where_exp: Option<Box<Expression>>,
     pub cases: Vec<BranchCase>,
-    pub default: Option<Box<Expression>>,
+    pub default_exp: Option<Box<Expression>>,
     pub range: Range,
 }
 
@@ -534,7 +532,7 @@ pub struct BranchExpression {
 pub struct BranchCase {
     pub where_exp: Option<Box<Expression>>,
     pub testing: Box<Expression>,
-    pub body: Box<Expression>,
+    pub consequent: Box<Expression>,
     pub range: Range,
 }
 
@@ -543,7 +541,7 @@ pub struct MatchExpression {
     pub where_exp: Option<Box<Expression>>,
     pub object: Box<Expression>,
     pub cases: Vec<MatchCase>,
-    pub default: Option<Box<Expression>>,
+    pub default_exp: Option<Box<Expression>>,
     pub range: Range,
 }
 
@@ -552,7 +550,7 @@ pub struct MatchCase {
     pub variable: Option<String>,             // @ 变量名称
     pub pattern_exp: Option<Box<Expression>>, // 模式表达式
     pub additionals: Vec<PatternAdditional>,
-    pub body: Box<Expression>,
+    pub consequent: Box<Expression>,
     pub range: Range,
 }
 
@@ -863,8 +861,8 @@ impl Display for EachExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "each let {} in {} {}",
-            self.object, self.value, self.body
+            "each {} in {} {}",
+            self.variable, self.object, self.body
         )
     }
 }
@@ -877,7 +875,7 @@ impl Display for BranchExpression {
             body_lines.push(format!("{}", c));
         }
 
-        if let Some(e) = &self.default {
+        if let Some(e) = &self.default_exp {
             body_lines.push(format!("default: {}", e));
         }
 
@@ -902,7 +900,7 @@ impl Display for BranchCase {
         }
 
         let head_text = segments.join(" ");
-        write!(f, "{}: {}", head_text, &self.body)
+        write!(f, "{}: {}", head_text, &self.consequent)
     }
 }
 
@@ -914,7 +912,7 @@ impl Display for MatchExpression {
             body_lines.push(format!("{}", c));
         }
 
-        if let Some(e) = &self.default {
+        if let Some(e) = &self.default_exp {
             body_lines.push(format!("default: {}", e));
         }
 
@@ -958,7 +956,7 @@ impl Display for MatchCase {
             segments.push(additional_text);
         }
 
-        write!(f, "{}: {}", segments.join(" "), &self.body)
+        write!(f, "{}: {}", segments.join(" "), &self.consequent)
     }
 }
 
@@ -3028,17 +3026,17 @@ mod tests {
     #[test]
     fn test_each_expression() {
         let e1 = EachExpression {
-            object: Box::new(Expression::Identifier(new_identifier("i"))),
-            value: Box::new(Expression::List(new_list(&vec![1, 2, 3]))),
+            variable: Box::new(Expression::Identifier(new_identifier("i"))),
+            object: Box::new(Expression::List(new_list(&vec![1, 2, 3]))),
             body: Box::new(Expression::Literal(new_literal_integer(5))),
             range: new_range(),
         };
-        assert_eq!(e1.to_string(), "each let i in [1, 2, 3,] 5");
+        assert_eq!(e1.to_string(), "each i in [1, 2, 3,] 5");
 
         // body 为 do 表达式
         let e2 = EachExpression {
-            object: Box::new(Expression::Identifier(new_identifier("i"))),
-            value: Box::new(Expression::List(new_list(&vec![1, 2, 3]))),
+            variable: Box::new(Expression::Identifier(new_identifier("i"))),
+            object: Box::new(Expression::List(new_list(&vec![1, 2, 3]))),
             body: Box::new(Expression::BlockExpression(BlockExpression {
                 is_explicit: true,
                 body: vec![Expression::FunctionCallExpression(FunctionCallExpression {
@@ -3057,7 +3055,7 @@ mod tests {
         assert_eq!(
             e2.to_string(),
             trim_left_margin(
-                "each let i in [1, 2, 3,] do {
+                "each i in [1, 2, 3,] do {
                     (sqrt)(i)
                 }"
             )
@@ -3072,17 +3070,17 @@ mod tests {
                 BranchCase {
                     where_exp: None,
                     testing: Box::new(Expression::Literal(new_literal_boolean(false))),
-                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 BranchCase {
                     testing: Box::new(Expression::Literal(new_literal_boolean(true))),
-                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(2))),
                     where_exp: None,
                     range: new_range(),
                 },
             ],
-            default: None,
+            default_exp: None,
             range: new_range(),
         };
         assert_eq!(
@@ -3107,17 +3105,17 @@ mod tests {
                         right: Box::new(Expression::Identifier(new_identifier("i"))),
                         range: new_range(),
                     })),
-                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 BranchCase {
                     testing: Box::new(Expression::Literal(new_literal_boolean(true))),
-                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(2))),
                     where_exp: None,
                     range: new_range(),
                 },
             ],
-            default: Some(Box::new(Expression::Literal(new_literal_integer(3)))),
+            default_exp: Some(Box::new(Expression::Literal(new_literal_integer(3)))),
             range: new_range(),
         };
         assert_eq!(
@@ -3142,18 +3140,18 @@ mod tests {
                     variable: None,
                     pattern_exp: Some(Box::new(Expression::Literal(new_literal_boolean(false)))),
                     additionals: vec![],
-                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 MatchCase {
                     variable: None,
                     pattern_exp: Some(Box::new(Expression::Literal(new_literal_boolean(true)))),
                     additionals: vec![],
-                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(2))),
                     range: new_range(),
                 },
             ],
-            default: None,
+            default_exp: None,
             range: new_range(),
         };
         assert_eq!(
@@ -3177,7 +3175,7 @@ mod tests {
                     additionals: vec![PatternAdditional::In(Expression::List(new_list(&vec![
                         1, 2, 3,
                     ])))],
-                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 MatchCase {
@@ -3197,11 +3195,11 @@ mod tests {
                             range: new_range(),
                         })),
                     ],
-                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(2))),
                     range: new_range(),
                 },
             ],
-            default: Some(Box::new(Expression::Literal(new_literal_integer(3)))),
+            default_exp: Some(Box::new(Expression::Literal(new_literal_integer(3)))),
             range: new_range(),
         };
         assert_eq!(
@@ -3228,7 +3226,7 @@ mod tests {
                         new_identifier("User"),
                         "user".to_string(),
                     )],
-                    body: Box::new(Expression::Literal(new_literal_integer(1))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 MatchCase {
@@ -3247,7 +3245,7 @@ mod tests {
                             range: new_range(),
                         },
                     )],
-                    body: Box::new(Expression::Literal(new_literal_integer(2))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(2))),
                     range: new_range(),
                 },
                 MatchCase {
@@ -3259,11 +3257,11 @@ mod tests {
                             range: new_range(),
                         }),
                     )],
-                    body: Box::new(Expression::Literal(new_literal_integer(3))),
+                    consequent: Box::new(Expression::Literal(new_literal_integer(3))),
                     range: new_range(),
                 },
             ],
-            default: None,
+            default_exp: None,
             range: new_range(),
         };
 

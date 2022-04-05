@@ -8,12 +8,12 @@
 use crate::{
     ast::{
         AnonymousFunction, AnonymousParameter, Argument, BinaryExpression, Bit, BlockExpression,
-        Boolean, Char, Complex, ConstructorExpression, DataType, Ellipsis, Expression, Float,
-        ForExpression, FunctionCallExpression, GeneralString, HashString, Identifier, IfExpression,
-        Integer, Interval, JoinExpression, LetExpression, List, Literal, Map, MapEntry,
-        MemberExpression, MemberIndex, MemberProperty, NamedOperator, NextExpression, Node,
-        PrefixIdentifier, Program, Range, Sign, SignParameter, Statement, Tuple, UnaryExpression,
-        WhichEntry, WhichEntryLimit, WhichEntryType, EachExpression,
+        Boolean, BranchCase, BranchExpression, Char, Complex, ConstructorExpression, DataType,
+        EachExpression, Ellipsis, Expression, Float, ForExpression, FunctionCallExpression,
+        GeneralString, HashString, Identifier, IfExpression, Integer, Interval, JoinExpression,
+        LetExpression, List, Literal, Map, MapEntry, MemberExpression, MemberIndex, MemberProperty,
+        NamedOperator, NextExpression, Node, PrefixIdentifier, Program, Range, Sign, SignParameter,
+        Statement, Tuple, UnaryExpression, WhichEntry, WhichEntryLimit, WhichEntryType,
     },
     error::Error,
     token::{Token, TokenDetail},
@@ -218,7 +218,7 @@ fn parse_expression(
             Token::If => parse_if_expression(source_token_details),
             Token::For => parse_for_expression(source_token_details),
             Token::Next => parse_next_expression(source_token_details),
-            // Token::Each => parse_each_expression(source_token_details),
+            Token::Each => parse_each_expression(source_token_details),
             Token::Branch => parse_branch_expression(source_token_details),
             Token::Match => parse_match_expression(source_token_details),
             _ => {
@@ -275,31 +275,38 @@ fn continue_parse_expression_block(
     // 当一对花括号单独存在时，会被解析为 Map。
     let mut token_details = source_token_details;
 
+    // 消除符号 `{`
     token_details = consume_token(&Token::LeftBrace, token_details)?;
+    // 消除符号 `{` 后面的空行
+    token_details = skip_new_lines(token_details);
 
     let mut expressions: Vec<Expression> = vec![];
 
     loop {
-        // 左花括号 '{' 后面允许换行
-        // 表达式之间也是以换行分隔
-        let post_consume_new_lines = skip_new_lines(token_details);
-
-        // 解析表达式
-        let (expression, post_expression) = parse_expression(post_consume_new_lines)?;
-        expressions.push(expression);
-
-        token_details = post_expression;
-
-        if is_token_ignore_new_lines(&Token::RightBrace, post_expression) {
+        // 遇到了结束符号 `}`，退出循环
+        if is_token(&Token::RightBrace, token_details) {
             break;
         }
+
+        // 解析表达式
+        let (expression, post_expression) = parse_expression(token_details)?;
+        expressions.push(expression);
+
+        // 消除表达式末尾的符号 `,`（假如存在的话）
+        token_details = if is_token(&Token::Comma, post_expression) {
+            consume_token(&Token::Comma, post_expression)?
+        } else {
+            post_expression
+        };
+
+        // 消除符号 `,` 后面的空行
+        token_details = skip_new_lines(token_details);
     }
 
-    // 消除空行
-    let post_consume_new_lines = skip_new_lines(token_details);
-    let post_consume_token_right_brace = consume_token(&Token::RightBrace, post_consume_new_lines)?;
+    // 消除符号 `}`
+    token_details = consume_token(&Token::RightBrace, token_details)?;
 
-    Ok((expressions, post_consume_token_right_brace))
+    Ok((expressions, token_details))
 }
 
 fn continue_parse_expression_block_or_single_expression(
@@ -342,15 +349,14 @@ fn parse_join_expression(
     // 解析 join 表达式
     // join {...}
 
-    // 消除 join
-    let post_consume_token_join = consume_token(&Token::Join, source_token_details)?;
+    let mut token_details = source_token_details;
 
-    // 消除换行符
-    // join 关键字后面允许换行
-    let post_consume_new_lines = skip_new_lines(post_consume_token_join);
+    // 消除关键字 `join`
+    token_details = consume_token(&Token::Join, token_details)?;
+    // 消除关键字 `join` 后面的空行
+    token_details = skip_new_lines(token_details);
 
-    let (expressions, post_expression_block) =
-        continue_parse_expression_block(post_consume_new_lines)?;
+    let (expressions, post_expression_block) = continue_parse_expression_block(token_details)?;
 
     Ok((
         Expression::JoinExpression(JoinExpression {
@@ -448,23 +454,18 @@ fn parse_if_expression(
     // 消除关键字 `if` 后面的空行
     token_details = skip_new_lines(token_details);
 
-    let (testing, post_condition) =
-        continue_parse_expression_block_or_single_expression(token_details)?;
+    let (testing, post_testing) = parse_expression(token_details)?;
+
+    // 消除 `if` 子表达式后面的空行
+    token_details = skip_new_lines(post_testing);
 
     // 检查是否存在 `where` 子表达式
-    let where_exp = if is_token_ignore_new_lines(&Token::Where, post_condition) {
-        // 消除关键字 `where` (包括前缀空行)
-        token_details = skip_new_lines_and_consume_token(&Token::Where, post_condition)?;
-        // 消除关键字 `where` 后面的空行
-        token_details = skip_new_lines(token_details);
+    let where_exp = if is_token(&Token::Where, token_details) {
+        let (where_exp, post_where_expression) = continue_parse_where_expression(token_details)?;
 
-        let (where_exp, post_where) =
-            continue_parse_expression_block_or_single_expression(token_details)?;
-
-        token_details = post_where;
+        token_details = post_where_expression;
         Some(where_exp)
     } else {
-        token_details = post_condition;
         None
     };
 
@@ -504,20 +505,22 @@ fn parse_if_expression(
     Ok((exp, token_details))
 }
 
-// fn continue_parse_where_expression(
-//     source_token_details: &[TokenDetail],
-// ) -> Result<(Expression, &[TokenDetail]), Error> {
-//     // where ...
-//     // ~~~~~
-//     //     |-- 当前位置
-//
-//     // 消除 `where` 关键字
-//     let post_type_token = consume_token(&Token::Where, source_token_details)?;
-//     // 消除空行
-//     let post_new_lines = skip_new_lines(post_type_token);
-//
-//     continue_parse_expression_block_or_single_expression(post_new_lines)
-// }
+fn continue_parse_where_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // where ...
+    // ~~~~~
+    //     |--- 当前所处的位置
+
+    let mut token_details = source_token_details;
+
+    // 消除 `where` 关键字
+    token_details = consume_token(&Token::Where, token_details)?;
+    // 消除空行
+    token_details = skip_new_lines(token_details);
+
+    continue_parse_expression_block_or_single_expression(token_details)
+}
 
 fn parse_for_expression(
     source_token_details: &[TokenDetail],
@@ -572,40 +575,234 @@ fn parse_next_expression(
     ))
 }
 
-// fn parse_each_expression(
-//     source_token_details: &[TokenDetail],
-// ) -> Result<(Expression, &[TokenDetail]), Error> {
-//     // each let ... in ... ...
-//     let mut token_details = source_token_details;
-//
-//     // 消除关键字 `each`
-//     token_details = consume_token(&Token::Each, token_details)?;
-//     // 消除关键字 `each` 后面的空行
-//     token_details = skip_new_lines(token_details);
-//
-//     // 解析 `初始化子表达式`
-//     let (let_exp, post_let_exp) = continue_parse_let_in_expression(token_details)?;
-//
-//     // 消除 `初始化子表达式` 后面的空行
-//     token_details = skip_new_lines(post_let_exp);
-//
-//     // 解析 `循环体表达式`
-//     let (body_exp, post_body_exp) = parse_expression(token_details)?;
-//
-//     let exp = Expression::EachExpression(EachExpression {
-//
-//         body: Box::new(body_exp),
-//         range: new_range(),
-//     });
-//
-//     Ok((exp, post_body_exp))
-// }
+fn parse_each_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // each ... in ... ...
+    // each ... in ... do {...}
+
+    let mut token_details = source_token_details;
+
+    // 消除关键字 `each`
+    token_details = consume_token(&Token::Each, token_details)?;
+    // 消除关键字 `each` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析 `变量表达式`
+    let (variable_exp, post_variable_exp) = parse_primary_expression(token_details)?;
+    // 消除 `变量表达式` 后面的空行
+    token_details = skip_new_lines(post_variable_exp);
+
+    // 消除关键字 `in`
+    token_details = consume_token(&Token::In, token_details)?;
+    // 消除关键字 `in` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析 `目标对象表达式`
+    let (object_exp, post_object_exp) = parse_expression(token_details)?;
+    // 消除 `变量表达式` 后面的空行
+    token_details = skip_new_lines(post_object_exp);
+
+    // 解析 `循环体表达式`
+    let (body_exp, post_body_exp) = parse_expression(token_details)?;
+
+    let exp = Expression::EachExpression(EachExpression {
+        variable: Box::new(variable_exp),
+        object: Box::new(object_exp),
+        body: Box::new(body_exp),
+        range: new_range(),
+    });
+
+    Ok((exp, post_body_exp))
+}
 
 fn parse_branch_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // branch {...}
-    todo!()
+    // branch where ... {         // where 从属表达式
+    //   ...
+    // }
+    //
+    // branch {
+    //    case exp: exp,          // 逗号可省略
+    //    case exp: exp
+    //    case exp where ...: exp // 分支可以携带一个 where 从属表达式
+    //    default: exp
+    //}
+
+    let mut token_details = source_token_details;
+    let mut cases: Vec<BranchCase> = vec![];
+    let mut default_exp: Option<Expression> = None;
+
+    // 标记当前是否处于查找分支结束的状态，即已经遇到 default 分支，用于
+    // 防止 default 后面仍存在其他分支的情况。
+    let mut is_expected_end = false;
+
+    // 消除关键字 `branch`
+    token_details = consume_token(&Token::Branch, token_details)?;
+    // 消除关键字 `branch` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 检查是否存在 `where` 子表达式
+    let where_exp = if is_token(&Token::Where, token_details) {
+        let (where_exp, post_where_expression) = continue_parse_where_expression(token_details)?;
+
+        // 消除 `where` 子表达式后面的空行
+        token_details = skip_new_lines(post_where_expression);
+
+        Some(where_exp)
+    } else {
+        None
+    };
+
+    // 消除符号 `{`
+    token_details = consume_token(&Token::LeftBrace, token_details)?;
+    // 消除符号 `{` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 开始解析 case 和 default
+    loop {
+        token_details = match token_details.first() {
+            Some(first) => {
+                if first.token == Token::RightBrace {
+                    // 找到了结束符号 `}`，退出循环
+                    break;
+                } else {
+                    if is_expected_end {
+                        // 当前的状态是一心寻找结束符号 `}`
+                        return Err(Error::ParserError(
+                            "expected the right brace symbol \"}\"".to_string(),
+                        ));
+                    } else {
+                        if is_token(&Token::Case, token_details) {
+                            let (case_exp, post_case_exp) =
+                                continue_parse_branch_case(token_details)?;
+                            cases.push(case_exp);
+
+                            // 消除当前分支后面的符号 `,`（如果存在的话）
+                            let post_comma = if is_token(&Token::Comma, post_case_exp) {
+                                consume_token(&Token::Comma, post_case_exp)?
+                            } else {
+                                post_case_exp
+                            };
+
+                            // 消除符号 `,` 后面的空行
+                            let post_new_lines = skip_new_lines(post_comma);
+                            post_new_lines
+                        } else if is_token(&Token::Default, token_details) {
+                            let (expression, post_default_exp) =
+                                continue_parse_default_case(token_details)?;
+                            default_exp = Some(expression);
+
+                            // 标记所有分支均已结束，因为已经遇到了默认分支
+                            is_expected_end = true;
+
+                            // 消除当前分支后面的符号 `,`（如果存在的话）
+                            let post_comma = if is_token(&Token::Comma, post_default_exp) {
+                                consume_token(&Token::Comma, post_default_exp)?
+                            } else {
+                                post_default_exp
+                            };
+
+                            // 消除符号 `,` 后面的空行
+                            let post_new_lines = skip_new_lines(post_comma);
+                            post_new_lines
+                        } else {
+                            return Err(Error::ParserError(
+                                "invalid branch expression".to_string(),
+                            ));
+                        }
+                    }
+                }
+            }
+            None => {
+                return Err(Error::ParserError(
+                    "expected the right brace symbol \"}\"".to_string(),
+                ));
+            }
+        }
+    }
+
+    // 消除符号 `}`
+    token_details = consume_token(&Token::RightBrace, token_details)?;
+
+    let exp = Expression::BranchExpression(BranchExpression {
+        where_exp: where_exp.map(|e| Box::new(e)),
+        default_exp: default_exp.map(|e| Box::new(e)),
+        cases: cases,
+        range: new_range(),
+    });
+
+    Ok((exp, token_details))
+}
+
+fn continue_parse_branch_case(
+    source_token_details: &[TokenDetail],
+) -> Result<(BranchCase, &[TokenDetail]), Error> {
+    // case ...: ...
+    // case ... where ...: ...
+    // ~~~~
+    //    |--- 当前所处的位置
+
+    let mut token_details = source_token_details;
+
+    // 消除 `case` 关键字
+    token_details = consume_token(&Token::Case, token_details)?;
+    // 消除空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析 `条件表达式`
+    let (testing_exp, post_testing) = parse_expression(token_details)?;
+    // 消除 `条件表达式 后面的空行
+    token_details = skip_new_lines(post_testing);
+
+    // 解析 `where 从属表达式`
+    let where_exp = if is_token(&Token::Where, token_details) {
+        let (expression, post_where_expression) = continue_parse_where_expression(token_details)?;
+        token_details = post_where_expression;
+        Some(expression)
+    } else {
+        None
+    };
+    // 消除 `where 从属表达式 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 消除符号 `:`
+    token_details = consume_token(&Token::Colon, token_details)?;
+
+    // 解析 `结果表达式`（可以是 `隠式 do 表达式`）
+    let (consequent_exp, post_consequent) =
+        continue_parse_expression_block_or_single_expression(token_details)?;
+
+    let case = BranchCase {
+        testing: Box::new(testing_exp),
+        where_exp: where_exp.map(|e| Box::new(e)),
+        consequent: Box::new(consequent_exp),
+        range: new_range(),
+    };
+
+    Ok((case, post_consequent))
+}
+
+fn continue_parse_default_case(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // default: ...
+    // ~~~~~~~
+    //       |--- 当前所处的位置
+
+    let mut token_details = source_token_details;
+
+    // 消除 `default` 关键字
+    token_details = consume_token(&Token::Default, token_details)?;
+    // 消除符号 `:`
+    token_details = consume_token(&Token::Colon, token_details)?;
+    // 消除空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析 `结果表达式`（可以是 `隠式 do 表达式`）
+    continue_parse_expression_block_or_single_expression(token_details)
 }
 
 fn parse_match_expression(
@@ -3838,6 +4035,62 @@ mod tests {
                 }\n"
             )
         );
+
+        // 测试表达式末尾添加逗号
+        let n2 = parse_from_string(&trim_left_margin(
+            "do {
+                123,
+                abc,
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n2.to_string(),
+            trim_left_margin(
+                "do {
+                    123
+                    abc
+                }\n"
+            )
+        );
+    }
+
+    #[test]
+    fn test_join_expression() {
+        let n1 = parse_from_string(
+            "join {
+                    123
+                    abc
+                }",
+        )
+        .unwrap();
+        assert_eq!(
+            n1.to_string(),
+            trim_left_margin(
+                "join {
+                    123
+                    abc
+                }\n"
+            )
+        );
+
+        // 测试表达式末尾添加逗号
+        let n2 = parse_from_string(&trim_left_margin(
+            "join {
+                123,
+                abc,
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n2.to_string(),
+            trim_left_margin(
+                "join {
+                    123
+                    abc
+                }\n"
+            )
+        );
     }
 
     #[test]
@@ -3883,26 +4136,6 @@ mod tests {
             })
         );
         assert_eq!(n6.to_string(), "let a = let b = 1\n");
-    }
-
-    #[test]
-    fn test_join_expression() {
-        let n1 = parse_from_string(
-            "join {
-                    123
-                    abc
-                }",
-        )
-        .unwrap();
-        assert_eq!(
-            n1.to_string(),
-            trim_left_margin(
-                "join {
-                    123
-                    abc
-                }\n"
-            )
-        );
     }
 
     #[test]
@@ -4096,12 +4329,163 @@ mod tests {
 
     #[test]
     fn test_each_expression() {
-        // todo::
+        let n1 = parse_from_string("each i in [1,2,3] writeLine(i)").unwrap();
+        assert_eq!(n1.to_string(), "each i in [1, 2, 3,] (writeLine)(i)\n");
+
+        // 测试循环体为 `do 表达式`
+        let n2 = parse_from_string(&trim_left_margin(
+            "each num in [1,2] do {
+                writeLine (i+1)
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n2.to_string(),
+            trim_left_margin(
+                "each num in [1, 2,] do {
+                    (writeLine)((i + 1))
+                }
+                "
+            )
+        );
+
+        // 测试循环体为 `if 表达式`
+        let n3 = parse_from_string(&trim_left_margin(
+            "each num in [1..100] if i:mod:2==0 then{
+                writeLineFormat(\"even number: {}\",num)
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n3.to_string(),
+            trim_left_margin(
+                "each num in [1..100,] if ((i :mod: 2) == 0) then {
+                    (writeLineFormat)(\"even number: {}\", num)
+                }
+                "
+            )
+        );
     }
 
     #[test]
     fn test_branch_expression() {
-        // todo::
+        let n1 = parse_from_string(&trim_left_margin(
+            "branch {
+                case 1:10
+                case 2:20
+                default: 30
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n1.to_string(),
+            trim_left_margin(
+                "branch {
+                    case 1: 10
+                    case 2: 20
+                    default: 30
+                }
+                "
+            )
+        );
+
+        // 测试复杂表达式
+        let n2 = parse_from_string(&trim_left_margin(
+            "let i=85
+            branch {
+                case i>90:100
+                case i>60: i+10
+                default: writeLine(\"failed\")
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n2.to_string(),
+            trim_left_margin(
+                "let i = 85
+                branch {
+                    case (i > 90): 100
+                    case (i > 60): (i + 10)
+                    default: (writeLine)(\"failed\")
+                }
+                "
+            )
+        );
+
+        // 测试分支表达式末尾添加了逗号的情况
+        let n3 = parse_from_string(&trim_left_margin(
+            "branch {
+                case i>90:100,
+                case i>60: i+10,
+                default: writeLine(\"failed\"),
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n3.to_string(),
+            trim_left_margin(
+                "branch {
+                    case (i > 90): 100
+                    case (i > 60): (i + 10)
+                    default: (writeLine)(\"failed\")
+                }
+                "
+            )
+        );
+
+        // 测试表达式块
+        let n4 = parse_from_string(&trim_left_margin(
+            "branch {
+                case i>=60:{
+                    writeLine(\"pass\")
+                }
+                default: { writeLine(\"failed\") }
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n4.to_string(),
+            trim_left_margin(
+                "branch {
+                    case (i >= 60): {
+                        (writeLine)(\"pass\")
+                    }
+                    default: {
+                        (writeLine)(\"failed\")
+                    }
+                }
+                "
+            )
+        );
+
+        // 测试 `where 从属表达式`
+        let n5 = parse_from_string(&trim_left_margin(
+            "branch where {
+                let i=10
+                let j=20
+            }{
+                case i>m where let m=foo(i,j):3
+                case i>n where {let n=bar(i,j)}:4
+                default:5
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n5.to_string(),
+            trim_left_margin(
+                "branch where {
+                    let i = 10
+                    let j = 20
+                } {
+                    case (i > m) where let m = (foo)(i, j): 3
+                    case (i > n) where {
+                        let n = (bar)(i, j)
+                    }: 4
+                    default: 5
+                }
+                "
+            )
+        );
     }
 
     #[test]
