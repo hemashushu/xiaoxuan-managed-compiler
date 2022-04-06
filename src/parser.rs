@@ -11,9 +11,10 @@ use crate::{
         Boolean, BranchCase, BranchExpression, Char, Complex, ConstructorExpression, DataType,
         EachExpression, Ellipsis, Expression, Float, ForExpression, FunctionCallExpression,
         GeneralString, HashString, Identifier, IfExpression, Integer, Interval, JoinExpression,
-        LetExpression, List, Literal, Map, MapEntry, MemberExpression, MemberIndex, MemberProperty,
-        NamedOperator, NextExpression, Node, PrefixIdentifier, Program, Range, Sign, SignParameter,
-        Statement, Tuple, UnaryExpression, WhichEntry, WhichEntryLimit, WhichEntryType,
+        LetExpression, List, Literal, Map, MapEntry, MatchCase, MatchExpression, MemberExpression,
+        MemberIndex, MemberProperty, NamedOperator, NextExpression, Node, PatternExpression,
+        PrefixIdentifier, Program, Range, Sign, SignParameter, Statement, TemplateString, Tuple,
+        UnaryExpression, WhichEntry, WhichEntryLimit, WhichEntryType,
     },
     error::Error,
     token::{Token, TokenDetail},
@@ -206,7 +207,6 @@ fn parse_expression_statement(
 //  | Map
 //  | Literal
 //  ;
-
 fn parse_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
@@ -370,14 +370,10 @@ fn parse_join_expression(
 fn parse_let_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    let (exp, post_expression) = continue_parse_let_expression(source_token_details)?;
-    Ok((Expression::LetExpression(exp), post_expression))
-}
-
-fn continue_parse_let_expression(
-    source_token_details: &[TokenDetail],
-) -> Result<(LetExpression, &[TokenDetail]), Error> {
-    // 赋值表达式的左手边只允许如下几种表达式：
+    // `let 表达式` 的 `左手边值` 也叫 `模式表达式`，
+    // `模式表达式` 属于 `单一表达式`，但只允许如下几种：
+    //
+    // - 各种类型结构体、联合体的实例化表达式
     // - Identifier
     // - Tuple
     // - List
@@ -396,21 +392,33 @@ fn continue_parse_let_expression(
     // 消除关键字 `let` 后面的空行
     token_details = skip_new_lines(token_details);
 
-    // 解析左手边的数据类型或者值
-    let (lhs_part_one, post_lhs_part_one) = parse_primary_expression(token_details)?;
+    // 解析 `左手边的数据类型` 或者 `左手边值`
+    let (maybe_lhs, post_maybe_lhs) = parse_mono_expression(token_details)?;
 
-    let (lhs_data_type, lhs_object) = if is_token(&Token::Assign, post_lhs_part_one) {
-        // 当前表达式没有数据类型
-        token_details = post_lhs_part_one;
-        (None, lhs_part_one)
+    let (data_type, lhs) = if is_token(&Token::Assign, post_maybe_lhs) {
+        // 当前表达式没有数据类型，只有 `左手边值`（即 `模式表达式`）
+        token_details = post_maybe_lhs;
+        (None, maybe_lhs)
     } else {
         // 当前表达式有数据类型
 
+        // 转换成数据类型
+        let data_type = convert_expression_to_data_type(maybe_lhs)?;
+
         // 解析左手边值
-        let (lhs_object, post_lhs_object) = parse_primary_expression(post_lhs_part_one)?;
-        token_details = post_lhs_object;
-        (Some(lhs_part_one), lhs_object)
+        let (lhs, post_lhs) = parse_primary_expression(post_maybe_lhs)?;
+        token_details = post_lhs;
+        (Some(data_type), lhs)
     };
+
+    if !is_valid_left_hand_side(&lhs) {
+        return Err(Error::ParserError(
+            "invalid left-hand-side value".to_string(),
+        ));
+    }
+
+    // 消除 `左手边值` 后面的空行
+    token_details = skip_new_lines(token_details);
 
     // 消除赋值符号 `=`
     token_details = consume_token(&Token::Assign, token_details)?;
@@ -419,24 +427,21 @@ fn continue_parse_let_expression(
     token_details = skip_new_lines(token_details);
 
     // 解析右手边值
-    let (rhs_object, post_rhs_object) = parse_expression(token_details)?;
-
-    let data_type = match lhs_data_type {
-        Some(e) => {
-            let d = convert_expression_to_data_type(e)?;
-            Some(d)
-        }
-        None => None,
-    };
+    let (rhs, post_rhs) = parse_expression(token_details)?;
 
     let exp = LetExpression {
         data_type: data_type,
-        object: Box::new(lhs_object),
-        value: Box::new(rhs_object),
+        object: Box::new(lhs),
+        value: Box::new(rhs),
         range: new_range(),
     };
 
-    Ok((exp, post_rhs_object))
+    Ok((Expression::LetExpression(exp), post_rhs))
+}
+
+fn is_valid_left_hand_side(exp: &Expression) -> bool {
+    // todo:: 检查左手边的值是否符合语法
+    true
 }
 
 fn parse_if_expression(
@@ -526,6 +531,7 @@ fn parse_for_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // for let ... = ... ...
+    // for let ... = ... {...}
 
     let mut token_details = source_token_details;
 
@@ -535,16 +541,81 @@ fn parse_for_expression(
     token_details = skip_new_lines(token_details);
 
     // 解析 `初始化子表达式`
-    let (let_exp, post_let_exp) = continue_parse_let_expression(token_details)?;
 
-    // 消除 `初始化子表达式` 后面的空行
-    token_details = skip_new_lines(post_let_exp);
+    // 消除关键字 `let`
+    token_details = consume_token(&Token::Let, token_details)?;
+    // 消除关键字 `let` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析 `左手边的数据类型` 或者 `左手边值`
+    let (maybe_lhs, post_maybe_lhs) = parse_mono_expression(token_details)?;
+
+    let (data_type, lhs) = if is_token(&Token::Assign, post_maybe_lhs) {
+        // 当前表达式没有数据类型，只有 `左手边值`（即 `模式表达式`）
+        token_details = post_maybe_lhs;
+        (None, maybe_lhs)
+    } else {
+        // 当前表达式有数据类型
+
+        // 转换成数据类型
+        let data_type = convert_expression_to_data_type(maybe_lhs)?;
+
+        // 解析左手边值
+        let (lhs, post_lhs) = parse_primary_expression(post_maybe_lhs)?;
+        token_details = post_lhs;
+        (Some(data_type), lhs)
+    };
+
+    if !is_valid_left_hand_side(&lhs) {
+        return Err(Error::ParserError(
+            "invalid left-hand-side value".to_string(),
+        ));
+    }
+
+    // 消除 `左手边值` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 消除赋值符号 `=`
+    token_details = consume_token(&Token::Assign, token_details)?;
+
+    // 消除赋值符号 `=` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析 `右手边值`
+
+    // 先检查 `右手边值` 是否类似 `identifier {...` 这样的结构，
+    // 如果是的话，则花括号应该解析为 `隠式 do 表达式`
+    // 这时不能直接使用 `parse_expression` 函数解析 `右手边值`，因为
+    // 这个函数会把花括号解析为结构体实例化。
+
+    let (rhs, post_rhs) = match continue_parse_identifier(token_details) {
+        Ok((maybe_identifier, post_maybe_identifier))
+            if is_token(&Token::LeftBrace, post_maybe_identifier) =>
+        {
+            (
+                Expression::Identifier(maybe_identifier),
+                post_maybe_identifier,
+            )
+        }
+        _ => parse_expression(token_details)?,
+    };
+
+    let let_expression = LetExpression {
+        data_type: data_type,
+        object: Box::new(lhs),
+        value: Box::new(rhs),
+        range: new_range(),
+    };
+
+    // 消除 `右手边值` 后面的空行
+    token_details = skip_new_lines(post_rhs);
 
     // 解析 `循环体表达式`
-    let (body_exp, post_body_exp) = parse_expression(token_details)?;
+    let (body_exp, post_body_exp) =
+        continue_parse_expression_block_or_single_expression(token_details)?;
 
     let exp = Expression::ForExpression(ForExpression {
-        initializer: Box::new(let_exp),
+        initializer: Box::new(let_expression),
         body: Box::new(body_exp),
         range: new_range(),
     });
@@ -579,7 +650,7 @@ fn parse_each_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // each ... in ... ...
-    // each ... in ... do {...}
+    // each ... in ... {...}
 
     let mut token_details = source_token_details;
 
@@ -589,9 +660,16 @@ fn parse_each_expression(
     token_details = skip_new_lines(token_details);
 
     // 解析 `变量表达式`
-    let (variable_exp, post_variable_exp) = parse_primary_expression(token_details)?;
+    let (variable, post_variable) = parse_mono_expression(token_details)?;
+
+    if !is_valid_left_hand_side(&variable) {
+        return Err(Error::ParserError(
+            "invalid left-hand-side value".to_string(),
+        ));
+    }
+
     // 消除 `变量表达式` 后面的空行
-    token_details = skip_new_lines(post_variable_exp);
+    token_details = skip_new_lines(post_variable);
 
     // 消除关键字 `in`
     token_details = consume_token(&Token::In, token_details)?;
@@ -599,16 +677,34 @@ fn parse_each_expression(
     token_details = skip_new_lines(token_details);
 
     // 解析 `目标对象表达式`
-    let (object_exp, post_object_exp) = parse_expression(token_details)?;
-    // 消除 `变量表达式` 后面的空行
-    token_details = skip_new_lines(post_object_exp);
+
+    // 先检查 `目标对象表达式` 是否类似 `identifier {...` 这样的结构，
+    // 如果是的话，则花括号应该解析为 `隠式 do 表达式`
+    // 这时不能直接使用 `parse_expression` 函数解析 `目标对象表达式`，因为
+    // 这个函数会把花括号解析为结构体实例化。
+
+    let (object, post_object) = match continue_parse_identifier(token_details) {
+        Ok((maybe_identifier, post_maybe_identifier))
+            if is_token(&Token::LeftBrace, post_maybe_identifier) =>
+        {
+            (
+                Expression::Identifier(maybe_identifier),
+                post_maybe_identifier,
+            )
+        }
+        _ => parse_expression(token_details)?,
+    };
+
+    // 消除 `目标对象表达式` 后面的空行
+    token_details = skip_new_lines(post_object);
 
     // 解析 `循环体表达式`
-    let (body_exp, post_body_exp) = parse_expression(token_details)?;
+    let (body_exp, post_body_exp) =
+        continue_parse_expression_block_or_single_expression(token_details)?;
 
     let exp = Expression::EachExpression(EachExpression {
-        variable: Box::new(variable_exp),
-        object: Box::new(object_exp),
+        variable: Box::new(variable),
+        object: Box::new(object),
         body: Box::new(body_exp),
         range: new_range(),
     });
@@ -625,9 +721,10 @@ fn parse_branch_expression(
     // }
     //
     // branch {
-    //    case exp: exp,          // 逗号可省略
-    //    case exp: exp
-    //    case exp where ...: exp // 分支可以携带一个 where 从属表达式
+    //    case testing_exp: exp,
+    //    case testing_exp: exp           // 逗号可省略
+    //    case testing_exp
+    //         where ...: exp // 分支可以携带一个 where 从属表达式
     //    default: exp
     //}
 
@@ -729,8 +826,8 @@ fn parse_branch_expression(
 
     let exp = Expression::BranchExpression(BranchExpression {
         where_exp: where_exp.map(|e| Box::new(e)),
-        default_exp: default_exp.map(|e| Box::new(e)),
         cases: cases,
+        default_exp: default_exp.map(|e| Box::new(e)),
         range: new_range(),
     });
 
@@ -749,7 +846,7 @@ fn continue_parse_branch_case(
 
     // 消除 `case` 关键字
     token_details = consume_token(&Token::Case, token_details)?;
-    // 消除空行
+    // 消除 `case` 关键字后面的空行
     token_details = skip_new_lines(token_details);
 
     // 解析 `条件表达式`
@@ -808,8 +905,437 @@ fn continue_parse_default_case(
 fn parse_match_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
-    // match ... {...}
-    todo!()
+    // match obj {...}
+    // match obj where ... {
+    //   ...
+    // }
+    // match obj {
+    //    case pattern_exp: exp,
+    //    case pattern_exp: exp             // 逗号可省略
+    //
+    //    case variable @ pattern_exp: exp  // `模式表达式` 之前可以添加 `变量名` + `@`
+    //
+    //    case in ...: ...                  // 模式表达式还可以是 `into`, `regular`, `template` 其中的一种
+    //    case into Email e: ...
+    //    case regular "STRING" (tuple,...): ...
+    //    case template "STRING": ...
+    //
+    //    case pattern_exp
+    //         where ...
+    //         only ...: ...              // 模式表达式之后可以添加 where, only 从属表达式
+    //
+    //    default: exp                      // match 可以有一个 default 分支
+    //}
+
+    let mut token_details = source_token_details;
+    let mut cases: Vec<MatchCase> = vec![];
+    let mut default_exp: Option<Expression> = None;
+
+    // 标记当前是否处于查找分支结束的状态，即已经遇到 default 分支，用于
+    // 防止 default 后面仍存在其他分支的情况。
+    let mut is_expected_end = false;
+
+    // 消除关键字 `match`
+    token_details = consume_token(&Token::Match, token_details)?;
+    // 消除关键字 `match` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析 `目标对象表达式`
+
+    // 先检查 `目标对象表达式` 是否类似 `identifier {...` 这样的结构，
+    // 如果是的话，则花括号应该解析为 `隠式 do 表达式`
+    // 这时不能直接使用 `parse_expression` 函数解析 `目标对象表达式`，因为
+    // 这个函数会把花括号解析为结构体实例化。
+
+    let (object, post_object) = match continue_parse_identifier(token_details) {
+        Ok((maybe_identifier, post_maybe_identifier))
+            if is_token(&Token::LeftBrace, post_maybe_identifier) =>
+        {
+            (
+                Expression::Identifier(maybe_identifier),
+                post_maybe_identifier,
+            )
+        }
+        _ => parse_expression(token_details)?,
+    };
+
+    // 消除 `目标对象表达式` 后面的空行
+    token_details = skip_new_lines(post_object);
+
+    // 检查是否存在 `where` 子表达式
+    let where_exp = if is_token(&Token::Where, token_details) {
+        let (where_exp, post_where_expression) = continue_parse_where_expression(token_details)?;
+
+        // 消除 `where` 子表达式后面的空行
+        token_details = skip_new_lines(post_where_expression);
+
+        Some(where_exp)
+    } else {
+        None
+    };
+
+    // 消除符号 `{`
+    token_details = consume_token(&Token::LeftBrace, token_details)?;
+    // 消除符号 `{` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 开始解析 case 和 default
+    loop {
+        token_details = match token_details.first() {
+            Some(first) => {
+                if first.token == Token::RightBrace {
+                    // 找到了结束符号 `}`，退出循环
+                    break;
+                } else {
+                    if is_expected_end {
+                        // 当前的状态是一心寻找结束符号 `}`
+                        return Err(Error::ParserError(
+                            "expected the right brace symbol \"}\"".to_string(),
+                        ));
+                    } else {
+                        if is_token(&Token::Case, token_details) {
+                            let (case_exp, post_case_exp) =
+                                continue_parse_match_case(token_details)?;
+                            cases.push(case_exp);
+
+                            // 消除当前分支后面的符号 `,`（如果存在的话）
+                            let post_comma = if is_token(&Token::Comma, post_case_exp) {
+                                consume_token(&Token::Comma, post_case_exp)?
+                            } else {
+                                post_case_exp
+                            };
+
+                            // 消除符号 `,` 后面的空行
+                            let post_new_lines = skip_new_lines(post_comma);
+                            post_new_lines
+                        } else if is_token(&Token::Default, token_details) {
+                            let (expression, post_default_exp) =
+                                continue_parse_default_case(token_details)?;
+                            default_exp = Some(expression);
+
+                            // 标记所有分支均已结束，因为已经遇到了默认分支
+                            is_expected_end = true;
+
+                            // 消除当前分支后面的符号 `,`（如果存在的话）
+                            let post_comma = if is_token(&Token::Comma, post_default_exp) {
+                                consume_token(&Token::Comma, post_default_exp)?
+                            } else {
+                                post_default_exp
+                            };
+
+                            // 消除符号 `,` 后面的空行
+                            let post_new_lines = skip_new_lines(post_comma);
+                            post_new_lines
+                        } else {
+                            return Err(Error::ParserError("invalid match expression".to_string()));
+                        }
+                    }
+                }
+            }
+            None => {
+                return Err(Error::ParserError(
+                    "expected the right brace symbol \"}\"".to_string(),
+                ));
+            }
+        }
+    }
+
+    // 消除符号 `}`
+    token_details = consume_token(&Token::RightBrace, token_details)?;
+
+    let exp = Expression::MatchExpression(MatchExpression {
+        object: Box::new(object),
+        where_exp: where_exp.map(|e| Box::new(e)),
+        cases: cases,
+        default_exp: default_exp.map(|e| Box::new(e)),
+        range: new_range(),
+    });
+
+    Ok((exp, token_details))
+}
+
+fn continue_parse_match_case(
+    source_token_details: &[TokenDetail],
+) -> Result<(MatchCase, &[TokenDetail]), Error> {
+    // `match case` 由 3 部分组成：
+    // 1. 变量
+    // 2. 模式表达式
+    // 3. where/only 从属表达式
+    //
+    // case pattern_exp: exp,
+    // case pattern_exp: exp             // 逗号可省略
+    //
+    // case variable @ pattern_exp: exp  // `模式表达式` 之前可以添加 `变量名` + `@`
+    //
+    // case in ...: ...                  // 模式表达式还可以是 `into`, `regular`, `template` 其中的一种
+    // case into Email e: ...
+    // case regular "STRING" (tuple,...): ...
+    // case template "STRING": ...
+    //
+    // case pattern_exp
+    //      only ...                     // 模式表达式之后可以添加 where, only 从属表达式
+    //      where ...: ...
+    // ~~~~
+    //    |--- 当前所处的位置
+
+    let mut token_details = source_token_details;
+
+    // 消除 `case` 关键字
+    token_details = consume_token(&Token::Case, token_details)?;
+    // 消除 `case` 关键字后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 先检查有无语法错误，match case 不允许由 `从属表达式` 开始。
+    if any_token(&vec![Token::Only, Token::Where], token_details) {
+        return Err(Error::ParserError(
+            "invalid match case expression".to_string(),
+        ));
+    }
+
+    let mut variable: Option<String> = None;
+
+    // 解析 `变量` 部分，`变量` 部分的结构是 `identifier @`
+    if !any_token(
+        &vec![Token::In, Token::Into, Token::Regular, Token::Template],
+        token_details,
+    ) {
+        match parse_primary_expression(token_details) {
+            Ok((Expression::Identifier(Identifier { name, .. }), post_identifier))
+                if is_token(&Token::At, post_identifier) =>
+            {
+                // 找到了 `变量` 部分
+                variable = Some(name);
+
+                // 消除符号 `@`
+                token_details = consume_token(&Token::At, post_identifier)?;
+                // 消除符号 `@` 后面的空行
+                token_details = skip_new_lines(token_details);
+            }
+            _ => {
+                // 没找到 `变量` 部分
+            }
+        }
+    }
+
+    let mut pattern: Option<PatternExpression> = None;
+
+    // 解析 `模式表达式`，模式表达式除了普通的模式表达式，还有可能是 `in/into/regular/template`
+    if let Some(td) = token_details.first() {
+        match td.token {
+            Token::Only => {
+                // 跳过
+            }
+            Token::Where => {
+                // 跳过
+            }
+            Token::Colon => {
+                // 跳过
+            }
+            Token::In => {
+                // 解析 `in 模式表达式`
+                //
+                // in object
+
+                // 消除关键字 `in`
+                token_details = consume_token(&Token::In, token_details)?;
+                // 消除关键字 `in` 后面的空行
+                token_details = skip_new_lines(token_details);
+
+                let (object, post_object) = parse_primary_expression(token_details)?;
+
+                pattern = Some(PatternExpression::In(object));
+                token_details = post_object;
+            }
+            Token::Into => {
+                // 解析 `into 模式表达式`
+                //
+                // into type_name identifier
+
+                // 消除关键字 `into`
+                token_details = consume_token(&Token::Into, token_details)?;
+                // 消除关键字 `into` 后面的空行
+                token_details = skip_new_lines(token_details);
+
+                let (data_type_expression, post_data_type_expression) =
+                    parse_primary_expression(token_details)?;
+                let data_type = convert_expression_to_data_type(data_type_expression)?;
+
+                let (identifier_expression, post_identifier_expression) =
+                    parse_primary_expression(post_data_type_expression)?;
+
+                if let Expression::Identifier(Identifier { name, .. }) = identifier_expression {
+                    pattern = Some(PatternExpression::Into(data_type, name));
+                    token_details = post_identifier_expression;
+                } else {
+                    return Err(Error::ParserError(
+                        "invalid into pattern expression".to_string(),
+                    ));
+                }
+            }
+            Token::Regular => {
+                // 解析 `regular 模式表达式`
+                //
+                // regular "..." (one,)
+                // regular "..." (one, two)
+
+                // 消除关键字 `regular`
+                token_details = consume_token(&Token::Regular, token_details)?;
+                // 消除关键字 `regular` 后面的空行
+                token_details = skip_new_lines(token_details);
+
+                let (s, post_regular_string) = parse_primary_expression(token_details)?;
+                let regular_string = match s {
+                    Expression::Literal(Literal::GeneralString(GeneralString {
+                        value, ..
+                    })) => value,
+                    Expression::Literal(Literal::TemplateString(TemplateString {
+                        fragments,
+                        expressions,
+                        ..
+                    })) => {
+                        // 如果模板字符串里无占位符，也是允许的
+                        if expressions.len() > 0 {
+                            return Err(Error::ParserError("invalid regular string".to_string()));
+                        }
+                        fragments.join("")
+                    }
+                    _ => {
+                        return Err(Error::ParserError(
+                            "invalid regular pattern expression".to_string(),
+                        ));
+                    }
+                };
+
+                // 消除关键字字符串后面的空行
+                token_details = skip_new_lines(post_regular_string);
+
+                // 解析标识符元组
+                let (tuple_expression, post_tuple_expression) =
+                    parse_primary_expression(token_details)?;
+
+                if let Expression::Tuple(tuple) = tuple_expression {
+                    pattern = Some(PatternExpression::Regular(regular_string, tuple));
+                    token_details = post_tuple_expression;
+                } else {
+                    return Err(Error::ParserError(
+                        "invalid regular pattern expression".to_string(),
+                    ));
+                }
+            }
+            Token::Template => {
+                // 解析 `template 模式表达式`
+                //
+                // template "..."
+
+                // 消除关键字 `template`
+                token_details = consume_token(&Token::Template, token_details)?;
+                // 消除关键字 `template` 后面的空行
+                token_details = skip_new_lines(token_details);
+
+                let (s, post_template_string) = parse_primary_expression(token_details)?;
+                let template_string = match s {
+                    Expression::Literal(Literal::GeneralString(GeneralString {
+                        value, ..
+                    })) => value,
+                    Expression::Literal(Literal::TemplateString(TemplateString {
+                        fragments,
+                        expressions,
+                        ..
+                    })) => {
+                        // 如果模板字符串里无占位符，也是允许的
+                        if expressions.len() > 0 {
+                            return Err(Error::ParserError("invalid template string".to_string()));
+                        }
+                        fragments.join("")
+                    }
+                    _ => {
+                        return Err(Error::ParserError(
+                            "invalid template pattern expression".to_string(),
+                        ));
+                    }
+                };
+
+                pattern = Some(PatternExpression::Template(template_string));
+                token_details = post_template_string;
+            }
+            _ => {
+                // 解析 `一般模式表达式`
+                let (lhs, post_lhs) = parse_mono_expression(token_details)?;
+
+                if !is_valid_left_hand_side(&lhs) {
+                    return Err(Error::ParserError("invalid pattern expression".to_string()));
+                }
+
+                pattern = Some(PatternExpression::Primary(lhs));
+                token_details = post_lhs;
+            }
+        }
+    };
+
+    // 消除从属表达式前面的空行
+    token_details = skip_new_lines(token_details);
+
+    let mut only: Option<Expression> = None;
+    let mut where_exp: Option<Expression> = None;
+
+    // 解析从属表达式
+    loop {
+        // 尝试解析 only, which 等从属表达式
+        token_details = match token_details.first() {
+            Some(t) if t.token == Token::Only => {
+                let (exp, post_only_expression) = continue_parse_only_expression(token_details)?;
+                only = Some(exp);
+
+                // 消除从属表达式后面的空行
+                skip_new_lines(post_only_expression)
+            }
+            Some(t) if t.token == Token::Where => {
+                let (exp, post_where_expression) = continue_parse_where_expression(token_details)?;
+                where_exp = Some(exp);
+
+                // 消除从属表达式后面的空行
+                skip_new_lines(post_where_expression)
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+
+    // 消除符号 `:`
+    token_details = consume_token(&Token::Colon, token_details)?;
+
+    // 解析 `结果表达式`（可以是 `隠式 do 表达式`）
+    let (consequent_exp, post_consequent) =
+        continue_parse_expression_block_or_single_expression(token_details)?;
+
+    let case = MatchCase {
+        variable: variable,
+        pattern: pattern.map(|e| Box::new(e)),
+        only: only.map(|e| Box::new(e)),
+        where_exp: where_exp.map(|e| Box::new(e)),
+        consequent: Box::new(consequent_exp),
+        range: new_range(),
+    };
+
+    Ok((case, post_consequent))
+}
+
+fn continue_parse_only_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // only ...
+    // ~~~~
+    //    |--- 当前所处的位置
+
+    let mut token_details = source_token_details;
+
+    // 消除 `only` 关键字
+    token_details = consume_token(&Token::Only, token_details)?;
+    // 消除空行
+    token_details = skip_new_lines(token_details);
+
+    continue_parse_expression_block_or_single_expression(token_details)
 }
 
 fn continue_parse_generic_names(
@@ -1416,7 +1942,7 @@ fn parse_unwrap_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // 一元运算表达式 object?
-    let (left, post_expression) = parse_function_call_expression(source_token_details)?;
+    let (left, post_expression) = parse_mono_expression(source_token_details)?;
 
     if is_token(&Token::Unwrap, post_expression) {
         let post_consume_token_operator = consume_token(&Token::Unwrap, post_expression)?;
@@ -1434,37 +1960,61 @@ fn parse_unwrap_expression(
     }
 }
 
+fn parse_mono_expression(
+    source_token_details: &[TokenDetail],
+) -> Result<(Expression, &[TokenDetail]), Error> {
+    // 解析 `单一表达式`
+    //
+    // `单一表达式` 是指用于组成一元运算、二元运算的表达式。
+    // `模式表达式` （即 `let 表达式` 的左手边值）属于 `单一表达式`，但并非
+    // 所有 `单一表达式` 都是合适的 `模式表达式`
+    parse_function_call_expression(source_token_details)
+}
+
 fn parse_function_call_expression(
     source_token_details: &[TokenDetail],
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // 函数调用表达式
-    // - 被调用者必须是一个标识符、一个对象的属性值或索引值；
-    // - 被调用者也可以是一个用括号包围起来的表达式或者表达式块，只要是返回函数即可；
+    // - 被调用者必须是一个标识符、一个对象的成员值（属性或索引）、或者一个匿名函数；
+    // - 被调用者也可以是一个用括号包围起来的表达式或者表达式块，只要是返回函数即可；（*暂不支持）
     // - 允许连续调用。
     //
-    // foo(...)
-    // foo.bar(...)
-    // foo[0](...)
-    // (foo & bar)(...) // 被调用者是一个括号包围起来的表达式
-    // foo(...)(...)    // 连续调用
+    // foo(...)          // callee 是一个标识符
+    // foo.bar(...)      // callee 是一个属性值
+    // foo[0](...)       // callee 是一个索引值
+    // (fn x = x+1)(...) // callee 是一个匿名函数
+    // foo(...)(...)     // 连续调用
+    // (foo & bar)(...)  // 被调用者是一个括号包围起来的表达式（*暂不支持）
+    //
+    // 注：
+    // 元组型的结构体实例化表达式语法跟函数调用的一样，但在 parser
+    // 阶段还无法分辨究竟是函数调用，还是（元组型）结构体实例化，需要
+    // 留到下一个语义分析阶段来解决
 
     let mut token_details = source_token_details;
     let (mut object, post_member_expression) = parse_member_or_slice_expression(token_details)?;
 
     token_details = post_member_expression;
 
-    loop {
-        if is_token(&Token::LeftParen, token_details) {
-            let (arguments, post_arguments) = continue_parse_arguments(token_details)?;
-            object = Expression::FunctionCallExpression(FunctionCallExpression {
-                callee: Box::new(object),
-                arguments: arguments,
-                range: new_range(),
-            });
+    match object {
+        Expression::Identifier(_)
+        | Expression::AnonymousFunction(_)
+        | Expression::MemberExpression(_) => loop {
+            if is_token(&Token::LeftParen, token_details) {
+                let (arguments, post_arguments) = continue_parse_arguments(token_details)?;
+                object = Expression::FunctionCallExpression(FunctionCallExpression {
+                    callee: Box::new(object),
+                    arguments: arguments,
+                    range: new_range(),
+                });
 
-            token_details = post_arguments;
-        } else {
-            break;
+                token_details = post_arguments;
+            } else {
+                break;
+            }
+        },
+        _ => {
+            //
         }
     }
 
@@ -1632,7 +2182,7 @@ fn parse_member_or_slice_expression(
             // 消除符号 `.` 前的空行以及符号 `.`
             let post_dot = skip_new_lines_and_consume_token(&Token::Dot, token_details)?;
 
-            let (property, post_property) = parse_primary_expression(post_dot)?;
+            let (property, post_property) = parse_constructor_expression(post_dot)?;
 
             // 对象的 `属性` 只允许 identifier 和 integer 两种
             match property {
@@ -1714,10 +2264,11 @@ fn parse_constructor_expression(
     // object {name: vale, ...}
 
     let (object, post_expression) = parse_primary_expression(source_token_details)?;
-    if is_token(&Token::LeftBrace, post_expression) {
-        let (initializer, post_continue_parse_map) = continue_parse_map(post_expression)?;
 
-        if let Expression::Identifier(identifier) = object {
+    match object {
+        Expression::Identifier(identifier) if is_token(&Token::LeftBrace, post_expression) => {
+            let (initializer, post_continue_parse_map) = continue_parse_map(post_expression)?;
+
             let exp = Expression::ConstructorExpression(ConstructorExpression {
                 object: identifier,
                 value: initializer,
@@ -1725,11 +2276,8 @@ fn parse_constructor_expression(
             });
 
             Ok((exp, post_continue_parse_map))
-        } else {
-            Err(Error::ParserError("invalid constructor object".to_string()))
         }
-    } else {
-        Ok((object, post_expression))
+        _ => Ok((object, post_expression)),
     }
 }
 
@@ -1784,7 +2332,7 @@ fn parse_anonymous_function(
 
     let mut parameters: Vec<AnonymousParameter> = vec![];
     let mut return_data_type: Option<DataType> = None;
-    let mut which_entries: Vec<WhichEntry> = vec![];
+    let mut whiches: Vec<WhichEntry> = vec![];
 
     let mut is_expected_end = false; // 标记当前是否处于寻找参数列表结束符号 `)` 的状态
 
@@ -1928,10 +2476,10 @@ fn parse_anonymous_function(
                 skip_new_lines(post_data_type_expression)
             }
             Some(t) if t.token == Token::Which => {
-                let (entries, post_which_expression) =
+                let (which_entries, post_which_expression) =
                     continue_parse_which_expression(token_details)?;
 
-                which_entries = entries;
+                whiches = which_entries;
 
                 // 消除从属表达式后面的空行
                 skip_new_lines(post_which_expression)
@@ -1958,7 +2506,7 @@ fn parse_anonymous_function(
     let anonymous_function = AnonymousFunction {
         parameters: parameters,
         return_data_type: return_data_type,
-        which_entries: which_entries,
+        whiches,
         // where_exp: where_exp,
         body: Box::new(body),
         range: new_range(),
@@ -2613,7 +3161,7 @@ fn parse_sign_expression(
     let mut generics: Vec<DataType> = vec![];
     let mut parameters: Vec<SignParameter> = vec![];
     let mut return_data_type: Option<Box<DataType>> = None;
-    let mut which_entries: Vec<WhichEntry> = vec![];
+    let mut whiches: Vec<WhichEntry> = vec![];
 
     let mut is_expected_end = false; // 标记当前是否处于寻找参数列表结束符号 `)` 的状态
 
@@ -2743,10 +3291,10 @@ fn parse_sign_expression(
                 skip_new_lines(post_data_type_expression)
             }
             Some(t) if t.token == Token::Which => {
-                let (entries, post_which_expression) =
+                let (which_entries, post_which_expression) =
                     continue_parse_which_expression(token_details)?;
 
-                which_entries = entries;
+                whiches = which_entries;
 
                 // 消除从属表达式后面的空行
                 skip_new_lines(post_which_expression)
@@ -2762,7 +3310,7 @@ fn parse_sign_expression(
         parameters: parameters,
         return_data_type: return_data_type,
         generics: generics,
-        which_entries: which_entries,
+        whiches,
         range: new_range(),
     };
 
@@ -2881,7 +3429,7 @@ fn parse_literal(source_token_details: &[TokenDetail]) -> Result<(Literal, &[Tok
                 }),
                 rest,
             )),
-            _ => Err(Error::ParserError("unexpected literal".to_string())),
+            _ => Err(Error::ParserError("invalid literal".to_string())),
         },
         None => Err(Error::ParserError("expected literal".to_string())),
     }
@@ -2941,6 +3489,13 @@ fn skip_new_lines_and_consume_token<'a>(
 fn is_token(expected: &Token, source_token_details: &[TokenDetail]) -> bool {
     match source_token_details.first() {
         Some(first) if &first.token == expected => true,
+        _ => false,
+    }
+}
+
+fn any_token(expecteds: &[Token], source_token_details: &[TokenDetail]) -> bool {
+    match source_token_details.first() {
+        Some(TokenDetail { token, .. }) if expecteds.iter().any(|t| t == token) => true,
         _ => false,
     }
 }
@@ -3871,9 +4426,9 @@ mod tests {
         let n11 = parse_from_string("foo[1](2)").unwrap();
         assert_eq!(n11.to_string(), "((foo[1]))(2)\n");
 
-        // 被调用者为索引
-        let n12 = parse_from_string("(foo & bar)(1)").unwrap();
-        assert_eq!(n12.to_string(), "((foo & bar))(1)\n");
+        // // 被调用者为索引
+        // let n12 = parse_from_string("(foo & bar)(1)").unwrap();
+        // assert_eq!(n12.to_string(), "((foo & bar))(1)\n");
     }
 
     #[test]
@@ -4269,9 +4824,9 @@ mod tests {
         let n1 = parse_from_string("for let i=1 i+1").unwrap();
         assert_eq!(n1.to_string(), "for let i = 1 (i + 1)\n");
 
-        // 测试循环体为 `do 表达式`
+        // 测试循环体为 `隠式 do 表达式`
         let n2 = parse_from_string(&trim_left_margin(
-            "for let i=1 do {
+            "for let i=user {
                 i+1
             }",
         ))
@@ -4279,7 +4834,7 @@ mod tests {
         assert_eq!(
             n2.to_string(),
             trim_left_margin(
-                "for let i = 1 do {
+                "for let i = user {
                     (i + 1)
                 }
                 "
@@ -4332,9 +4887,9 @@ mod tests {
         let n1 = parse_from_string("each i in [1,2,3] writeLine(i)").unwrap();
         assert_eq!(n1.to_string(), "each i in [1, 2, 3,] (writeLine)(i)\n");
 
-        // 测试循环体为 `do 表达式`
+        // 测试循环体为 `隠式 do 表达式`
         let n2 = parse_from_string(&trim_left_margin(
-            "each num in [1,2] do {
+            "each num in users {
                 writeLine (i+1)
             }",
         ))
@@ -4342,7 +4897,7 @@ mod tests {
         assert_eq!(
             n2.to_string(),
             trim_left_margin(
-                "each num in [1, 2,] do {
+                "each num in users {
                     (writeLine)((i + 1))
                 }
                 "
@@ -4490,7 +5045,126 @@ mod tests {
 
     #[test]
     fn test_match_expression() {
-        // todo::
+        let n1 = parse_from_string(&trim_left_margin(
+            "match foo{
+                case 1:10
+                case 2:20
+                default:30
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n1.to_string(),
+            trim_left_margin(
+                "match foo {
+                    case 1: 10
+                    case 2: 20
+                    default: 30
+                }
+                "
+            )
+        );
+
+        // 测试复杂的模式表达式
+        let n2 = parse_from_string(&trim_left_margin(
+            "match foo{
+                case (a,b,1,2):10
+                case [x,y,...]:20
+                case (m,n):30
+                case User{id:123, name}:40
+                case Point(456,top):50
+                default:60
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n2.to_string(),
+            trim_left_margin(
+                "match foo {
+                    case (a, b, 1, 2,): 10
+                    case [x, y, ...,]: 20
+                    case (m, n,): 30
+                    case User {
+                        id: 123
+                        name
+                    }: 40
+                    case (Point)(456, top): 50
+                    default: 60
+                }
+                "
+            )
+        );
+
+        // 测试 only 和 where 从属表达式
+        let n3 = parse_from_string(&trim_left_margin(
+            "match foo where let x=1{
+                case [1] only x>y where let y=2:10
+                case [2] only x>3:20
+                default:30
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n3.to_string(),
+            trim_left_margin(
+                "match foo where let x = 1 {
+                    case [1,] only (x > y) where let y = 2: 10
+                    case [2,] only (x > 3): 20
+                    default: 30
+                }
+                "
+            )
+        );
+
+        // 测试变量
+        let n4 = parse_from_string(&trim_left_margin(
+            "match foo(123){
+                case t @ (1,2):10
+                case i @ only i>3:20
+                case m @:30
+                default:40
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n4.to_string(),
+            trim_left_margin(
+                "match (foo)(123) {
+                    case t @ (1, 2,): 10
+                    case i @ only (i > 3): 20
+                    case m @: 30
+                    default: 40
+                }
+                "
+            )
+        );
+
+        // 测试其他类型的模式表达式
+        let n5 = parse_from_string(&trim_left_margin(
+            "match foo{
+                case in [1,2,3]:10
+                case into User user:20
+                case regular \"abc\" (m,):30
+                case template \"id={id}\": 40
+                case n @ in [4,5,6,]: 50
+                default:60
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n5.to_string(),
+            trim_left_margin(
+                "match foo {
+                    case in [1, 2, 3,]: 10
+                    case into User user: 20
+                    case regular \"abc\" (m,): 30
+                    case template \"id={id}\": 40
+                    case n @ in [4, 5, 6,]: 50
+                    default: 60
+                }
+                "
+            )
+        );
     }
 
     // statements

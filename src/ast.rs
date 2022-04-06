@@ -86,7 +86,7 @@ pub struct FunctionDeclaration {
     pub generics: Vec<DataType>, // 泛型类型列表
     pub parameters: Vec<FunctionParameter>,
     pub return_data_type: Option<DataType>,
-    pub which_entries: Vec<WhichEntry>,
+    pub whiches: Vec<WhichEntry>,
     pub body: Expression,
     pub range: Range,
 }
@@ -109,7 +109,7 @@ pub struct EmptyFunctionDeclaration {
     pub generics: Vec<DataType>, // 泛型类型列表
     pub parameters: Vec<EmptyFunctionParameter>,
     pub return_data_type: Option<DataType>,
-    pub which_entries: Vec<WhichEntry>,
+    pub whiches: Vec<WhichEntry>,
     pub range: Range,
 }
 
@@ -128,17 +128,19 @@ pub struct PatternFunctionDeclaration {
     pub generics: Vec<DataType>, // 泛型类型列表
     pub parameters: Vec<PatternFunctionParameter>,
     pub return_data_type: Option<DataType>,
-    pub only_exp: Option<Expression>, // 在各个参数匹配后，模式函数的最后一道防线
-    pub which_entries: Vec<WhichEntry>,
+    pub only: Option<Expression>, // 在各个参数匹配后，模式函数的最后一道防线
+    pub whiches: Vec<WhichEntry>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PatternFunctionParameter {
-    pub data_type: Option<DataType>,          // 变量的类型
-    pub variable: Option<String>,             // 变量的名称 `@ 从属表达式`
-    pub pattern_exp: Option<Box<Expression>>, // 模式表达式
-    pub additionals: Vec<PatternAdditional>,
+    pub data_type: Option<DataType>,             // 变量的类型
+    pub variable: Option<String>,                // 变量的名称 `@ 从属表达式`
+    pub pattern: Option<Box<PatternExpression>>, // 模式表达式
+    pub where_exp: Option<Box<Expression>>,
+    pub only: Option<Box<Expression>>,
+    // pub additionals: Vec<PatternAdditional>,
     pub range: Range,
 }
 
@@ -244,7 +246,7 @@ pub struct ImplStatement {
     pub object: Identifier,
     pub inherit: Identifier,                   // 一般是 trait 的名称
     pub associated_types: Vec<AssociatedType>, // 关联类型
-    pub which_entries: Vec<WhichEntry>,
+    pub whiches: Vec<WhichEntry>,
     pub range: Range,
 }
 
@@ -262,10 +264,10 @@ pub struct AliasStatement {
 // `#[name(name1=value1, name2)]`
 //
 // 其中变量值是可省的
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Attribute {
-    pub name: String,                             // 名称
-    pub arguments: Vec<(String, Option<String>)>, // 变量名及值
+    pub name: String,                                 // 名称
+    pub arguments: Vec<(String, Option<Expression>)>, // 变量名及值
 }
 
 impl Display for FunctionDeclaration {
@@ -288,10 +290,10 @@ impl Display for FunctionDeclaration {
             segments.push(format!("type {}", d));
         }
 
-        if self.which_entries.len() > 0 {
+        if self.whiches.len() > 0 {
             segments.push(format!(
                 "which {{\n{}\n}}",
-                format_which_entries(&self.which_entries)
+                format_which_entries(&self.whiches)
             ));
         }
 
@@ -538,8 +540,8 @@ pub struct BranchCase {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchExpression {
-    pub where_exp: Option<Box<Expression>>,
     pub object: Box<Expression>,
+    pub where_exp: Option<Box<Expression>>,
     pub cases: Vec<MatchCase>,
     pub default_exp: Option<Box<Expression>>,
     pub range: Range,
@@ -547,27 +549,21 @@ pub struct MatchExpression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchCase {
-    pub variable: Option<String>,             // @ 变量名称
-    pub pattern_exp: Option<Box<Expression>>, // 模式表达式
-    pub additionals: Vec<PatternAdditional>,
+    pub variable: Option<String>,                // 变量（可选）
+    pub pattern: Option<Box<PatternExpression>>, // 模式表达式
+    pub only: Option<Box<Expression>>,           // only 从属表达式（可选）
+    pub where_exp: Option<Box<Expression>>,      // where 从属表达式（可选）
     pub consequent: Box<Expression>,
     pub range: Range,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum PatternAdditional {
-    Where(Expression),        // 作用范围仅当前 case （包括 only 从属表达式）有效
-    Only(Expression),         // 附加条件，一个返回 Boolean 值的表达式
-    In(Expression),           // 实现了 `Exist` 特性的对象，比如 `Range` 或者 `List`
-    Into(Identifier, String), // 类型名称和标识符名称
-    Regular(RegularExpressionLiteral, Tuple), // 正则表达式字符串字面量，以及变量名列表
-    Template(RegularExpressionLiteral), // 带有占位符的字符串字面量
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum RegularExpressionLiteral {
-    GeneralString(GeneralString),
-    TemplateString(TemplateString),
+pub enum PatternExpression {
+    Primary(Expression),    // 普通模式表达式
+    In(Expression),         // `in` 模式表达式
+    Into(DataType, String), // `into` 模式表达式
+    Regular(String, Tuple), // `regular` 模式表达式
+    Template(String),       // `template` 模式表达式
 }
 
 // 函数的签名
@@ -576,7 +572,7 @@ pub struct Sign {
     pub parameters: Vec<SignParameter>,
     pub return_data_type: Option<Box<DataType>>,
     pub generics: Vec<DataType>, // 泛型类型列表
-    pub which_entries: Vec<WhichEntry>,
+    pub whiches: Vec<WhichEntry>,
     pub range: Range,
 }
 
@@ -686,7 +682,7 @@ pub struct ConstructorExpression {
 pub struct AnonymousFunction {
     pub parameters: Vec<AnonymousParameter>,
     pub return_data_type: Option<DataType>,
-    pub which_entries: Vec<WhichEntry>,
+    pub whiches: Vec<WhichEntry>,
     pub body: Box<Expression>,
     pub range: Range,
 }
@@ -859,11 +855,7 @@ impl Display for NextExpression {
 
 impl Display for EachExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "each {} in {} {}",
-            self.variable, self.object, self.body
-        )
+        write!(f, "each {} in {} {}", self.variable, self.object, self.body)
     }
 }
 
@@ -940,56 +932,42 @@ impl Display for MatchCase {
             segments.push(format!("{} @", v));
         }
 
-        if let Some(e) = &self.pattern_exp {
+        if let Some(e) = &self.pattern {
             segments.push(format!("{}", e));
         }
 
-        if self.additionals.len() > 0 {
-            let mut additional_lines = Vec::<String>::new();
+        // 先 only，后 where
 
-            for a in &self.additionals {
-                additional_lines.push(format!("{}", a));
-            }
+        if let Some(e) = &self.only {
+            segments.push(format!("only {}", e));
+        }
 
-            let additional_text = additional_lines.join("\n");
-
-            segments.push(additional_text);
+        if let Some(e) = &self.where_exp {
+            segments.push(format!("where {}", e));
         }
 
         write!(f, "{}: {}", segments.join(" "), &self.consequent)
     }
 }
 
-impl Display for PatternAdditional {
+impl Display for PatternExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PatternAdditional::Where(e) => {
-                write!(f, "where {}", e)
+            PatternExpression::Primary(e) => {
+                write!(f, "{}", e)
             }
-            PatternAdditional::Only(e) => {
-                write!(f, "only {}", e)
-            }
-            PatternAdditional::In(e) => {
+            PatternExpression::In(e) => {
                 write!(f, "in {}", e)
             }
-            PatternAdditional::Into(t, n) => {
+            PatternExpression::Into(t, n) => {
                 write!(f, "into {} {}", t, n)
             }
-            PatternAdditional::Regular(s, n) => {
-                write!(f, "regular {} {}", s, n)
+            PatternExpression::Regular(s, n) => {
+                write!(f, "regular \"{}\" {}", s, n)
             }
-            PatternAdditional::Template(s) => {
-                write!(f, "template {}", s)
+            PatternExpression::Template(s) => {
+                write!(f, "template \"{}\"", s)
             }
-        }
-    }
-}
-
-impl Display for RegularExpressionLiteral {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RegularExpressionLiteral::GeneralString(v) => write!(f, "{}", v),
-            RegularExpressionLiteral::TemplateString(v) => write!(f, "{}", v),
         }
     }
 }
@@ -1014,10 +992,10 @@ impl Display for Sign {
             segments.push(format!("type {}", dt));
         }
 
-        if self.which_entries.len() > 0 {
+        if self.whiches.len() > 0 {
             segments.push(format!(
                 "which {{\n{}\n}}",
-                format_which_entries(&self.which_entries)
+                format_which_entries(&self.whiches)
             ));
         }
 
@@ -1090,7 +1068,7 @@ impl Display for UnaryExpression {
                 write!(f, "{}?", self.operand)
             }
             _ => {
-                panic!("unexpected unary operator")
+                panic!("invalid unary operator")
             }
         }
     }
@@ -1154,10 +1132,10 @@ impl Display for AnonymousFunction {
             segments.push(format!("type {}", dt));
         }
 
-        if self.which_entries.len() > 0 {
+        if self.whiches.len() > 0 {
             segments.push(format!(
                 "which {{\n{}\n}}",
-                format_which_entries(&self.which_entries)
+                format_which_entries(&self.whiches)
             ));
         }
 
@@ -1574,8 +1552,8 @@ fn format_generics(generics: &[DataType]) -> String {
 }
 
 // 返回所有 WhichEntry 表达式以逗号 ", " 的拼接，不包含花括号
-fn format_which_entries(which_entries: &[WhichEntry]) -> String {
-    which_entries
+fn format_which_entries(whiches: &[WhichEntry]) -> String {
+    whiches
         .iter()
         .map(|w| w.to_string())
         .collect::<Vec<String>>()
@@ -1616,9 +1594,8 @@ mod tests {
         ast::{
             Argument, Bit, Complex, Ellipsis, Expression, FunctionCallExpression, GeneralString,
             HashString, Identifier, JoinExpression, List, MatchCase, MatchExpression, MemberIndex,
-            MemberProperty, NamedOperator, NextExpression, PatternAdditional, PrefixIdentifier,
-            RegularExpressionLiteral, SignParameter, UnaryExpression, WhichEntry, WhichEntryLimit,
-            WhichEntryType,
+            MemberProperty, NamedOperator, NextExpression, PatternExpression, PrefixIdentifier,
+            SignParameter, UnaryExpression, WhichEntry, WhichEntryLimit, WhichEntryType,
         },
         token::Token,
     };
@@ -2511,7 +2488,7 @@ mod tests {
             ],
             body: Box::new(new_addition_expression(1, 2)),
             return_data_type: Some(DataType::Identifier(new_identifier("String"))),
-            which_entries: vec![],
+            whiches: vec![],
             // where_exp: None,
             range: new_range(),
         };
@@ -2536,7 +2513,7 @@ mod tests {
             ],
             body: Box::new(new_addition_expression(1, 2)),
             return_data_type: None,
-            which_entries: vec![],
+            whiches: vec![],
             // where_exp: None,
             range: new_range(),
         };
@@ -2558,7 +2535,7 @@ mod tests {
             ],
             body: Box::new(new_addition_expression(1, 2)),
             return_data_type: None,
-            which_entries: vec![],
+            whiches: vec![],
             // where_exp: None,
             range: new_range(),
         };
@@ -2577,7 +2554,7 @@ mod tests {
                 range: new_range(),
             })),
             return_data_type: None,
-            which_entries: vec![],
+            whiches: vec![],
             // where_exp: None,
             range: new_range(),
         };
@@ -2606,7 +2583,7 @@ mod tests {
                 },
             ],
             return_data_type: None,
-            which_entries: vec![
+            whiches: vec![
                 WhichEntry::Type(WhichEntryType {
                     name: "D".to_string(),
                     data_type: DataType::Identifier(new_identifier("Display")),
@@ -2631,49 +2608,6 @@ mod tests {
                 } = (1 + 2)"
             )
         );
-
-        // 测试 where 从属表达式
-        // let e6 = AnonymousFunction {
-        //     parameters: vec![
-        //         AnonymousParameter {
-        //             data_type: None,
-        //             name: "a".to_string(),
-        //             range: new_range(),
-        //         },
-        //         AnonymousParameter {
-        //             data_type: None,
-        //             name: "b".to_string(),
-        //             range: new_range(),
-        //         },
-        //     ],
-        //     return_data_type: None,
-        //     which_entries: vec![],
-        //     where_exp: Some(Box::new(Expression::LetExpression(LetExpression {
-        //         data_type: None,
-        //         object: Box::new(Expression::Identifier(new_identifier("c"))),
-        //         value: Box::new(Expression::BinaryExpression(BinaryExpression {
-        //             operator: Token::Plus,
-        //             left: Box::new(Expression::Identifier(new_identifier("a"))),
-        //             right: Box::new(Expression::Identifier(new_identifier("b"))),
-        //             range: new_range(),
-        //         })),
-        //         range: new_range(),
-        //     }))),
-        //     body: Box::new(Expression::BlockExpression(BlockExpression {
-        //         is_explicit: false,
-        //         body: vec![Expression::Identifier(new_identifier("c"))],
-        //         range: new_range(),
-        //     })),
-        //     range: new_range(),
-        // };
-        // assert_eq!(
-        //     e6.to_string(),
-        //     trim_left_margin(
-        //         "fn (a, b) where let c = (a + b) {
-        //             c
-        //         }"
-        //     )
-        // );
     }
 
     #[test]
@@ -3138,15 +3072,21 @@ mod tests {
             cases: vec![
                 MatchCase {
                     variable: None,
-                    pattern_exp: Some(Box::new(Expression::Literal(new_literal_boolean(false)))),
-                    additionals: vec![],
+                    pattern: Some(Box::new(PatternExpression::Primary(Expression::Literal(
+                        new_literal_boolean(false),
+                    )))),
+                    only: None,
+                    where_exp: None,
                     consequent: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 MatchCase {
                     variable: None,
-                    pattern_exp: Some(Box::new(Expression::Literal(new_literal_boolean(true)))),
-                    additionals: vec![],
+                    pattern: Some(Box::new(PatternExpression::Primary(Expression::Literal(
+                        new_literal_boolean(true),
+                    )))),
+                    only: None,
+                    where_exp: None,
                     consequent: Box::new(Expression::Literal(new_literal_integer(2))),
                     range: new_range(),
                 },
@@ -3171,30 +3111,31 @@ mod tests {
             cases: vec![
                 MatchCase {
                     variable: Some("v".to_string()),
-                    pattern_exp: None,
-                    additionals: vec![PatternAdditional::In(Expression::List(new_list(&vec![
-                        1, 2, 3,
-                    ])))],
+                    pattern: Some(Box::new(PatternExpression::In(Expression::List(new_list(
+                        &vec![1, 2, 3],
+                    ))))),
+                    only: None,
+                    where_exp: None,
                     consequent: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 MatchCase {
                     variable: None,
-                    pattern_exp: Some(Box::new(Expression::Literal(new_literal_boolean(true)))),
-                    additionals: vec![
-                        PatternAdditional::Only(Expression::BinaryExpression(BinaryExpression {
-                            operator: Token::GreaterThan,
-                            left: Box::new(Expression::Identifier(new_identifier("foo"))),
-                            right: Box::new(Expression::Identifier(new_identifier("bar"))),
-                            range: new_range(),
-                        })),
-                        PatternAdditional::Where(Expression::LetExpression(LetExpression {
-                            data_type: None,
-                            object: Box::new(Expression::Identifier(new_identifier("bar"))),
-                            value: Box::new(Expression::Literal(new_literal_integer(20))),
-                            range: new_range(),
-                        })),
-                    ],
+                    pattern: Some(Box::new(PatternExpression::Primary(Expression::Literal(
+                        new_literal_boolean(true),
+                    )))),
+                    only: Some(Box::new(Expression::BinaryExpression(BinaryExpression {
+                        operator: Token::GreaterThan,
+                        left: Box::new(Expression::Identifier(new_identifier("foo"))),
+                        right: Box::new(Expression::Identifier(new_identifier("bar"))),
+                        range: new_range(),
+                    }))),
+                    where_exp: Some(Box::new(Expression::LetExpression(LetExpression {
+                        data_type: None,
+                        object: Box::new(Expression::Identifier(new_identifier("bar"))),
+                        value: Box::new(Expression::Literal(new_literal_integer(20))),
+                        range: new_range(),
+                    }))),
                     consequent: Box::new(Expression::Literal(new_literal_integer(2))),
                     range: new_range(),
                 },
@@ -3207,8 +3148,7 @@ mod tests {
             trim_left_margin(
                 "match (1 + 2) where let Int foo = 10 {
                     case v @ in [1, 2, 3,]: 1
-                    case true only (foo > bar)
-                        where let bar = 20: 2
+                    case true only (foo > bar) where let bar = 20: 2
                     default: 3
                 }"
             )
@@ -3221,22 +3161,19 @@ mod tests {
             cases: vec![
                 MatchCase {
                     variable: None,
-                    pattern_exp: None,
-                    additionals: vec![PatternAdditional::Into(
-                        new_identifier("User"),
+                    pattern: Some(Box::new(PatternExpression::Into(
+                        DataType::Identifier(new_identifier("User")),
                         "user".to_string(),
-                    )],
+                    ))),
+                    where_exp: None,
+                    only: None,
                     consequent: Box::new(Expression::Literal(new_literal_integer(1))),
                     range: new_range(),
                 },
                 MatchCase {
                     variable: None,
-                    pattern_exp: None,
-                    additionals: vec![PatternAdditional::Regular(
-                        RegularExpressionLiteral::GeneralString(GeneralString {
-                            value: "(\\d+),(\\w+)".to_string(),
-                            range: new_range(),
-                        }),
+                    pattern: Some(Box::new(PatternExpression::Regular(
+                        "(\\d+),(\\w+)".to_string(),
                         Tuple {
                             elements: vec![
                                 Expression::Identifier(new_identifier("id")),
@@ -3244,19 +3181,19 @@ mod tests {
                             ],
                             range: new_range(),
                         },
-                    )],
+                    ))),
+                    where_exp: None,
+                    only: None,
                     consequent: Box::new(Expression::Literal(new_literal_integer(2))),
                     range: new_range(),
                 },
                 MatchCase {
                     variable: None,
-                    pattern_exp: None,
-                    additionals: vec![PatternAdditional::Template(
-                        RegularExpressionLiteral::GeneralString(GeneralString {
-                            value: "\\user\\{name:\\w+}\\post\\{id:\\d+}".to_string(),
-                            range: new_range(),
-                        }),
-                    )],
+                    pattern: Some(Box::new(PatternExpression::Template(
+                        "\\user\\{name:\\w+}\\post\\{id:\\d+}".to_string(),
+                    ))),
+                    where_exp: None,
+                    only: None,
                     consequent: Box::new(Expression::Literal(new_literal_integer(3))),
                     range: new_range(),
                 },
@@ -3293,7 +3230,7 @@ mod tests {
                 },
             ],
             return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Int")))),
-            which_entries: vec![],
+            whiches: vec![],
             generics: vec![],
             range: new_range(),
         };
@@ -3314,7 +3251,7 @@ mod tests {
                 },
             ],
             return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Boolean")))),
-            which_entries: vec![],
+            whiches: vec![],
             generics: vec![],
             range: new_range(),
         };
@@ -3327,7 +3264,7 @@ mod tests {
         let s2 = Sign {
             parameters: vec![],
             return_data_type: None,
-            which_entries: vec![],
+            whiches: vec![],
             generics: vec![],
             range: new_range(),
         };
@@ -3363,7 +3300,7 @@ mod tests {
                 name: "List".to_string(),
                 range: new_range(),
             }))),
-            which_entries: vec![],
+            whiches: vec![],
             generics: vec![
                 DataType::Identifier(new_identifier("T")),
                 DataType::Identifier(new_identifier("U")),
@@ -3389,7 +3326,7 @@ mod tests {
             }],
             return_data_type: None,
             generics: vec![DataType::Identifier(new_identifier("T"))],
-            which_entries: vec![WhichEntry::Type(WhichEntryType {
+            whiches: vec![WhichEntry::Type(WhichEntryType {
                 name: "T".to_string(),
                 data_type: DataType::Identifier(new_identifier("Int")),
                 range: new_range(),
@@ -3418,7 +3355,7 @@ mod tests {
                 DataType::Identifier(new_identifier("T")),
                 DataType::Identifier(new_identifier("E")),
             ],
-            which_entries: vec![
+            whiches: vec![
                 WhichEntry::Type(WhichEntryType {
                     name: "T".to_string(),
                     data_type: DataType::Identifier(new_identifier("Int")),
@@ -3458,7 +3395,7 @@ mod tests {
             ],
             return_data_type: None,
             generics: vec![DataType::Identifier(new_identifier("T"))],
-            which_entries: vec![
+            whiches: vec![
                 WhichEntry::Type(WhichEntryType {
                     name: "F".to_string(),
                     data_type: DataType::Sign(Sign {
@@ -3477,7 +3414,7 @@ mod tests {
                         return_data_type: Some(Box::new(DataType::Identifier(new_identifier(
                             "Int",
                         )))),
-                        which_entries: vec![],
+                        whiches: vec![],
                         generics: vec![],
                         range: new_range(),
                     }),
@@ -3536,11 +3473,11 @@ mod tests {
                     },
                 ],
                 return_data_type: Some(Box::new(DataType::Identifier(new_identifier("Int")))),
-                which_entries: vec![],
+                whiches: vec![],
                 generics: vec![],
                 range: new_range(),
             }))),
-            which_entries: vec![],
+            whiches: vec![],
             generics: vec![],
             range: new_range(),
         };
@@ -3556,7 +3493,7 @@ mod tests {
                 ],
                 range: new_range(),
             }))),
-            which_entries: vec![],
+            whiches: vec![],
             generics: vec![],
             range: new_range(),
         };
@@ -3585,7 +3522,7 @@ mod tests {
                 },
             ],
             return_data_type: Some(DataType::Identifier(new_identifier("Int"))),
-            which_entries: vec![],
+            whiches: vec![],
             // where_exp: None,
             body: Expression::BinaryExpression(BinaryExpression {
                 operator: Token::Plus,
@@ -3622,7 +3559,7 @@ mod tests {
                 },
             ],
             return_data_type: None,
-            which_entries: vec![
+            whiches: vec![
                 WhichEntry::Limit(WhichEntryLimit {
                     name: "D".to_string(),
                     data_types: vec![DataType::Identifier(new_identifier("Display"))],
@@ -3688,7 +3625,7 @@ mod tests {
                 },
             ],
             return_data_type: Some(DataType::Identifier(new_identifier("Int"))),
-            which_entries: vec![],
+            whiches: vec![],
             // where_exp: Some(Expression::LetExpression(LetExpression {
             //     data_type: None,
             //     object: Box::new(Expression::Identifier(new_identifier("c"))),

@@ -401,7 +401,7 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                             post_rest
                         } else {
                             // 未预料的符号
-                            return Err(Error::LexerError(format!("unexpected char '{}'", first)));
+                            return Err(Error::LexerError(format!("invalid char '{}'", first)));
                         }
                     }
                 };
