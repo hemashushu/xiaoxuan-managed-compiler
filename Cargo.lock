@@ -7,5 +7,8 @@ name = "front-end"
 version = "0.1.0"
 
 [[package]]
-name = "xiaoxuan-lang"
+name = "xuan"
 version = "0.1.0"
+dependencies = [
+ "front-end",
+]
