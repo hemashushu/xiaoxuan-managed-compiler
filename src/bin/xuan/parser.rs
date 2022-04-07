@@ -7,7 +7,7 @@
  */
 
 use front_end::lexer;
-
-fn main() {
-    println!("Parser");
-}
+//
+// fn main() {
+//     println!("Parser");
+// }
