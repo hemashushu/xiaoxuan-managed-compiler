@@ -64,7 +64,7 @@ pub enum Statement {
     EmptyFunctionDeclaration(EmptyFunctionDeclaration), // 空函数
     PatternFunctionDeclaration(PatternFunctionDeclaration), // 模式函数
 
-    NamespaceStatement(NamespaceStatement),
+    // NamespaceStatement(NamespaceStatement),
     UseStatement(UseStatement),
     ConstDeclaration(ConstDeclaration),
 
@@ -144,11 +144,11 @@ pub struct PatternFunctionParameter {
     pub range: Range,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct NamespaceStatement {
-    pub dirs: Vec<String>,
-    pub range: Range,
-}
+// #[derive(Debug, Clone, PartialEq)]
+// pub struct NamespaceStatement {
+//     pub dirs: Vec<String>,
+//     pub range: Range,
+// }
 
 // use name
 // use name::name::name
@@ -321,11 +321,11 @@ impl Display for PatternFunctionDeclaration {
     }
 }
 
-impl Display for NamespaceStatement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
+// impl Display for NamespaceStatement {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         // todo!()
+//     }
+// }
 
 impl Display for UseStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -387,7 +387,7 @@ impl Display for Statement {
             Statement::FunctionDeclaration(v) => write!(f, "{}", v),
             Statement::EmptyFunctionDeclaration(v) => write!(f, "{}", v),
             Statement::PatternFunctionDeclaration(v) => write!(f, "{}", v),
-            Statement::NamespaceStatement(v) => write!(f, "{}", v),
+            // Statement::NamespaceStatement(v) => write!(f, "{}", v),
             Statement::UseStatement(v) => write!(f, "{}", v),
             Statement::ConstDeclaration(v) => write!(f, "{}", v),
             Statement::MemberStructDeclaration(v) => write!(f, "{}", v),
@@ -3663,9 +3663,9 @@ mod tests {
         // todo::
     }
 
-    fn test_namespace_statement() {
-        // todo::
-    }
+    // fn test_namespace_statement() {
+    //     // todo::
+    // }
 
     fn test_use_statement() {
         // todo::

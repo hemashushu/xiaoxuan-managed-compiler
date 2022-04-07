@@ -1337,7 +1337,7 @@ fn lookup_keyword(name: &str) -> Option<Token> {
         "pattern" => Some(Token::Pattern),
         "limit" => Some(Token::Limit),
 
-        "namespace" => Some(Token::Namespace),
+        // "namespace" => Some(Token::Namespace),
         "use" => Some(Token::Use),
         "const" => Some(Token::Const),
         "enum" => Some(Token::Enum),
@@ -1626,11 +1626,11 @@ mod tests {
             vec!["function", "type", "which", "empty", "pattern", "limit",]
         );
 
-        let tokens4 = tokenize("namespace use const enum struct union trait impl alias").unwrap();
+        let tokens4 = tokenize("use const enum struct union trait impl alias").unwrap();
         assert_eq!(
             token_details_to_string(&tokens4),
             vec![
-                "namespace",
+                //"namespace",
                 "use",
                 "const",
                 "enum",

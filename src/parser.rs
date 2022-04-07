@@ -10,11 +10,12 @@ use crate::{
         AnonymousFunction, AnonymousParameter, Argument, BinaryExpression, Bit, BlockExpression,
         Boolean, BranchCase, BranchExpression, Char, Complex, ConstructorExpression, DataType,
         EachExpression, Ellipsis, Expression, Float, ForExpression, FunctionCallExpression,
-        GeneralString, HashString, Identifier, IfExpression, Integer, Interval, JoinExpression,
-        LetExpression, List, Literal, Map, MapEntry, MatchCase, MatchExpression, MemberExpression,
-        MemberIndex, MemberProperty, NamedOperator, NextExpression, Node, PatternExpression,
-        PrefixIdentifier, Program, Range, Sign, SignParameter, Statement, TemplateString, Tuple,
-        UnaryExpression, WhichEntry, WhichEntryLimit, WhichEntryType,
+        FunctionDeclaration, FunctionParameter, GeneralString, HashString, Identifier,
+        IfExpression, Integer, Interval, JoinExpression, LetExpression, List, Literal, Map,
+        MapEntry, MatchCase, MatchExpression, MemberExpression, MemberIndex, MemberProperty,
+        NamedOperator, NextExpression, Node, PatternExpression, PrefixIdentifier, Program, Range,
+        Sign, SignParameter, Statement, TemplateString, Tuple, UnaryExpression, WhichEntry,
+        WhichEntryLimit, WhichEntryType,
     },
     error::Error,
     token::{Token, TokenDetail},
@@ -86,7 +87,7 @@ fn parse_statement(
         Token::Function => parse_function_declaration(source_token_details),
         Token::Empty => parse_empty_function_declaration(source_token_details),
         Token::Pattern => parse_pattern_function_declaration(source_token_details),
-        Token::Namespace => parse_namespace_statement(source_token_details),
+        // Token::Namespace => parse_namespace_statement(source_token_details),
         Token::Use => parse_use_statement(source_token_details),
         Token::Const => parse_const_statement(source_token_details),
         Token::Struct => parse_struct(source_token_details),
@@ -104,7 +105,181 @@ fn parse_statement(
 fn parse_function_declaration(
     source_token_details: &[TokenDetail],
 ) -> Result<(Statement, &[TokenDetail]), Error> {
-    todo!()
+    // 普通函数的定义
+    //
+    // function name (Int a, Int b) type Int = ...
+    // function name (Int a, Int b) type Int {...}  // 函数主体可以是表达式块
+    // function name (Int a, Int b) {...}           // 返回值类型可选
+    // function name (Int a, Int b = 12) {...}      // 参数可以指定默认值
+    //
+    // function name<T, E> (T a) type E which {
+    //    T: limit Display
+    // } {...}                                      // 支持泛型，支持 which 从属表达式
+
+    let mut token_details = source_token_details;
+
+    let mut parameters: Vec<FunctionParameter> = vec![];
+    let mut return_data_type: Option<DataType> = None;
+    let mut whiches: Vec<WhichEntry> = vec![];
+
+    let mut is_expected_end = false; // 标记当前是否处于寻找参数列表结束符号 `)` 的状态
+
+    // 消除关键字 `function`
+    token_details = consume_token(&Token::Function, token_details)?;
+    // 消除关键字 `function` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析函数名称（包括泛型）
+    let (function_name, post_function_name) = continue_parse_identifier(token_details)?;
+    // 消除函数名称后面的空行
+    token_details = skip_new_lines(post_function_name);
+
+    // 解析参数列表
+
+    // 消除符号 `(`
+    token_details = consume_token(&Token::LeftParen, token_details)?;
+    // 消除符号 `(` 后面的空行
+    token_details = skip_new_lines(token_details);
+
+    // 解析参数列表
+    loop {
+        token_details = match token_details.first() {
+            Some(first) => {
+                if first.token == Token::RightParen {
+                    // 找到了结束符号 `)`，退出循环
+                    break;
+                } else {
+                    if is_expected_end {
+                        // 当前的状态是一心寻找结束符号
+                        return Err(Error::ParserError(
+                            "expected the right paren symbol \")\"".to_string(),
+                        ));
+                    } else {
+                        // 获取参数的数据类型
+                        let (data_type_expression, post_data_type_expression) =
+                            parse_expression(token_details)?;
+                        let data_type = convert_expression_to_data_type(data_type_expression)?;
+
+                        let (parameter_name, post_parameter_name) = if let Some((
+                            TokenDetail {
+                                token: Token::Identifier(name),
+                                ..
+                            },
+                            rest,
+                        )) =
+                            post_data_type_expression.split_first()
+                        {
+                            (name, rest)
+                        } else {
+                            return Err(Error::ParserError(
+                                "incomplete function parameter".to_string(),
+                            ));
+                        };
+
+                        // 获取默认值
+                        let (default_value, post_default_value) =
+                            if is_token(&Token::Assign, post_parameter_name) {
+                                // 消除符号 `=`
+                                token_details = consume_token(&Token::Assign, post_parameter_name)?;
+                                // 消除符号 `=` 后面的空行
+                                token_details = skip_new_lines(token_details);
+
+                                let (value, post_value) = parse_expression(token_details)?;
+                                (Some(value), post_value)
+                            } else {
+                                (None, post_parameter_name)
+                            };
+
+                        // 消除逗号
+                        let post_consume_comma = if is_token(&Token::Comma, post_default_value) {
+                            consume_token(&Token::Comma, post_default_value)?
+                        } else {
+                            // 设置标记，表示如果项目后面没有逗号，则表示当前已经是最后一项
+                            // 后面只能允许列表结束
+                            is_expected_end = true;
+                            post_default_value
+                        };
+
+                        // 消除空行
+                        let post_consume_new_lines = skip_new_lines(post_consume_comma);
+
+                        let parameter = FunctionParameter {
+                            data_type: data_type,
+                            name: parameter_name.clone(),
+                            value: default_value,
+                            range: new_range(),
+                        };
+
+                        parameters.push(parameter);
+
+                        post_consume_new_lines
+                    }
+                }
+            }
+            None => {
+                return Err(Error::ParserError(
+                    "expected the right paren symbol \")\"".to_string(),
+                ));
+            }
+        }
+    }
+
+    // 消除右括号
+    token_details = consume_token(&Token::RightParen, token_details)?;
+    // 消除参数列表后面的空行
+    token_details = skip_new_lines(token_details);
+
+    loop {
+        // 尝试解析 type, which 等从属表达式
+        token_details = match token_details.first() {
+            Some(t) if t.token == Token::Type => {
+                let (data_type, post_data_type_expression) =
+                    continue_parse_type_expression(token_details)?;
+
+                return_data_type = Some(data_type);
+
+                // 消除从属表达式后面的空行
+                skip_new_lines(post_data_type_expression)
+            }
+            Some(t) if t.token == Token::Which => {
+                let (which_entries, post_which_expression) =
+                    continue_parse_which_expression(token_details)?;
+
+                whiches = which_entries;
+
+                // 消除从属表达式后面的空行
+                skip_new_lines(post_which_expression)
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+
+    // 消除赋值符号（如果存在的话）
+    let post_assignment = if is_token(&Token::Assign, token_details) {
+        let post_assignment_token = consume_token(&Token::Assign, token_details)?;
+        // 消除空行
+        skip_new_lines(post_assignment_token)
+    } else {
+        token_details
+    };
+
+    // 解析函数主体
+    let (body, post_body) = continue_parse_expression_block_or_single_expression(post_assignment)?;
+
+    // 构造匿名函数对象
+    let f = FunctionDeclaration {
+        name: function_name.name,
+        generics: function_name.generics,
+        parameters: parameters,
+        return_data_type: return_data_type,
+        whiches,
+        body: body,
+        range: new_range(),
+    };
+
+    Ok((Statement::FunctionDeclaration(f), post_body))
 }
 
 fn parse_empty_function_declaration(
@@ -119,11 +294,11 @@ fn parse_pattern_function_declaration(
     todo!()
 }
 
-fn parse_namespace_statement(
-    source_token_details: &[TokenDetail],
-) -> Result<(Statement, &[TokenDetail]), Error> {
-    todo!()
-}
+// fn parse_namespace_statement(
+//     source_token_details: &[TokenDetail],
+// ) -> Result<(Statement, &[TokenDetail]), Error> {
+//     // todo!()
+// }
 
 fn parse_use_statement(
     source_token_details: &[TokenDetail],
@@ -1418,7 +1593,8 @@ fn continue_parse_type_expression(
     // 消除空行
     let post_new_lines = skip_new_lines(post_type_token);
 
-    let (data_type_expression, post_data_type_expression) = parse_expression(post_new_lines)?;
+    let (data_type_expression, post_data_type_expression) =
+        parse_primary_expression(post_new_lines)?;
     let data_type = convert_expression_to_data_type(data_type_expression)?;
     Ok((data_type, post_data_type_expression))
 }
@@ -1577,7 +1753,7 @@ fn continue_parse_which_entry(
                 } else {
                     // 当前是单一数据类型说明
                     let (data_type_expression, post_data_type_expression) =
-                        parse_expression(post_new_lines_after_colon)?;
+                        parse_primary_expression(post_new_lines_after_colon)?;
                     let data_type = convert_expression_to_data_type(data_type_expression)?;
 
                     let entry = WhichEntry::Type(WhichEntryType {
@@ -1976,7 +2152,7 @@ fn parse_function_call_expression(
 ) -> Result<(Expression, &[TokenDetail]), Error> {
     // 函数调用表达式
     // - 被调用者必须是一个标识符、一个对象的成员值（属性或索引）、或者一个匿名函数；
-    // - 被调用者也可以是一个用括号包围起来的表达式或者表达式块，只要是返回函数即可；（*暂不支持）
+    // - 被调用者也可以是一个用括号包围起来的表达式或者表达式块，只要是返回函数即可；
     // - 允许连续调用。
     //
     // foo(...)          // callee 是一个标识符
@@ -1984,7 +2160,7 @@ fn parse_function_call_expression(
     // foo[0](...)       // callee 是一个索引值
     // (fn x = x+1)(...) // callee 是一个匿名函数
     // foo(...)(...)     // 连续调用
-    // (foo & bar)(...)  // 被调用者是一个括号包围起来的表达式（*暂不支持）
+    // (foo & bar)(...)  // 被调用者是一个括号包围起来的表达式
     //
     // 注：
     // 元组型的结构体实例化表达式语法跟函数调用的一样，但在 parser
@@ -1997,9 +2173,14 @@ fn parse_function_call_expression(
     token_details = post_member_expression;
 
     match object {
-        Expression::Identifier(_)
-        | Expression::AnonymousFunction(_)
-        | Expression::MemberExpression(_) => loop {
+        Expression::Tuple(_)
+        | Expression::List(_)
+        | Expression::Map(_)
+        | Expression::Sign(_)
+        | Expression::Literal(_) => {
+            // 这些对象不能作为 `被调用者`（`callee`）
+        }
+        _ => loop {
             if is_token(&Token::LeftParen, token_details) {
                 let (arguments, post_arguments) = continue_parse_arguments(token_details)?;
                 object = Expression::FunctionCallExpression(FunctionCallExpression {
@@ -2013,9 +2194,6 @@ fn parse_function_call_expression(
                 break;
             }
         },
-        _ => {
-            //
-        }
     }
 
     Ok((object, token_details))
@@ -2336,8 +2514,10 @@ fn parse_anonymous_function(
 
     let mut is_expected_end = false; // 标记当前是否处于寻找参数列表结束符号 `)` 的状态
 
+    // 消除关键字 `fn`
     token_details = consume_token(&Token::Fn, token_details)?;
-    token_details = skip_new_lines(token_details); // 关键字后允许换行
+    // 消除关键字 `fn` 后面的空行
+    token_details = skip_new_lines(token_details);
 
     // 解析参数列表
     let post_parameters = match token_details.split_first() {
@@ -3160,13 +3340,15 @@ fn parse_sign_expression(
 
     let mut generics: Vec<DataType> = vec![];
     let mut parameters: Vec<SignParameter> = vec![];
-    let mut return_data_type: Option<Box<DataType>> = None;
+    let mut return_data_type: Option<DataType> = None;
     let mut whiches: Vec<WhichEntry> = vec![];
 
     let mut is_expected_end = false; // 标记当前是否处于寻找参数列表结束符号 `)` 的状态
 
+    // 消除关键字 `sign`
     token_details = consume_token(&Token::Sign, token_details)?;
-    token_details = skip_new_lines(token_details); // 关键字后允许换行
+    // 消除关键字 `sign` 后面的空行
+    token_details = skip_new_lines(token_details);
 
     // 解析泛型
     if is_token(&Token::LessThan, token_details) {
@@ -3178,105 +3360,94 @@ fn parse_sign_expression(
     }
 
     // 解析参数列表
-    let post_parameters = match token_details.split_first() {
-        Some((maybe_left_paren, post_left_paren)) if maybe_left_paren.token == Token::LeftParen => {
-            // 消除符号 `(` 后面的空行
-            token_details = skip_new_lines(post_left_paren);
 
-            // 解析参数列表
-            loop {
-                token_details = match token_details.first() {
-                    Some(first) => {
-                        if first.token == Token::RightParen {
-                            // 找到了结束符号 `)`，退出循环
-                            break;
-                        } else {
-                            if is_expected_end {
-                                // 当前的状态是一心寻找结束符号
-                                return Err(Error::ParserError(
-                                    "expected the right paren symbol \")\"".to_string(),
-                                ));
-                            } else {
-                                // 获取参数的数据类型
-                                let (data_type_expression, post_data_type_expression) =
-                                    parse_expression(token_details)?;
-                                let data_type =
-                                    convert_expression_to_data_type(data_type_expression)?;
+    // 消除符号 `(`
+    token_details = consume_token(&Token::LeftParen, token_details)?;
+    // 消除符号 `(` 后面的空行
+    token_details = skip_new_lines(token_details);
 
-                                let post_one_parameter =
-                                    match post_data_type_expression.split_first() {
-                                        Some((maybe_comma_or_right_paren, _))
-                                            if maybe_comma_or_right_paren.token == Token::Comma
-                                                || maybe_comma_or_right_paren.token
-                                                    == Token::RightParen =>
-                                        {
-                                            // 当前参数无名称
-                                            parameters.push(SignParameter {
-                                                data_type: data_type,
-                                                name: None,
-                                                range: new_range(),
-                                            });
-                                            post_data_type_expression
-                                        }
-                                        Some((
-                                            TokenDetail {
-                                                token: Token::Identifier(name),
-                                                ..
-                                            },
-                                            post_name,
-                                        )) => {
-                                            // 当前参数有名称
-                                            parameters.push(SignParameter {
-                                                data_type: data_type,
-                                                name: Some(name.clone()),
-                                                range: new_range(),
-                                            });
-                                            post_name
-                                        }
-                                        _ => {
-                                            return Err(Error::ParserError(
-                                                "incomplete function parameter".to_string(),
-                                            ));
-                                        }
-                                    };
-
-                                // 消除逗号
-                                let post_consume_comma =
-                                    if is_token(&Token::Comma, post_one_parameter) {
-                                        consume_token(&Token::Comma, post_one_parameter)?
-                                    } else {
-                                        // 设置标记，表示如果项目后面没有逗号，则表示当前已经是最后一项
-                                        // 后面只能允许列表结束
-                                        is_expected_end = true;
-                                        post_one_parameter
-                                    };
-
-                                // 消除空行
-                                let post_consume_new_lines = skip_new_lines(post_consume_comma);
-                                post_consume_new_lines
-                            }
-                        }
-                    }
-                    None => {
+    // 解析参数列表
+    loop {
+        token_details = match token_details.first() {
+            Some(first) => {
+                if first.token == Token::RightParen {
+                    // 找到了结束符号 `)`，退出循环
+                    break;
+                } else {
+                    if is_expected_end {
+                        // 当前的状态是一心寻找结束符号
                         return Err(Error::ParserError(
                             "expected the right paren symbol \")\"".to_string(),
                         ));
+                    } else {
+                        // 获取参数的数据类型
+                        let (data_type_expression, post_data_type_expression) =
+                            parse_expression(token_details)?;
+                        let data_type = convert_expression_to_data_type(data_type_expression)?;
+
+                        let post_one_parameter = match post_data_type_expression.split_first() {
+                            Some((maybe_comma_or_right_paren, _))
+                                if maybe_comma_or_right_paren.token == Token::Comma
+                                    || maybe_comma_or_right_paren.token == Token::RightParen =>
+                            {
+                                // 当前参数无名称
+                                parameters.push(SignParameter {
+                                    data_type: data_type,
+                                    name: None,
+                                    range: new_range(),
+                                });
+                                post_data_type_expression
+                            }
+                            Some((
+                                TokenDetail {
+                                    token: Token::Identifier(name),
+                                    ..
+                                },
+                                post_name,
+                            )) => {
+                                // 当前参数有名称
+                                parameters.push(SignParameter {
+                                    data_type: data_type,
+                                    name: Some(name.clone()),
+                                    range: new_range(),
+                                });
+                                post_name
+                            }
+                            _ => {
+                                return Err(Error::ParserError(
+                                    "incomplete function parameter".to_string(),
+                                ));
+                            }
+                        };
+
+                        // 消除逗号
+                        let post_consume_comma = if is_token(&Token::Comma, post_one_parameter) {
+                            consume_token(&Token::Comma, post_one_parameter)?
+                        } else {
+                            // 设置标记，表示如果项目后面没有逗号，则表示当前已经是最后一项
+                            // 后面只能允许列表结束
+                            is_expected_end = true;
+                            post_one_parameter
+                        };
+
+                        // 消除空行
+                        let post_consume_new_lines = skip_new_lines(post_consume_comma);
+                        post_consume_new_lines
                     }
                 }
             }
-
-            // 消除右括号
-            consume_token(&Token::RightParen, token_details)?
+            None => {
+                return Err(Error::ParserError(
+                    "expected the right paren symbol \")\"".to_string(),
+                ));
+            }
         }
-        _ => {
-            return Err(Error::ParserError(
-                "expected anonymous function parameter".to_string(),
-            ));
-        }
-    };
+    }
 
+    // 消除右括号
+    token_details = consume_token(&Token::RightParen, token_details)?;
     // 消除参数列表后面的空行
-    token_details = skip_new_lines(post_parameters);
+    token_details = skip_new_lines(token_details);
 
     loop {
         // 尝试解析 type, which 等从属表达式
@@ -3285,7 +3456,7 @@ fn parse_sign_expression(
                 let (data_type, post_data_type_expression) =
                     continue_parse_type_expression(token_details)?;
 
-                return_data_type = Some(Box::new(data_type));
+                return_data_type = Some(data_type);
 
                 // 消除从属表达式后面的空行
                 skip_new_lines(post_data_type_expression)
@@ -3308,7 +3479,7 @@ fn parse_sign_expression(
     // 构造函数签名对象
     let sign = Sign {
         parameters: parameters,
-        return_data_type: return_data_type,
+        return_data_type: return_data_type.map(|d| Box::new(d)),
         generics: generics,
         whiches,
         range: new_range(),
@@ -5171,6 +5342,83 @@ mod tests {
 
     #[test]
     fn test_function_declaration_statement() {
-        // todo::
+        let n1 = parse_from_string("function foo(Int a, Int b) type Int = a+b").unwrap();
+        assert_eq!(
+            n1.to_string(),
+            "function foo (Int a, Int b) type Int = (a + b)\n"
+        );
+
+        // 函数体为 `隠式 do 表达式`
+        let n2 = parse_from_string("function foo(Int a, Int b) type Int {a+b}").unwrap();
+        assert_eq!(
+            n2.to_string(),
+            trim_left_margin(
+                "function foo (Int a, Int b) type Int {
+                    (a + b)
+                }
+                "
+            )
+        );
+
+        // 测试参数默认值
+        let n3 = parse_from_string("function foo(Int a=10, Int b=20) type Int {a+b}").unwrap();
+        assert_eq!(
+            n3.to_string(),
+            trim_left_margin(
+                "function foo (Int a = 10, Int b = 20) type Int {
+                    (a + b)
+                }
+                "
+            )
+        );
+
+        // 省略返回值类型
+        let n4 = parse_from_string("function foo()=1+2").unwrap();
+        assert_eq!(
+            n4.to_string(),
+            trim_left_margin(
+                "function foo () = (1 + 2)
+                "
+            )
+        );
+
+        // 测试类型说明
+        let n5 = parse_from_string(&trim_left_margin(
+            "function bar (T a) type String which T:sign(Int)type String=conv(a)",
+        ))
+        .unwrap();
+        assert_eq!(
+            n5.to_string(),
+            trim_left_margin(
+                "function bar (T a) type String which {
+                    T: sign (Int) type String
+                } = (conv)(a)
+                "
+            )
+        );
+
+        // 测试泛型
+        let n6 = parse_from_string(&trim_left_margin(
+            "function bar<T, E>(T a)type E which {
+                T: limit Display+Eq
+                E: String}{
+                let b=conv(a)
+                b++'.'
+            }",
+        ))
+        .unwrap();
+        assert_eq!(
+            n6.to_string(),
+            trim_left_margin(
+                "function bar <T, E> (T a) type E which {
+                    T: limit Display + Eq
+                    E: String
+                } {
+                    let b = (conv)(a)
+                    (b ++ '.')
+                }
+                "
+            )
+        );
     }
 }

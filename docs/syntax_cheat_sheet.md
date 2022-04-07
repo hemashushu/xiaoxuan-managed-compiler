@@ -155,7 +155,7 @@
 
 语句有：
 
-- `namespace`
+<!-- - `namespace` -->
 - `use`
 - `function`
 - `const`
@@ -576,13 +576,8 @@ let Matrix m =
 
 ### 函数定义
 
-```js
-function name (type name, type name=default) type type_name {
-    ...
-}
-
-function name (...) type type_name = expression
-```
+`function name (data_type param_name, data_type param_name=default) type data_type = ...`
+`function name (data_type param_name, data_type param_name=default) type data_type {...}`
 
 #### 返回值类型 `type 从属表达式`
 
@@ -612,7 +607,6 @@ function name (T t, F f) type T
 多个参数说明行的末尾的逗号是可选的，
 
 > 同样使用花括号作为主体的 `多行格式的映射表`/`which`/`branch`/`match`/`do`/`join` 结构格式保持一致。
-
 > 注：type, which 等从属表达式的顺序不重要。
 
 #### 函数重载
@@ -825,13 +819,13 @@ function max<T> (T left, T right) type T which {
 
 编译器会以找不到名称为 `T` 的数据类型而报错。
 
-### 命名空间定义
+<!-- ### 命名空间定义
 
 ```js
 namespace tests {
     ...
 }
-```
+``` -->
 
 #### 命名空间路径
 
@@ -1456,7 +1450,7 @@ name(name1=value1, name2=value2, name3=value3)
   foo[0](...)
   (fn x=x+1)(...)
 
-- 被调用者也可以是一个用括号包围起来的表达式或者表达式块，只要是返回函数即可；（*暂不支持）
+- 被调用者也可以是一个用括号包围起来的表达式或者表达式块，只要是返回函数即可；
   (foo & bar)(...)
 
 - 允许连续调用。

@@ -120,7 +120,7 @@ pub enum Token {
     Pattern,
     Limit,
 
-    Namespace,
+    // Namespace,
     Use,
     Const,
     Enum,
@@ -249,7 +249,7 @@ impl fmt::Display for Token {
             Token::Pattern => write!(f, "pattern"),
             Token::Limit => write!(f, "limit"),
 
-            Token::Namespace => write!(f, "namespace"),
+            // Token::Namespace => write!(f, "namespace"),
             Token::Use => write!(f, "use"),
             Token::Const => write!(f, "const"),
             Token::Enum => write!(f, "enum"),
@@ -404,7 +404,7 @@ mod tests {
         assert_eq!(Token::Pattern.to_string(), "pattern");
         assert_eq!(Token::Limit.to_string(), "limit");
 
-        assert_eq!(Token::Namespace.to_string(), "namespace");
+        // assert_eq!(Token::Namespace.to_string(), "namespace");
         assert_eq!(Token::Use.to_string(), "use");
         assert_eq!(Token::Const.to_string(), "const");
         assert_eq!(Token::Enum.to_string(), "enum");
