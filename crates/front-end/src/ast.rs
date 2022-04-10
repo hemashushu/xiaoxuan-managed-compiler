@@ -562,7 +562,7 @@ pub enum PatternExpression {
     Primary(Expression),    // 普通模式表达式
     In(Expression),         // `in` 模式表达式
     Into(DataType, String), // `into` 模式表达式
-    Regular(String, Tuple), // `regular` 模式表达式
+    Regular(Token, Tuple),  // `regular` 模式表达式
     Template(String),       // `template` 模式表达式
 }
 
@@ -963,7 +963,7 @@ impl Display for PatternExpression {
                 write!(f, "into {} {}", t, n)
             }
             PatternExpression::Regular(s, n) => {
-                write!(f, "regular \"{}\" {}", s, n)
+                write!(f, "regular {} {}", s, n)
             }
             PatternExpression::Template(s) => {
                 write!(f, "template \"{}\"", s)
@@ -3173,7 +3173,7 @@ mod tests {
                 MatchCase {
                     variable: None,
                     pattern: Some(Box::new(PatternExpression::Regular(
-                        "(\\d+),(\\w+)".to_string(),
+                        Token::Regexp("(\\d+),(\\w+)".to_string()),
                         Tuple {
                             elements: vec![
                                 Expression::Identifier(new_identifier("id")),
@@ -3207,7 +3207,7 @@ mod tests {
             trim_left_margin(
                 "match obj {
                     case into User user: 1
-                    case regular \"(\\d+),(\\w+)\" (id, name,): 2
+                    case regular ~/(\\d+),(\\w+)/ (id, name,): 2
                     case template \"\\user\\{name:\\w+}\\post\\{id:\\d+}\": 3
                 }"
             )

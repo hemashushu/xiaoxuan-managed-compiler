@@ -273,6 +273,13 @@ pub fn tokenize(text: &str) -> Result<Vec<TokenDetail>, Error> {
                         post_rest
                     }
 
+                    '~' if is_char('/', rest) => {
+                        // ~/regexp string/
+                        let (token_detail, post_rest) = lex_regexp_string(rest)?;
+                        add_token_detail(&mut token_details, token_detail);
+                        post_rest
+                    }
+
                     '0' => {
                         if is_char('x', rest) {
                             // `0x...`， 十六进制整数
@@ -622,7 +629,7 @@ fn lex_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
                 chars = match *first {
                     '\\' => {
                         if is_char('"', rest) {
-                            // 找到了 '"'
+                            // 找到了 '\"'
                             end_pos += 2;
                             move_forword(rest, 1)
                         } else {
@@ -767,6 +774,65 @@ fn lex_template_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), 
     // 剩余的字符应该从 '`' 位置之后开始
     let rest = move_forword(source_chars, end_pos + 1);
     Ok((new_token_detail(Token::TemplateString(value)), rest))
+}
+
+fn lex_regexp_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
+    // 正则表达式字符串
+    // 查找结束符 `/` 但不包括 `\/`
+    //
+    // e.g.
+    // ~/foo_bar/
+    //  ^-------- 当前所在的位置
+
+    let mut chars = &source_chars[1..]; // 跳过第一个字符 '/'
+    let mut end_pos: usize = 0;
+
+    // 注：第一个字符已经验证过是合法的标识符首个字符，无需再检查
+
+    loop {
+        match chars.split_first() {
+            Some((first, rest)) => {
+                chars = match *first {
+                    '\\' => {
+                        if is_char('/', rest) {
+                            // 找到了 "\/"
+                            end_pos += 2;
+                            move_forword(rest, 1)
+                        } else {
+                            // 找到了其他转义字符
+                            end_pos += 1;
+                            rest
+                        }
+                    }
+                    '/' => {
+                        break;
+                    }
+                    _ => {
+                        end_pos += 1;
+                        rest
+                    }
+                }
+            }
+            None => {
+                // 到了末尾仍未找到结束字符
+                return Err(Error::LexerError(
+                    "expected regular expression literal ending symbol".to_string(),
+                ));
+            }
+        }
+    }
+
+    end_pos += 1; // 因为 chars 跳过了第一个字符 `/`，所以这里补回偏移值
+
+    let value_chars = &source_chars[1..end_pos]; // source_chars 从字符 `/` 开始
+    let value = value_chars.iter().collect::<String>();
+
+    // todo:: 处理转义字符
+
+    // 当前 end_pos 处于字符 `/` 位置
+    // 剩余的字符应该从字符 `/` 位置之后开始
+    let rest = move_forword(source_chars, end_pos + 1);
+    Ok((new_token_detail(Token::Regexp(value)), rest))
 }
 
 fn lex_hash_string(source_chars: &[char]) -> Result<(TokenDetail, &[char]), Error> {
@@ -1570,6 +1636,15 @@ mod tests {
     }
 
     #[test]
+    fn test_regexp_string_literal() {
+        let tokens1 = tokenize("~/foo/ ~/b\\/a\\/r/ a/b/c").unwrap();
+        assert_eq!(
+            token_details_to_string(&tokens1),
+            vec!["~/foo/", "~/b\\/a\\/r/", "a", "/", "b", "/", "c"]
+        );
+    }
+
+    #[test]
     fn test_named_operator() {
         let tokens1 = tokenize(":foo: :bar:").unwrap();
         assert_eq!(token_details_to_string(&tokens1), vec![":foo:", ":bar:"]);
@@ -1605,12 +1680,13 @@ mod tests {
     #[test]
     fn test_keywords() {
         let tokens1 =
-            tokenize("do join let fn if then else for next each in branch match case default").unwrap();
+            tokenize("do join let fn if then else for next each in branch match case default")
+                .unwrap();
         assert_eq!(
             token_details_to_string(&tokens1),
             vec![
-                "do", "join", "let", "fn", "if", "then", "else", "for", "next", "each", "in", "branch", "match",
-                "case", "default",
+                "do", "join", "let", "fn", "if", "then", "else", "for", "next", "each", "in",
+                "branch", "match", "case", "default",
             ]
         );
 
@@ -1631,14 +1707,7 @@ mod tests {
             token_details_to_string(&tokens4),
             vec![
                 //"namespace",
-                "use",
-                "const",
-                "enum",
-                "struct",
-                "union",
-                "trait",
-                "impl",
-                "alias",
+                "use", "const", "enum", "struct", "union", "trait", "impl", "alias",
             ]
         );
     }

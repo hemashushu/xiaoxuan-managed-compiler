@@ -32,6 +32,7 @@ pub enum Token {
     GeneralString(String),  // "foo"
     TemplateString(String), // `foo`
     HashString(String),     // #foo
+    Regexp(String),   // ~/foo/
     Attribute(String),      // #[test]
 
     // 符号
@@ -168,6 +169,7 @@ impl fmt::Display for Token {
             Token::GeneralString(value) => write!(f, "\"{}\"", value),
             Token::TemplateString(value) => write!(f, "`{}`", value),
             Token::HashString(value) => write!(f, "#{}", value),
+            Token::Regexp(value) => write!(f, "~/{}/", value),
             Token::Attribute(value) => write!(f, "#[{}]", value),
 
             Token::LeftBrace => write!(f, "{{"),  // {
@@ -325,6 +327,7 @@ mod tests {
             "`foo`"
         );
         assert_eq!(Token::HashString("foo".to_string()).to_string(), "#foo");
+        assert_eq!(Token::Regexp("foo".to_string()).to_string(), "~/foo/");
         assert_eq!(Token::Attribute("test".to_string()).to_string(), "#[test]");
 
         assert_eq!(Token::NamedOperator("foo".to_string()).to_string(), ":foo:");
@@ -392,7 +395,6 @@ mod tests {
         assert_eq!(Token::Default.to_string(), "default");
         assert_eq!(Token::Where.to_string(), "where");
         assert_eq!(Token::Only.to_string(), "only");
-        // assert_eq!(Token::As.to_string(), "as");
         assert_eq!(Token::Into.to_string(), "into");
         assert_eq!(Token::Regular.to_string(), "regular");
         assert_eq!(Token::Template.to_string(), "template");

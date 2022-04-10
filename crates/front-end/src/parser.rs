@@ -1092,7 +1092,7 @@ fn parse_match_expression(
     //
     //    case in ...: ...                  // 模式表达式还可以是 `into`, `regular`, `template` 其中的一种
     //    case into Email e: ...
-    //    case regular "STRING" (tuple,...): ...
+    //    case regular REGEXP_LITERAL (tuple,...): ...
     //    case template "STRING": ...
     //
     //    case pattern_exp
@@ -1244,7 +1244,7 @@ fn continue_parse_match_case(
     //
     // case in ...: ...                  // 模式表达式还可以是 `into`, `regular`, `template` 其中的一种
     // case into Email e: ...
-    // case regular "STRING" (tuple,...): ...
+    // case regular REGEXP_LITERAL (tuple,...): ...
     // case template "STRING": ...
     //
     // case pattern_exp
@@ -1350,46 +1350,59 @@ fn continue_parse_match_case(
             Token::Regular => {
                 // 解析 `regular 模式表达式`
                 //
-                // regular "..." (one,)
-                // regular "..." (one, two)
+                // regular REGEXP_LITERAL (one,)
+                // regular REGEXP_LITERAL (one, two)
 
                 // 消除关键字 `regular`
                 token_details = consume_token(&Token::Regular, token_details)?;
                 // 消除关键字 `regular` 后面的空行
                 token_details = skip_new_lines(token_details);
 
-                let (s, post_regular_string) = parse_primary_expression(token_details)?;
-                let regular_string = match s {
-                    Expression::Literal(Literal::GeneralString(GeneralString {
-                        value, ..
-                    })) => value,
-                    Expression::Literal(Literal::TemplateString(TemplateString {
-                        fragments,
-                        expressions,
-                        ..
-                    })) => {
-                        // 如果模板字符串里无占位符，也是允许的
-                        if expressions.len() > 0 {
-                            return Err(Error::ParserError("invalid regular string".to_string()));
-                        }
-                        fragments.join("")
-                    }
-                    _ => {
-                        return Err(Error::ParserError(
-                            "invalid regular pattern expression".to_string(),
-                        ));
-                    }
+                // let (s, post_regular_string) = parse_primary_expression(token_details)?;
+                // let regular_string = match s {
+                //     Expression::Literal(Literal::GeneralString(GeneralString {
+                //         value, ..
+                //     })) => value,
+                //     Expression::Literal(Literal::TemplateString(TemplateString {
+                //         fragments,
+                //         expressions,
+                //         ..
+                //     })) => {
+                //         // 如果模板字符串里无占位符，也是允许的
+                //         if expressions.len() > 0 {
+                //             return Err(Error::ParserError("invalid regular string".to_string()));
+                //         }
+                //         fragments.join("")
+                //     }
+                //     _ => {
+                //         return Err(Error::ParserError(
+                //             "invalid regular pattern expression".to_string(),
+                //         ));
+                //     }
+                // };
+
+                let regexp_token = if let Some(TokenDetail {
+                    token: rt @ Token::Regexp(_),
+                    ..
+                }) = token_details.first()
+                {
+                    token_details = &token_details[1..];
+                    rt
+                } else {
+                    return Err(Error::ParserError(
+                        "expected regular expression literal".to_string(),
+                    ))
                 };
 
-                // 消除关键字字符串后面的空行
-                token_details = skip_new_lines(post_regular_string);
+                // 消除正则表达式字面量后的空行
+                token_details = skip_new_lines(token_details);
 
                 // 解析标识符元组
                 let (tuple_expression, post_tuple_expression) =
                     parse_primary_expression(token_details)?;
 
                 if let Expression::Tuple(tuple) = tuple_expression {
-                    pattern = Some(PatternExpression::Regular(regular_string, tuple));
+                    pattern = Some(PatternExpression::Regular(regexp_token.clone(), tuple));
                     token_details = post_tuple_expression;
                 } else {
                     return Err(Error::ParserError(
@@ -2476,13 +2489,13 @@ fn parse_primary_expression(
     // 时同时解析。
     match source_token_details.first() {
         Some(first) => match first.token {
-            Token::Fn => parse_anonymous_function(source_token_details),
-            Token::LeftParen => parse_tuple_or_parenthesized(source_token_details),
-            Token::LeftBracket => parse_list(source_token_details),
-            Token::LeftBrace => parse_map(source_token_details),
+            Token::Fn => parse_anonymous_function(source_token_details), // 匿名函数
+            Token::LeftParen => parse_tuple_or_parenthesized(source_token_details), // 元组或者括号运算
+            Token::LeftBracket => parse_list(source_token_details),                 // 列表
+            Token::LeftBrace => parse_map(source_token_details),                    // 映射表
             Token::Exclamation => parse_prefix_identifier(source_token_details), // 函数的前置调用
-            Token::Identifier(_) => parse_identifier(source_token_details),
-            Token::Sign => parse_sign_expression(source_token_details),
+            Token::Identifier(_) => parse_identifier(source_token_details),      // 标识符
+            Token::Sign => parse_sign_expression(source_token_details),          // 函数签名
             _ => {
                 let (literal, post_literal) = parse_literal(source_token_details)?;
                 Ok((Expression::Literal(literal), post_literal))
@@ -5315,7 +5328,7 @@ mod tests {
             "match foo{
                 case in [1,2,3]:10
                 case into User user:20
-                case regular \"abc\" (m,):30
+                case regular ~/abc/ (m,):30
                 case template \"id={id}\": 40
                 case n @ in [4,5,6,]: 50
                 default:60
@@ -5328,7 +5341,7 @@ mod tests {
                 "match foo {
                     case in [1, 2, 3,]: 10
                     case into User user: 20
-                    case regular \"abc\" (m,): 30
+                    case regular ~/abc/ (m,): 30
                     case template \"id={id}\": 40
                     case n @ in [4, 5, 6,]: 50
                     default: 60

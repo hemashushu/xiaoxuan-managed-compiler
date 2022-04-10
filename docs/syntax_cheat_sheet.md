@@ -12,6 +12,7 @@
   - [字符串](#字符串)
   - [原始字符串](#原始字符串)
   - [模板字符串](#模板字符串)
+  - [正则表达式](#正则表达式)
 - [常量](#常量)
 - [复合数据类型](#复合数据类型)
   - [元组](#元组)
@@ -50,7 +51,6 @@
     - [泛型结构体](#泛型结构体)
     - [泛型特性约束](#泛型特性约束)
   - [类型别名](#类型别名)
-  - [命名空间定义](#命名空间定义)
     - [命名空间路径](#命名空间路径)
   - [导入标识符](#导入标识符)
   - [标注](#标注)
@@ -218,6 +218,12 @@
 `template {{place holder}}`
 
 表达式将会被求值，然后连接到模板字符串里。
+
+### 正则表达式
+
+```js
+let r = ~/foo/
+```
 
 ## 常量
 
@@ -1325,9 +1331,9 @@ regular 后面两个表达式，一个表达式正则表达式的字符串字面
 let s = "foo@domain"
 
 match s {
-    case regular "^(.+)@(.+)$" (email, name, domain):
+    case regular ~/^(.+)@(.+)$/ (email, name, domain):
         writeLineFormat("It's Email: {}", email)
-    case regular "^(\\w+):\/\/(.+)$" (phone, countryCode, number):
+    case regular ~/^(\\w+):\/\/(.+)$/ (phone, countryCode, number):
         writeLineFormat("It's phone number: {}", phone)
     default:
         writeLine("Not detected")
