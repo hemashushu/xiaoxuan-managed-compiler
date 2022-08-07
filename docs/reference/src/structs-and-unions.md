@@ -361,6 +361,12 @@ if let Book(title, isbn) match work1 then
 end
 ```
 
+### 内置的联合体
+
+- Option<T>
+- Result<T, E>
+- Either<T, U>
+
 ## 元组
 
 `元组`（`Tuple`）<!-- 考虑取消这个特性  是 XiaoXuan 函数传参的底层原理，也就是说，传一组参数给一个函数，实际上是传了一个由一个或多个数值组成的元组给函数。一个函数有且只有一个参数和一个返回值。 -->

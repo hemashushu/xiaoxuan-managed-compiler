@@ -611,6 +611,39 @@ let b = a.slice(3, 6)
 
 二进制数还支持位运算、连接等函数，详细见语言参考手册。
 
+### BitFlag 位标记
+
+示例：
+
+```
+bitflag OpenFlags type Int {
+    Create,     // = 0b00001
+    Open,       // = 0b00010
+    Read,       // = 0b00100
+    Write,      // = 0b01000
+    Append,     // = 0b10000
+}
+```
+
+除了自动编排数值，也可以手动指定
+
+```
+bitflag OpenFlags type Int {
+    Create = 1,
+    Open, // 自动编排数值 2（即 1 << 1）
+    Read = 4,
+    Write = 8,
+    Append = 16
+    ReadWrite = Read + Write, // 手动指定值为 12
+    Truncate = 32, // 这里无法自动编排数值，因为上一个成员的值位数（值为 1 的比特数）不唯一
+    Transite, // 自动编排数值 64
+}
+```
+
+bitflag 支持 `+` 和 `-` 运算符重载，表示 `a :bitOr: b` 和 `a :bitAnd: (bitInvert(b))` 的意思。
+
+跟 enum 类似，bitflag 也是一种类型，而非一种常量，bitflag 只能跟自己类型作 `+`、 `-` 和 `:in` 等二元运算。
+
 ### 符号(::待挪走，挪到 “标准库-数学库” 里)
 
 `符号`（`Symbol`）类型的数据用于生成一个代号，代号可以用作代数的变量。符号类型数据没有字面量，只能通过构造函数构建。

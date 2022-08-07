@@ -1,0 +1,1424 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>函数 - The XiaoXuan Language Reference</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">介绍</a></li><li class="chapter-item expanded "><a href="data-types.html"><strong aria-hidden="true">1.</strong> 数据类型</a></li><li class="chapter-item expanded "><a href="variables.html"><strong aria-hidden="true">2.</strong> 变量</a></li><li class="chapter-item expanded "><a href="functions.html" class="active"><strong aria-hidden="true">3.</strong> 函数</a></li><li class="chapter-item expanded "><a href="collection.html"><strong aria-hidden="true">4.</strong> 数据容器</a></li><li class="chapter-item expanded "><a href="structs-and-unions.html"><strong aria-hidden="true">5.</strong> 结构体和联合体</a></li><li class="chapter-item expanded "><a href="control-flow.html"><strong aria-hidden="true">6.</strong> 流程控制</a></li><li class="chapter-item expanded "><a href="pattern.html"><strong aria-hidden="true">7.</strong> 模式</a></li><li class="chapter-item expanded "><a href="method-and-generic-and-trait.html"><strong aria-hidden="true">8.</strong> 方法、范型和特性</a></li><li class="chapter-item expanded "><a href="error-handing.html"><strong aria-hidden="true">9.</strong> 错误处理</a></li><li class="chapter-item expanded "><a href="chain.html"><strong aria-hidden="true">10.</strong> 链式调用</a></li><li class="chapter-item expanded "><a href="interface-and-components.html"><strong aria-hidden="true">11.</strong> 接口和元组件</a></li><li class="chapter-item expanded "><a href="package-and-modules.html"><strong aria-hidden="true">12.</strong> 包和模块</a></li><li class="chapter-item expanded "><a href="stream.html"><strong aria-hidden="true">13.</strong> 流</a></li><li class="chapter-item expanded "><a href="io.html"><strong aria-hidden="true">14.</strong> I/O</a></li><li class="chapter-item expanded "><a href="mutable.html"><strong aria-hidden="true">15.</strong> 可变性</a></li><li class="chapter-item expanded "><a href="parallel-and-concurrency.html"><strong aria-hidden="true">16.</strong> 并行和并发</a></li><li class="chapter-item expanded "><a href="annonations.html"><strong aria-hidden="true">17.</strong> 标注</a></li><li class="chapter-item expanded "><a href="unit-test.html"><strong aria-hidden="true">18.</strong> 单元测试</a></li><li class="chapter-item expanded "><a href="comments-and-documents.html"><strong aria-hidden="true">19.</strong> 注释和文档</a></li><li class="chapter-item expanded "><a href="cn-spec.html"><strong aria-hidden="true">20.</strong> 中文文法</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The XiaoXuan Language Reference</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="函数"><a class="header" href="#函数">函数</a></h1>
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+<!-- code_chunk_output -->
+<ul>
+<li><a href="#%E5%87%BD%E6%95%B0">函数</a>
+<ul>
+<li><a href="#%E5%87%BD%E6%95%B0%E7%9A%84%E8%B0%83%E7%94%A8">函数的调用</a>
+<ul>
+<li><a href="#%E8%AF%AD%E6%B3%95">语法</a>
+<ul>
+<li><a href="#%E5%87%BD%E6%95%B0%E7%9A%84%E8%BF%94%E5%9B%9E%E5%80%BC">函数的返回值</a></li>
+<li><a href="#%E6%8C%89%E5%8F%82%E6%95%B0%E5%90%8D%E7%A7%B0%E4%BC%A0%E5%8F%82">按参数名称传参</a></li>
+<li><a href="#%E8%B0%83%E7%94%A8%E5%86%B2%E7%AA%81">调用冲突</a></li>
+<li><a href="#%E8%B0%83%E7%94%A8%E6%B2%A1%E6%9C%89%E5%8F%82%E6%95%B0%E7%9A%84%E5%87%BD%E6%95%B0">调用没有参数的函数</a></li>
+<li><a href="#%E5%B5%8C%E5%A5%97%E8%B0%83%E7%94%A8">嵌套调用</a></li>
+<li><a href="#%E5%8F%82%E6%95%B0%E5%88%97%E8%A1%A8%E6%8D%A2%E8%A1%8C">参数列表换行</a></li>
+<li><a href="#%E5%B0%BE%E9%83%A8%E8%B0%83%E7%94%A8%E4%BC%98%E5%8C%96">尾部调用优化</a></li>
+</ul>
+</li>
+<li><a href="#%E5%AE%9E%E4%BE%8B%E6%96%B9%E6%B3%95%E5%92%8C%E7%89%B9%E6%80%A7%E5%87%BD%E6%95%B0-%E8%80%83%E8%99%91%E7%A7%BB%E5%8A%A8">实例方法和特性函数 （::考虑移动）</a></li>
+<li><a href="#%E5%87%BD%E6%95%B0%E7%9A%84%E7%82%B9%E5%8F%B7%E8%B0%83%E7%94%A8%E6%96%B9%E5%BC%8F-%E8%80%83%E8%99%91%E7%A7%BB%E5%8A%A8">函数的点号调用方式 （::考虑移动）</a>
+<ul>
+<li><a href="#%E4%B8%80%E8%88%AC%E5%87%BD%E6%95%B0%E4%B8%8D%E6%94%AF%E6%8C%81">一般函数（::不支持）</a></li>
+<li><a href="#%E8%BF%9E%E7%BB%AD%E7%9A%84%E5%87%BD%E6%95%B0%E7%82%B9%E5%8F%B7%E8%B0%83%E7%94%A8%E4%B8%8D%E6%94%AF%E6%8C%81">连续的函数点号调用（::不支持）</a></li>
+</ul>
+</li>
+<li><a href="#%E6%8B%86%E5%B0%81-%E8%80%83%E8%99%91%E7%A7%BB%E5%8A%A8">拆封 （::考虑移动）</a>
+<ul>
+<li><a href="#%E6%8C%87%E5%AE%9A%E6%8B%86%E5%B0%81%E7%9A%84%E5%90%8E%E5%A4%87%E5%80%BC-%E6%9B%BF%E6%8D%A2%E5%80%BC-%E8%80%83%E8%99%91%E7%A7%BB%E5%8A%A8">指定拆封的后备值 <!--替换值--> （::考虑移动）</a></li>
+<li><a href="#%E6%8C%87%E5%AE%9A%E6%8B%86%E5%B0%81%E7%9A%84%E6%9B%BF%E6%8D%A2%E5%80%BC%E4%B8%BA%E8%A1%A8%E8%BE%BE%E5%BC%8F-%E8%80%83%E8%99%91%E7%A7%BB%E5%8A%A8">指定拆封的替换值为表达式 （::考虑移动）</a></li>
+<li><a href="#%E6%8C%87%E5%AE%9A%E6%8B%86%E5%B0%81%E7%9A%84%E6%9B%BF%E6%8D%A2%E4%B8%BA%E8%AF%AD%E5%8F%A5%E5%9D%97-%E8%80%83%E8%99%91%E7%A7%BB%E5%8A%A8">指定拆封的替换为语句块 （::考虑移动）</a></li>
+<li><a href="#%E6%8C%87%E5%AE%9A%E6%8B%86%E5%B0%81%E7%9A%84%E5%90%8E%E5%A4%87%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0">指定拆封的后备匿名函数</a></li>
+<li><a href="#%E4%BC%9A%E8%87%AA%E5%8A%A8%E9%80%80%E5%87%BA%E5%87%BD%E6%95%B0%E7%9A%84%E6%8B%86%E5%B0%81-%E8%80%83%E8%99%91%E7%A7%BB%E5%8A%A8">会自动退出函数的拆封 （::考虑移动）</a></li>
+</ul>
+</li>
+<li><a href="#%E9%83%A8%E5%88%86%E8%B0%83%E7%94%A8">部分调用</a></li>
+<li><a href="#%E9%93%BE%E5%BC%8F%E8%B0%83%E7%94%A8-%E8%80%83%E8%99%91%E7%A7%BB%E5%8A%A8">链式调用 （::考虑移动）</a></li>
+<li><a href="#%E5%87%BD%E6%95%B0%E7%9A%84%E7%BB%84%E5%90%88">函数的组合</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8-%E8%B0%83%E7%94%A8-%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E5%87%BD%E6%95%B0%E4%B8%8D%E6%94%AF%E6%8C%81">使用 <code>调用</code> 函数调用函数（::不支持）</a></li>
+<li><a href="#%E5%87%BD%E6%95%B0%E7%9A%84%E4%B8%AD%E7%BD%AE%E8%B0%83%E7%94%A8%E6%96%B9%E5%BC%8F">函数的中置调用方式</a></li>
+<li><a href="#%E4%B8%AD%E7%BD%AE%E8%B0%83%E7%94%A8%E7%9A%84%E5%8E%9F%E7%90%86">中置调用的原理</a></li>
+<li><a href="#%E8%BF%9E%E7%BB%AD%E4%B8%AD%E7%BD%AE%E8%B0%83%E7%94%A8">连续中置调用</a></li>
+<li><a href="#-%E5%86%85%E7%BD%AE%E7%9A%84%E4%B8%AD%E7%BD%AE%E5%87%BD%E6%95%B0%E7%9A%84%E4%BC%98%E5%85%88%E7%BA%A7-%E8%BF%90%E7%AE%97%E7%AC%A6"><!-- 内置的中置函数的优先级 --> 运算符</a></li>
+<li><a href="#%E8%A1%A8%E8%BE%BE%E5%BC%8F%E7%9A%84%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F">表达式的执行顺序</a></li>
+</ul>
+</li>
+<li><a href="#%E5%87%BD%E6%95%B0%E7%9A%84%E5%AE%9A%E4%B9%89">函数的定义</a>
+<ul>
+<li><a href="#%E8%AF%AD%E6%B3%95-1">语法</a>
+<ul>
+<li><a href="#%E6%97%A0%E8%BF%94%E5%9B%9E%E5%80%BC%E5%87%BD%E6%95%B0">无返回值函数</a></li>
+<li><a href="#%E7%AE%80%E5%86%99%E5%BD%A2%E5%BC%8F">简写形式</a></li>
+</ul>
+</li>
+<li><a href="#%E5%87%BD%E6%95%B0%E5%88%AB%E5%90%8D">函数别名</a></li>
+<li><a href="#%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0">匿名函数</a></li>
+<li><a href="#%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0%E6%8D%95%E8%8E%B7%E5%8F%98%E9%87%8F%E5%80%BC%E9%97%AD%E5%8C%85">匿名函数捕获变量值（闭包）</a></li>
+<li><a href="#%E7%AE%80%E5%8C%96%E5%BD%A2%E5%BC%8F%E7%9A%84%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0">简化形式的匿名函数</a></li>
+<li><a href="#%E8%BF%94%E5%9B%9E-%E5%85%B3%E9%94%AE%E5%AD%97"><code>返回</code> 关键字</a>
+<ul>
+<li><a href="#%E7%9C%81%E7%95%A5-%E8%BF%94%E5%9B%9E-%E5%85%B3%E9%94%AE%E5%AD%97">省略 <code>返回</code> 关键字</a></li>
+<li><a href="#%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0%E5%BD%93%E4%B8%AD%E7%9A%84-%E8%BF%94%E5%9B%9E-%E5%85%B3%E9%94%AE%E5%AD%97">匿名函数当中的 <code>返回</code> 关键字</a></li>
+<li><a href="#%E6%B5%81%E7%A8%8B%E6%8E%A7%E5%88%B6%E8%AF%AD%E5%8F%A5%E5%BD%93%E4%B8%AD%E7%9A%84-%E8%BF%94%E5%9B%9E-%E5%85%B3%E9%94%AE%E5%AD%97">流程控制语句当中的 <code>返回</code> 关键字</a></li>
+<li><a href="#%E5%B0%BE%E9%83%A8%E8%B0%83%E7%94%A8">尾部调用</a></li>
+</ul>
+</li>
+<li><a href="#%E5%87%BD%E6%95%B0%E7%9A%84%E9%87%8D%E8%BD%BD">函数的重载</a>
+<ul>
+<li><a href="#%E8%B7%A8%E6%A8%A1%E5%9D%97%E9%87%8D%E8%BD%BD%E4%B8%8D%E6%94%AF%E6%8C%81">跨模块重载（::不支持）</a></li>
+<li><a href="#%E5%8F%82%E6%95%B0%E7%9A%84%E9%BB%98%E8%AE%A4%E5%80%BC%E5%92%8C%E5%8F%AF%E9%80%89%E5%8F%82%E6%95%B0">参数的默认值和可选参数</a></li>
+</ul>
+</li>
+<li><a href="#%E9%87%8D%E8%BD%BD%E5%86%B2%E7%AA%81">重载冲突</a></li>
+<li><a href="#%E5%88%86%E6%94%AF%E5%87%BD%E6%95%B0">分支函数</a>
+<ul>
+<li><a href="#%E5%87%BD%E6%95%B0%E7%9A%84%E5%88%86%E6%94%AF%E4%B8%8E%E6%95%B0%E5%AD%A6%E7%9A%84%E5%87%BD%E6%95%B0%E5%AE%9A%E4%B9%89">函数的分支与数学的函数定义</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E7%BA%AF%E5%87%BD%E6%95%B0">纯函数</a></li>
+</ul>
+</li>
+</ul>
+<!-- /code_chunk_output -->
+<h2 id="函数的调用"><a class="header" href="#函数的调用">函数的调用</a></h2>
+<h3 id="语法"><a class="header" href="#语法">语法</a></h3>
+<p>调用函数时，写上函数的名称，然后使用一对括号把所有实参包围起来：</p>
+<ul>
+<li><code>函数名称 (参数值1, 参数值2, ... , 参数值N)</code></li>
+<li><code>functionName (value1, value2, ... , valueN)</code></li>
+</ul>
+<p>示例：</p>
+<pre><code class="language-js">加 (1, 2)
+行输出 (&quot;你好&quot;)
+</code></pre>
+<pre><code class="language-js">add (1, 2)
+writeLine (&quot;Hello&quot;)
+</code></pre>
+<h4 id="函数的返回值"><a class="header" href="#函数的返回值">函数的返回值</a></h4>
+<p>可以定义一个变量接收函数的返回值：</p>
+<ul>
+<li><code>让 变量名 = 函数名称 (参数值1, 参数值2, ..., 参数值N)</code></li>
+<li><code>let variableName = functionName (value1, value2, ..., valueN)</code></li>
+</ul>
+<p>示例：</p>
+<pre><code class="language-js">让 a = 平方根 (4)
+让 b = 加 (1, 2)
+</code></pre>
+<pre><code class="language-js">let a = sqrt (4)
+let b = add (1, 2)
+</code></pre>
+<p>如果对函数的返回值不感兴趣，也可以直接调用函数，不一定需要定义一个变量来接收它的返回值。</p>
+<h4 id="按参数名称传参"><a class="header" href="#按参数名称传参">按参数名称传参</a></h4>
+<p>调用函数时，一般是把各个参数值（即实参）按顺序（或者说 &quot;位置&quot;）传入函数，当一个函数的参数较多，可以考虑按参数名称传入参数值，这样在阅读时会更明确各个实参的意义。</p>
+<p>按参数名称传参的格式：</p>
+<ul>
+<li><code>函数名称 (参数名称1=参数值1, 参数名称2=参数值2, ..., 参数名称N=参数值N)</code></li>
+<li><code>functionName (param1=value1, param2=value2, ..., paramN=valueN)</code></li>
+</ul>
+<p>也可以混合按位置和按名称两种传参方式，不过必须先写完所有按位置传参的参数值，然后才可以开始写按名称传参的 &quot;名称-数值&quot; 对，格式：</p>
+<ul>
+<li><code>函数名称 (参数值1, ..., 参数值N, 参数名称a=参数值a, ..., 参数名称z=参数值z)</code></li>
+<li><code>functionName (value1, ..., valueN, paramA=valueA, ..., paramZ=参数值Z)</code></li>
+</ul>
+<p>示例：</p>
+<pre><code class="language-js"># 按名称传参
+绘图.直线 (x1=0, y1=0, x2=100, y2=100, 颜色=颜色常数.红色, 线条宽度=3)
+
+# 混合按位置和按名称传参
+绘图.直线 (0, 0, 100, 100, 颜色=颜色常数.红色, 线条宽度=3)
+</code></pre>
+<pre><code class="language-js"># passing parameters by name
+draw.line (x1=0, y1=0, x2=100, y2=100, color=ColorConstant.Red, lineWidth=3)
+
+# mixing per-position and per-name passing
+draw.line (0, 0, 100, 100, color=ColorConstant.Red, lineWidth=3)
+</code></pre>
+<blockquote>
+<p>无论函数当中的参数是否为可选参数，均可按照名称方式传参。</p>
+</blockquote>
+<h4 id="调用冲突"><a class="header" href="#调用冲突">调用冲突</a></h4>
+<blockquote>
+<p>XiaoXuan 的每个函数调用，在编译时就已经确定其应该调用的是哪一个函数定义，而不是在运行的过程中确定。</p>
+</blockquote>
+<p>因为运行环境会在源码解和析验证阶段已经排除有参数位置冲突的情况（具体排除方法见下面函数定义章节），所以当按照参数位置调用函数时，总能找到正确的对应的函数。不过当按照参数名称或者按照参数位置加名称的方式调用函数时，则有可能存在冲突的可能。</p>
+<p>示例：</p>
+<pre><code class="language-js">function Int test (Int a [, String b = &quot;foo&quot;]) = ...
+function Int test (String b [, Int a = 99]) = ...
+</code></pre>
+<p>注：参数列表中的中括号是为了突出表示当中的是可选参数，实际上不存在中括号。</p>
+<p>在源码解析验证的阶段，因为上面两个函数的位置参数的数据类型不同，因此不存在冲突。但如果按照参数名称调用，运行环境会逐个重载进行匹配。具体的步骤如下：</p>
+<ol>
+<li>先按照调用语句当中的位置参数筛选重载，此时无视函数定义当中参数的名称以及是否可选参数，即仅按照参数的数据类型和顺序来匹配；</li>
+<li>然后按照调用语句当中的名称参数，在上一步得出的候选重载中的剩余参数里，根据名称进行匹配，最后筛选出符合的重载。</li>
+<li>如果最后匹配的函数重载超过一个，则会引起运行时异常。</li>
+</ol>
+<p>示例：</p>
+<pre><code class="language-js">let i = test(a = 55, b = &quot;bar&quot;)
+</code></pre>
+<p>上面的调用语句与 <code>test</code> 函数的两个重载均可匹配，所以会引起运行时异常，这时需要更改调用语句，比如：</p>
+<p><code>let i = test(55, b = &quot;bar&quot;)</code></p>
+<p>或者</p>
+<p><code>let j = test(&quot;bar&quot;, a = 55)</code></p>
+<h4 id="调用没有参数的函数"><a class="header" href="#调用没有参数的函数">调用没有参数的函数</a></h4>
+<p>调用一个没有参数的函数（一般称之为过程）时，需要在函数名称后面加上一对空括号：</p>
+<ul>
+<li><code>函数名称 ()</code></li>
+<li><code>functionName ()</code></li>
+</ul>
+<h4 id="嵌套调用"><a class="header" href="#嵌套调用">嵌套调用</a></h4>
+<p>函数也可以嵌套调用，即：将一个函数的返回值作为另一个函数的参数的值。严格来说任何有返回值的表达式或者语句块，都可以作为参数值传给另一个函数。</p>
+<p>嵌套调用的格式：</p>
+<ul>
+<li><code>函数1 (参数值1, 函数2 (参数值a, 参数值z), 任意有返回值的表达式, ...)</code></li>
+<li><code>function1 (value1, function2 (valueA, valueZ), any_expression, ...)</code></li>
+</ul>
+<p>示例：</p>
+<pre><code class="language-js">让 弦 = 平方根 (平方 (3), 平方 (4))
+让 弦 = 平方根 (3 ^ 2 + 4 ^ 2)
+</code></pre>
+<pre><code class="language-js">let dist = sqrt (square (3), square (4))
+let dist = sqrt (3 ^ 2 + 4 ^ 2)
+</code></pre>
+<ul>
+<li>尽量避免多层函数嵌套调用，可以先把表达式的值求出来并赋值给变量，然后再把变量作为参数值传入函数。</li>
+<li>在语法上，允许省略函数名称和参数列表之间的空格，允许省略参数值之间的空格，不过为了规范起见尽量保留这些空格。</li>
+</ul>
+<h4 id="参数列表换行"><a class="header" href="#参数列表换行">参数列表换行</a></h4>
+<p>当参数列表过长时，可以换行书写，但参数列表的第一个括号（即开始括号）必须保留在函数名称后面，示例：</p>
+<pre><code class="language-js">01  让 标准差 =
+02      平方根 (
+03          加 (
+04              (x1-μ)^2,
+05              (x2-μ)^2
+06          )
+07      )
+</code></pre>
+<pre><code class="language-js">01  let std_deviation =
+02      sqrt (
+03          add (
+04              (x1-μ)^2,
+05              (x2-μ)^2
+06          )
+07      )
+</code></pre>
+<p>注意上面示例的第 02 和 03 行的末尾的左括号 &quot;(&quot; 必须跟在函数名称后面。</p>
+<h4 id="尾部调用优化"><a class="header" href="#尾部调用优化">尾部调用优化</a></h4>
+<p>当一个函数内部有语句调用自身时，且该语句位于函数的最后一句（注意这一句必须是单纯地调用函数自身的语句，而不能是一个表达式语句），或者这句后面只有 <code>如果</code> 语句的 <code>以上</code> 语句。这时运行环境会对这语句进行尾部调用优化。</p>
+<p>尾部调用优化即不会创建新的调用栈，而是更改函数的参数值直接再运行一次函数体的代码。</p>
+<p>实际上语法解析器在满足尾部调用优化的情况下，会把调用函数自身的语句替换成 <code>回到</code>（<code>recur</code>）语句。</p>
+<h3 id="实例方法和特性函数-考虑移动"><a class="header" href="#实例方法和特性函数-考虑移动">实例方法和特性函数 （::考虑移动）</a></h3>
+<p>如果某个数据类型（包括结构体和联合体）具备了某个<code>特性</code>（<code>Trait</code>，又叫做类型类、TypeClass），或者被赋予了实例方法，则可以在这个数据类型的实例上使用点号（&quot;.&quot;）来调用特性当中的函数或者实例方法。</p>
+<p>比如有一个 &quot;可显示&quot;（&quot;Display&quot;）特性，其中有一个 &quot;转为字符串&quot;（&quot;toString&quot;） 的函数。现有赋予该特性给结构体 &quot;用户&quot;，则有 3 种方式调用 &quot;转为字符串&quot; 函数：</p>
+<pre><code class="language-js">01  让 a = 可显示&lt;用户&gt;.转为字符串 (用户甲)    # 普通的函数调用方式
+02  让 b = 转为字符串 (用户甲)                # 根据第一个参数自动推导对应的函数
+03  让 c = 用户甲.转为字符串 ()               # 点号调用方式
+</code></pre>
+<pre><code class="language-js">01  let a = Display&lt;User&gt;.toString (userA)
+02  let b = toString (userA)
+03  let c = userA.toString ()
+</code></pre>
+<p>上面代码当中：</p>
+<ul>
+<li>01 行是标准的函数调用方式；</li>
+<li>02 行是运行环境先在当前上下文是否存在 &quot;转为字符串&quot; 函数，如果没有则根据第一个参数查找是否存在对应的特性函数或者数据实例方法，如果存在则使用相应的函数（上例中运行环境找到了特性函数 &quot;可显示&lt;用户&gt;.转为字符串&quot;）；</li>
+<li>03 行是使用了特性函数点号的调用方式。</li>
+</ul>
+<p>实际上点号调用方式是一个语法糖。即，对于如下格式的函数调用：</p>
+<ul>
+<li><code>特性名称.函数名 (数据实例, 参数值1, 参数值2, ... 参数值N)</code></li>
+<li><code>TraitName.functionName (dataInstance, value1, value2, ... valueN)</code></li>
+</ul>
+<p>可以简写如下：</p>
+<ul>
+<li><code>数据实例.函数名 (参数值1, 参数值2, ... 参数值N)</code></li>
+<li><code>dataInstance.functionName (value1, value2, ... valueN)</code></li>
+</ul>
+<p>需注意仅当特性函数或者实例方法的第一个参数为数据实例的类型时才能使用点号调用方式，有些特性函数和实例方法的第一个参数未必恰好是当前数据实例的类型。</p>
+<p>使用省略特性名称或者数据类型名称的调用方式（也叫做隐式方法调用）比较接近动态脚本语言的风格，但存在名称冲突的风险（编译时会显示警告信息）。</p>
+<p>使用点号调用函数比较接近一般面向对象编程语言的对象实例的方法（method）调用风格和习惯，例如：</p>
+<pre><code class="language-java"># Java
+User userA = ...;
+int id = userA.id;             # 访问对象的属性
+String text = userA.toString() # 访问对象的方法
+</code></pre>
+<pre><code class="language-js"># XiaoXuan
+let userA = ...
+let id = userA.id  # 访问结构体的成员
+let text = userA.toString() # 调用类 &quot;Display&quot; 的 &quot;toString()&quot; 方法
+</code></pre>
+<p>在条件允许的情况下推荐使用第 3 种调用方式。</p>
+<p>如果要在数字（整数和浮点数）字面量后面使用点号调用函数，需要使用括号把数字包围起来，示例：</p>
+<pre><code class="language-js">让 a = (123).平方()
+</code></pre>
+<p>直接在数字后面写上点号和函数名称会引起运行时异常。</p>
+<h3 id="函数的点号调用方式-考虑移动"><a class="header" href="#函数的点号调用方式-考虑移动">函数的点号调用方式 （::考虑移动）</a></h3>
+<h4 id="一般函数不支持"><a class="header" href="#一般函数不支持">一般函数（::不支持）</a></h4>
+<blockquote>
+<p>已经弃用该特性，因为容易会跟特性函数调用混淆</p>
+</blockquote>
+<p>如果一个值的数据类型跟一个函数的第一个参数的数据类型一致，也可以使用点号（&quot;.&quot;）来调用该函数。</p>
+<p>示例：</p>
+<pre><code class="language-js">函数 整数 平方 (整数 i) = ...
+让 i = 12
+让 s = i.平方()
+</code></pre>
+<pre><code class="language-js">function Int square (Int i) = ...
+let i = 12
+let s = i.square()
+</code></pre>
+<p>跟特性函数的点号调用不同，特性函数只需导入了目标数据类型即可。而一般函数的点号调用需要将该函数导入到当前的模块当中。</p>
+<h4 id="连续的函数点号调用不支持"><a class="header" href="#连续的函数点号调用不支持">连续的函数点号调用（::不支持）</a></h4>
+<blockquote>
+<p>已经弃用该特性，因为容易会跟特性函数调用混淆</p>
+</blockquote>
+<p>只要符合点号调用的要求，则可以使用 &quot;.&quot; 符号连续调用这两个或多个函数。比如有如下 3 个函数：</p>
+<pre><code class="language-js">函数 整数 加 (整数 i, 整数 i) = ...
+函数 整数 平方 (整数 i) = ...
+函数 显示 (整数 i) = ...
+</code></pre>
+<pre><code class="language-js">function Int add (Int i, Int i) = ...
+function Int square (Int i) = ...
+function show (Int i) = ...
+</code></pre>
+<p>现在想 &quot;求 (3 + 4) 的平方，并把结果输出到标准输出&quot;，每次单独调用一个函数的写法如下：</p>
+<pre><code class="language-js">让 i = 加 (3, 4)
+让 j = 平方 (i)
+显示 (j)
+</code></pre>
+<pre><code class="language-js">let i = add (3, 4)
+let j = square (i)
+show (j)
+</code></pre>
+<p>或者写成一行：</p>
+<ul>
+<li><code>显示 (平方 (加 (3, 4)))</code></li>
+<li><code>show (square (add (3, 4)))</code></li>
+</ul>
+<p>如果使用点号连续调用，则代码可以写成：</p>
+<ul>
+<li><code>加 (3, 4) .平方 () .显示 ()</code></li>
+<li><code>add (3, 4) .square () .show ()</code></li>
+</ul>
+<p>使用点号连续调用比 &quot;连续多行的单独函数调用&quot; 或者 &quot;嵌套调用&quot; 更直观。</p>
+<p>如果要换行，可以把点号 &quot;.&quot; 另起一行，示例：</p>
+<pre><code class="language-js">让 a = 加(3,4)
+    .平方()
+    .显示()
+</code></pre>
+<p>点号连续调用的结合方向是从左到右的。</p>
+<h3 id="拆封-考虑移动"><a class="header" href="#拆封-考虑移动">拆封 （::考虑移动）</a></h3>
+<p>如果一个值的类型为 <code>Result</code> 或者 <code>Option</code>，除了可以使用模式解构获取其有效值，还能通过拆封关键字 &quot;||&quot; 进行读取。</p>
+<p>设有变量 <code>a</code> 为 <code>Option&lt;Int&gt;</code> 类型，如果当前值为 <code>Some(123)</code>，则语句</p>
+<p><code>let b = a || 0</code></p>
+<p>会让变量 <code>b</code> 的值为 <code>123</code>。</p>
+<p>拆封关键字只可以作用在实现了 <code>封装</code>（<code>Wrapper</code>） 类列的数据，否则会引起运行时异常。</p>
+<h4 id="指定拆封的后备值--考虑移动"><a class="header" href="#指定拆封的后备值--考虑移动">指定拆封的后备值 <!--替换值--> （::考虑移动）</a></h4>
+<p>拆封关键字 &quot;||&quot; 的右侧用于指定拆封失败后的替换值（也可以称为默认值）。</p>
+<p>继续上面的例子，假如这时变量 <code>a</code> 的值为 <code>None</code>，则下面的语句：</p>
+<p><code>let b = a || 456</code></p>
+<p>会让变量 <code>b</code> 的值为 <code>456</code>。</p>
+<p>也就是说：</p>
+<ul>
+<li>当 <code>a</code> 的值为 <code>Some(123)</code> 时，变量 <code>b</code> 的值为 <code>123</code>，</li>
+<li>当 <code>a</code> 的值为 <code>Nothing</code> 时，变量 <code>b</code> 的值为 <code>456</code>。</li>
+</ul>
+<h4 id="指定拆封的替换值为表达式-考虑移动"><a class="header" href="#指定拆封的替换值为表达式-考虑移动">指定拆封的替换值为表达式 （::考虑移动）</a></h4>
+<p>拆封关键字 <code>||</code> 的右侧除了可以是基本的数值，也可以是任意返回类型相符合的表达式。</p>
+<p>下面是使用拆封关键字串联几个函数的例子：</p>
+<pre><code class="language-js">let s = &quot;0b1010&quot;
+let x = parseDec(s) || parseHex(s) || parseBin(s) || 0
+</code></pre>
+<p>上面的语句会依次尝试对字符串 <code>s</code> 解析为十进制、十六进制和二进制数，只要中途任何一个成功，都会立即返回值给变量 <code>x</code>，当全部都解析都失败时，则返回最后指定的默认值 0。</p>
+<p>拆封默认值关键字的结合顺序是从左到右。</p>
+<h4 id="指定拆封的替换为语句块-考虑移动"><a class="header" href="#指定拆封的替换为语句块-考虑移动">指定拆封的替换为语句块 （::考虑移动）</a></h4>
+<p>拆封关键字 &quot;||&quot; 的右侧还可以是一个语句块，只要该语句块的返回类型相符合即可。如果该语句块由多个语句组成，需要使用一对括号把它们包围起来，</p>
+<h4 id="指定拆封的后备匿名函数"><a class="header" href="#指定拆封的后备匿名函数">指定拆封的后备匿名函数</a></h4>
+<p>可以使用一个匿名函数获取拆封失败的详细情况。</p>
+<p>比如对于打开文件的函数 <code>open</code>，其返回值为 <code>Result&lt;File, IO.Error&gt;</code>，当文件打开成功时返回 <code>Ok(File)</code>。</p>
+<p>当文件打开失败时返回 <code>Err(Error)</code>，我们可以通过这个 <code>Error</code> 实例进一步了解文件打开失败的原因，比如，如果是 <code>Error.kind() === ErrorKind.NotFound</code>，我们可以创建一个新文件，然后返回打开这个新文件的 <code>File</code> 数据实例。</p>
+<p>代码如下：</p>
+<pre><code class="language-js">let file = File.open(&quot;hello.txt&quot;) || e =&gt;
+    if e.kind() == ErrorKind.NotFound then
+        File.create(&quot;hello.txt&quot;) ?
+    else
+        return Err(e)
+    end
+</code></pre>
+<p>如果不使用拆箱关键字，则上面的代码等同于：</p>
+<pre><code class="language-js">let file = match File.open(&quot;hello.txt&quot;)
+    case Ok(file):
+        file
+    case Err(e):
+        if e.kind() == ErrorKind.NotFound then
+            match File.create(&quot;hello.txt&quot;)
+                case Ok(file):
+                    file
+                case Err(e):
+                    Err(e)
+            end
+        else
+            Err(e)
+        end
+    end
+</code></pre>
+<h4 id="会自动退出函数的拆封-考虑移动"><a class="header" href="#会自动退出函数的拆封-考虑移动">会自动退出函数的拆封 （::考虑移动）</a></h4>
+<p>有时候希望在拆封失败时直接让函数返回失败值，即退出函数，而不是抛出运行时异常，这样可以使用 &quot;?&quot; 关键字拆封。</p>
+<p>示例：</p>
+<pre><code class="language-js">01  function Result&lt;String, IO.Error&gt; read(String filePath)
+02      let f = openFile(filePath) ?
+03      ...
+04  end
+</code></pre>
+<p>在上面的示例中，如果 02 行拆封失败，则直接让函数返回 <code>Err()</code> 而不是抛出运行时异常。在写 I/O 密集的代码时，因为大部分 I/O 函数都是返回 <code>Result</code> 类型的数据，使用 &quot;?&quot; 可以避免频繁处理 I/O 异常，直接返回 <code>Err</code> 给更上一级的模块处理异常。</p>
+<p>如果不使用拆箱关键字，则上面的代码等同于：</p>
+<pre><code class="language-js">function Result&lt;String, IO.Error&gt; read(String filePath)
+    let f = match openFile(filePath)
+        case Ok(f):
+            f
+        case Err(error):
+            return Err(error)
+    end
+    ...
+end
+</code></pre>
+<h3 id="部分调用"><a class="header" href="#部分调用">部分调用</a></h3>
+<p>部分调用用于代替一般函数式语言的柯里化。</p>
+<p>XiaoXuan Lang 的函数习惯把需要处理的数据作为第一个参数（为了跟结构体的方法函数一致），将参数、函数作为第二及后续的参数。而柯里化则习惯把需要处理的数据作为最后一个参数，且会因为参数有多个而导致有多个重载。所以 XiaoXuan Lang 不采用柯里化来实现函数的部分调用，而是采用明文定义的方式实现部分调用。</p>
+<p>XiaoXuan Lang 支持使用关键字 <code>var</code> 作为函数的参数来调用一个普通函数，这样返回值并不是函数的计算结果，而是一个部分调用的函数。</p>
+<p>::todo 考虑使用 <code>?</code> 符号作为占位符</p>
+<p>示例：</p>
+<pre><code class="language-js">add(2, 3)                   // 返回 2+3=5
+let addOne = add(var, 1)    // 返回一个部分调用的函数
+addOne(4)                   // 返回 4+1=5
+</code></pre>
+<p>上面的变量 <code>add(var, 1)</code> 实际上是一个语法糖，它的实际代码是：</p>
+<pre><code class="language-js">//let addOne = add(var, 1)
+let addOne = x =&gt; add(x,1)
+</code></pre>
+<p><code>var</code> 也关键字也支持指定其生成的匿名函数的参数名称，比如 <code>let addOne = add(var i, 1)</code>，它产生的代码是：</p>
+<pre><code class="language-js">let addOne = i =&gt; add(i, 1)
+</code></pre>
+<p>当需要生成一个有多个参数的部分调用函数时，指定参数的名称可以为调用者使用参数名称来传参。</p>
+<p>示例：</p>
+<pre><code class="language-js">let myFunc = someFunc(var color, var width, ...)
+let v1 = myFunc(Red, 3)
+let v2 = myFunc(width=3, color=Red)
+</code></pre>
+<p>下面代码演示使用 map 函数实现将列表里所有元素的值翻倍的函数：</p>
+<pre><code class="language-js">// 已有的 Map 函数
+// List map(List data, Int &lt;- (Int) func)
+let doubleAll = map(var, x=&gt;x*2)
+let v1 = doubleAll([1,2,3]) // 返回 [2,4,6]
+</code></pre>
+<h3 id="链式调用-考虑移动"><a class="header" href="#链式调用-考虑移动">链式调用 （::考虑移动）</a></h3>
+<p>跟 &quot;连续函数点号调用&quot; 类似，关键字 &quot;&gt;&gt;&quot; 也能连续调用函数，只需第二个函数的首个参数的数据类型跟第一个函数的返回值拆封后的数据类型一致即可。可以粗略地认为 &quot;&gt;&gt;&quot; 关键字是 &quot;??&quot; 关键字和函数点号调用的结合体。</p>
+<p>即链式调用会自动拆封 <code>Result</code> 和 <code>Option</code> 等实现了 <code>Wrap</code> 特性的数据，当拆封成功则把其值作为第一个参数传递给第二个函数，如果拆封失败则根据预先定义的值直接传递给下一个节点。</p>
+<p>假设有三个函数 <code>fa</code>、<code>fb</code> 和 <code>fc</code>，其参数都有且只有一个 <code>Int</code>，返回值都是 <code>Option&lt;Int&gt;</code>，现假设有如下语句：</p>
+<p><code>let a = fa (100) &gt;&gt; fb () &gt;&gt; fc ()</code></p>
+<p>如果三个函数的返回值都是 <code>Some(Int)</code>，则 <code>a</code> 的值也是 <code>Some(Int)</code>，如果中间任何一个函数值返回的是 <code>None</code>，则 <code>a</code> 的值都会为 <code>None</code>。</p>
+<p>注意链式调用当中的节点可能会转换返回类型，比如第一节点返回的是 <code>Result</code>，第二节点返回的是 <code>Option</code>，则最终返回的数据就是 <code>Option</code> 类型。</p>
+<p>关于链式调用的详细情况请参见 <a href="chain.html">链式调用</a>。</p>
+<h3 id="函数的组合"><a class="header" href="#函数的组合">函数的组合</a></h3>
+<p>如果一个函数的返回值的数据类型符合另一个函数的第一个参数（有且只有一个参数）的数据类型，则可以使用函数组合符号（<code>&amp;</code>）将两个或多个函数组合起来形成一个新的函数，例如：</p>
+<ul>
+<li><code>让 a = 负 (平方根 (加 (2, 3)))</code></li>
+<li><code>let a = neg (sqrt (add (2, 3)))</code></li>
+</ul>
+<p>可以写成：</p>
+<pre><code class="language-js">让 我的组合函数 = 负 &amp; 平方根 &amp; 加
+让 a = 我的组合函数 (2, 3)
+</code></pre>
+<pre><code class="language-js">let myCombFunc = neg &amp; sqrt &amp; add
+let a = myCombFunc (2, 3)
+</code></pre>
+<p>当然也可以把函数的组合、函数的调用一次过进行：</p>
+<ul>
+<li><code>让 a = 负 &amp; 平方根 &amp; 加 (2, 3)</code></li>
+<li><code>let a = neg &amp; sqrt &amp; add (2, 3)</code></li>
+</ul>
+<p>函数组合的结合方向是<strong>从右到左</strong>的，即先从右侧的函数开始计算，然依次计算到最左侧的函数。</p>
+<p>如果一个函数有多个参数，可以使用部分调用（假如函数支持部分调用，即有柯里化的重载，诸如 <code>map</code>、<code>fold</code>、<code>filter</code>、<code>sort</code>、<code>match</code> 等常用函数具有柯里化重载）后再组合，比如：</p>
+<pre><code class="language-js">让 加十分 = 加 (10)  # &quot;加 (10)&quot; 的返回值是一个部分函数： fn (b) = 10 + b
+让 我的组合函数 = 平方根 &amp; 加十分 &amp; 平方
+让 a = 我的组合函数 (60)
+</code></pre>
+<pre><code class="language-js">let addTen = add (10)  # &quot;add (10)&quot; return a partial function： fn (b) = 10 + b
+let myCombFunc = sqrt &amp; addTen &amp; square
+让 a = myCombFunc (60)
+</code></pre>
+<p>也可以写成一行：</p>
+<ul>
+<li><code>让 a = 平方根 &amp; 加 (10) &amp; 平方 (30)</code></li>
+<li><code>let a = sqrt &amp; add (10) &amp; square (30)</code></li>
+</ul>
+<p>根据函数结合律，多个输入输出类型相同的函数在组合时，函数顺序不重要，最终结果都相同，不过因为在执行时是从最右边的函数开始（即从右向左结合），一般来说可以把能减少数据的函数先执行，比如要实现 “取字符串第一个字母并转为大写” 的函数，先取数组第一个元素再转换为大写，比先转为大写再取第一个字母的效率要高。</p>
+<p>函数组合也并非一定是平铺结构的，有时需要 &quot;层次型&quot; 结构，示例：</p>
+<pre><code class="language-js">let toParamCase = join('_') &amp; map(Char::toLowerCase) &amp; split(&quot; &quot;)
+</code></pre>
+<h3 id="使用-调用-函数调用函数不支持"><a class="header" href="#使用-调用-函数调用函数不支持">使用 <code>调用</code> 函数调用函数（::不支持）</a></h3>
+<p>使用 <code>调用</code> 函数调用一个函数的格式是：<code>调用 (函数名, 参数元组)</code></p>
+<p>示例：</p>
+<pre><code class="language-js"># 函数的一般调用方式
+让 s1 = 测试 (123, &quot;Hello&quot;)
+
+# 使用 `调用` 语句来调用
+让 args = (123, &quot;Hello&quot;)
+让 s2 = 调用 (测试, args)
+</code></pre>
+<pre><code class="language-js"># normal call
+lets1 = test (123, &quot;Hello&quot;)
+
+# call by 'call' statement
+let args = (123, &quot;Hello&quot;)
+let s2 = call (test, args)
+</code></pre>
+<p>每个函数内部都有一个名为 &quot;<em>参数值表</em>&quot;（&quot;<em>arguments</em>&quot;） 的元组，其中记录者该函数被调用时所传入的所有参数值。</p>
+<pre><code class="language-js">函数 浮点数 测试 (整数 a, 整数 b)
+  让 和 = 调用 (加, _参数值表_)
+  让 差 = 调用 (减, _参数值表_)
+  平方根 (和^2 + 差^2)
+以上
+</code></pre>
+<pre><code class="language-js">function Float test (Int a, Int b)
+  let a = call (add, _arguments_)
+  let b = call (sub, _arguments_)
+  sqrt (a^2 + b^2)
+end
+</code></pre>
+<h3 id="函数的中置调用方式"><a class="header" href="#函数的中置调用方式">函数的中置调用方式</a></h3>
+<p>如果一个函数只有两个参数，则在调用时可以使用中置格式，<!-- 即：使用反单引号（"`"）将函数名包围起来--></p>
+<p>方法是在函数名前面和后面加上冒号，然后将两个参数分别写在函数的左右两边，最后还需要一对括号把它们包围起来。</p>
+<p>比如函数：</p>
+<ul>
+<li><code>让 a = 加 (11, 55)</code></li>
+<li><code>let a = add (11, 55)</code></li>
+</ul>
+<p>其中置调用的写法是：</p>
+<pre><code class="language-js">让 a = (11 :加: 55)
+</code></pre>
+<pre><code class="language-js">let a = (11 :add: 55)
+</code></pre>
+<!-- 所有名称由**纯符号**构成的函数都使用中置格式调用，如函数 "+" 和 "*" （它们分别是函数 "加" 和 "乘" 的别名）等等。 -->
+<p>示例，下面 3 句的作用完全相同：</p>
+<pre><code class="language-js">让 a = 加 (11, 55)
+让 b = (11 :加: 55)
+让 c = 11 + 55
+</code></pre>
+<pre><code class="language-js">let a = add (11, 55)
+let b = (11 :add: 55)
+let c = 11 + 55
+</code></pre>
+<!-- XiaoXuan 语言里没有运算符，所有运算符实际上都是函数的别名。 -->
+<blockquote>
+<p>函数的中置调用格式，只是函数一般调用格式的特殊写法，所以括号不能省略。</p>
+</blockquote>
+<blockquote>
+<p>XiaoXuan 通过把一些不太好判断优先级的运算符（比如逻辑运算符、一元运算符等）移除，使用相应的函数的中置调用来取而代之，以消除优先级混乱问题。</p>
+</blockquote>
+<h3 id="中置调用的原理"><a class="header" href="#中置调用的原理">中置调用的原理</a></h3>
+<p>中置符号使用 <code>运算符</code> 语句定义，<code>运算符</code> 语句定义了符号所对应的函数名称、运算优先级别、结合顺序。</p>
+<p>示例：</p>
+<pre><code class="language-js">运算符 (&quot;+&quot;, &quot;加&quot;, 优先级 = 99, 结合顺序值 = 结合顺序.左)
+</code></pre>
+<p><code>运算符</code> 语句必须写在模块级作用范围内。</p>
+<p>运算符定义之后，当解析器遇到存在运算符（即纯符号组成的标识符）的表达式时，则会查找运算符对照表，然后根据运算优先级和结合顺序，将表达式当中的运算符解析成第一个参数数据的方法调用。</p>
+<p>示例：</p>
+<p><code>2 + 3</code></p>
+<p>解析器通过查表找到 <code>+</code> 符号对应的函数名为 <code>加</code>，然后将表达式解析为：</p>
+<p><code>(2).加(3)</code> （因为 <code>2</code> 是数字，所以被加上了一对括号）</p>
+<p>由于 <code>2</code> 是整数，所以方法调用语句被进一步解析为数据的静态方法以及找到函数的原型：</p>
+<p><code>整数::加 (2, 3)</code>
+<code>整数::加 (Int, Int)</code></p>
+<p>下面列举一个有两个 <code>+</code> 符号的表达式的解析过程：</p>
+<p><code>a + b + c</code></p>
+<p>解析过程：</p>
+<ol>
+<li>a.加(b + c)</li>
+<li>a.加(b.加(c))</li>
+<li>a.加(整数::加(b, c))</li>
+<li>整数::加(a, 整数::加(b, c))</li>
+</ol>
+<h3 id="连续中置调用"><a class="header" href="#连续中置调用">连续中置调用</a></h3>
+<p>同一个中置函数可以连续调用，比如：</p>
+<pre><code class="language-js">let a = 1 :add: 2 :add: 3 :add: 4
+</code></pre>
+<p>中置函数连续调用时，运算顺序（即结合性）是从左向右方向，即先运算 <code>1 :add: 2</code>，得出结果 <code>3</code> 后再运算 <code>3 :add: 3</code>，如此类推。</p>
+<p>但不同的中置函数不能连续调用，比如：</p>
+<pre><code class="language-js">let b = 1 :add: 2 :greater_than: 3
+</code></pre>
+<p>必须使用括号把优先运算的包围起来，比如：</p>
+<pre><code class="language-js">let b = (1 :add: 2) :greater_than: 3
+</code></pre>
+<p>但四则运算是一个例外，即 <code>add</code>, <code>sub</code>, <code>mul</code>, <code>div</code> 它们可以连续调用，且 <code>mul</code> 和 <code>div</code> 的优先级会比 <code>add</code> 和 <code>sub</code> 高。</p>
+<!-- ### 优先级和结合性 -->
+<!--
+::TODO(移除函数中置调用法的优先级和结合性定义，不允许 "中置调用" 连续调用，即不允许诸如 `(A :and: B :or: C)` ，必须使用括号两个参数两个参数地分组，即 `((A :and: B) :or: C)`。)
+-->
+<!--
+当**多个中置函数连续调用**时，不同的中置函数可以有不同的优先级别（即有不同的执行先后顺序），相同优先级别的又有 "从左到右" 和 "从右到左" 两种不同的结合方向。优先级和结合方向是由定义函数时定义的。
+
+默认情况下，所以中置函数的优先级别一样，且都遵循 "从左到右" 的结合方向。比如：
+
+* `让 a = 1 + 8 - 3`
+* `let a = 1 + 8 - 3`
+
+在求值时，首先会执行表达式 `1 + 8`，得出值 `9` 之后再执行表达式 `9 - 3`，最后得出结果 `6`。
+
+有些函数有较高的优先级，比如：
+
+* `让 b = 1 + 2 * 3`
+* `let b = 1 + 2 * 3`
+
+因为 `*` 函数定义的优先级别比 `+` 的要高，所以会先执行表达式 `2 * 3`，得出值 `6` 之后再执行表达式 `1 + 6`，最后得出结果为 `7`。
+
+从右到左的结合方向的函数比较少，常见的有幂运算函数 `^`，比如：
+
+* `让 c = 4 ^ 3 ^ 2`
+* `let c = 4 ^ 3 ^ 2`
+
+它会先执行表达式 `3 ^ 2`，得出值 `9` 之后再执行表达式 `4 ^ 9`。
+-->
+<h3 id="运算符"><a class="header" href="#运算符"><!-- 内置的中置函数的优先级 --> 运算符</a></h3>
+<p>XiaoXuan Lang 支持一些常用的运算符，它们在编译时会被替换成中置函数：</p>
+<ul>
+<li><code>*</code>（<code>乘</code>，<code>mul</code>）</li>
+<li><code>/</code>（<code>除</code>，<code>div</code>）</li>
+<li><code>+</code>（<code>加</code>，<code>add</code>）</li>
+<li><code>-</code>（<code>减</code>，<code>sub</code>)</li>
+<li><code>&gt;</code>（<code>大于</code>，<code>greaterThan</code>）</li>
+<li><code>&gt;=</code>（<code>大于等于</code>，<code>greaterThanOrEquals</code>）</li>
+<li><code>&lt;</code>（<code>小于</code>，<code>lessThan</code>）</li>
+<li><code>&lt;=</code>（<code>小于等于</code>，<code>lessThanOrEquals</code>）</li>
+<li><code>==</code>（<code>等于</code>，<code>equals</code>）</li>
+<li><code>!=</code>（<code>不等于</code>，<code>notEquals</code>）</li>
+</ul>
+<p>XiaoXuan Lang 不支持自定义运算符号。参考: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence</p>
+<p>还有一些常用的运算函数，但没有对应的运算符号：</p>
+<ul>
+<li><code>负</code>，<code>neg</code></li>
+<li><code>余</code>，<code>rem</code></li>
+<li><code>点乘</code>，<code>dotMul</code>，即两个结构相同的数组逐个元素相乘，或者其中一个是标量）</li>
+<li><code>点除</code>，<code>dotDiv</code></li>
+<li><code>与</code>，<code>:and</code></li>
+<li><code>或</code>，<code>:or</code></li>
+<li><code>非</code>，<code>not</code></li>
+<li><code>位与</code>，<code>:bitAnd</code></li>
+<li><code>位或</code>，<code>:bitOr</code></li>
+<li><code>位非</code>，<code>bitNot</code></li>
+<li><code>左移</code>，<code>shiftLeft</code></li>
+<li><code>右移</code>，<code>shiftRight</code></li>
+<li><code>逻辑右移</code>，<code>logicShiftRight</code></li>
+</ul>
+<p>XiaoXuan Lang 还有一些结构符号，它们不是函数：</p>
+<ul>
+<li>拆封（<code>?</code>）；</li>
+<li>函数的组合（<code>&amp;</code>）；</li>
+<li>链式调用表达式（<code>&gt;&gt;</code>）;</li>
+<li>拆封表达式（<code>||</code>）；</li>
+<li>函数的管道调用（<code>|</code>）；</li>
+<li>赋值表达式 (<code>=</code>)；</li>
+</ul>
+<h3 id="表达式的执行顺序"><a class="header" href="#表达式的执行顺序">表达式的执行顺序</a></h3>
+<p>下面列出各种表达式的执行顺序（优先级从高到低排列），如无单独指出，结合顺序默认都是从左到右：</p>
+<ol>
+<li>分组及语句块，即一对括号或者使用 <code>开始...以上</code>（<code>begin...end</code>）包围起来的部分。分组和语句块的结合顺序是从左到右，比如连续两个括号 <code>(...)()</code> 则先对前一个求值；分组和分组嵌套时，先求内部的再求外部的值 <code>(j+(i+(...)))</code> == <code>... + i + j</code>。</li>
+</ol>
+<!-- 2. `新建 N::T (...)`（`new N::T (...)`）新建数据实例语句，`新建 T.M.N (...)`（`new T.M.N (...)`）新建联合体成员实例语句；(::考虑取消 new 关键字，直接采用构造函数的普通函数调用即可) -->
+<ol start="3">
+<li>名称空间路径如 <code>std::collection::Array</code><!--，结合顺序为从左到右。-->
+<code>function_name (...)</code> 函数的一般调用；</li>
+<li>结构体（联合体、枚举、常量）成员访问（即点号）如 <code>user.name</code>、<code>user.addr.city</code>，列表的索引访问（即中括号加数字下标）如 <code>books[1]</code>、<code>table[1][2]</code>；映射表项目的访问（即中括号加字符串）<code>user[&quot;name&quot;]</code>、<code>user[&quot;name&quot;][&quot;first&quot;]</code>；</li>
+<li><code>instance.function_name()</code> 数据实例方法的点号调用，</li>
+<li>拆封（<code>?</code>）；</li>
+<li>类型转换 （<code>^</code>）</li>
+<li>函数的组合（<code>&amp;</code>）（因为有时需要先函数部分调用后再结合，所以函数组合运算符的优先级低于函数调用），结合顺序为从右到左；</li>
+<li>算术运算符、比较运算符、函数的中置格式调用；</li>
+<li>函数的链式调用（<code>&gt;&gt;</code>）;</li>
+<li>带后备的拆封表达式（<code>||</code>）</li>
+<li>函数的管道调用（<code>|</code>）；</li>
+</ol>
+<!-- 13. 线程变量赋值语句(`:=`)。 -->
+<ol start="12">
+<li>赋值、解构语句（<code>=</code>），结合顺序为从右到左。</li>
+</ol>
+<p>需要注意的是函数的一般调用方式要比函数的中置调用方式优先级要高，示例：</p>
+<ul>
+<li><code>让 a = 平方根 (9) + 平方根 (16)</code></li>
+<li><code>let a = sqrt (9) + sqrt (16)</code></li>
+</ul>
+<p>在执行时会先计算两个 <code>平方根</code> 函数，得出值之后再计算 <code>+</code> 函数。</p>
+<blockquote>
+<p>如果一个结构体的成员是函数，则需要使用把这个数据实例和成员用括号包括起来才能正确调用，比如 <code>(user.func).(arg1, arg2, ...)</code>，如果写成 <code>user.func(arg1, arg2)</code> 会被认为是调用实例方法。一般不建议将函数作为结构体的成员。</p>
+</blockquote>
+<h2 id="函数的定义"><a class="header" href="#函数的定义">函数的定义</a></h2>
+<h3 id="语法-1"><a class="header" href="#语法-1">语法</a></h3>
+<p>使用 <code>函数</code>（<code>function</code>） 关键字定义一个函数，格式如下：</p>
+<pre><code class="language-js">函数 返回值的数据类型 函数名称 (参数类型1 参数名称1, ..., 参数类型N 参数名称N)
+    ...
+    函数主体
+    ...
+以上
+</code></pre>
+<pre><code class="language-js">function DataType functionName (DataType1 param1, ..., DataTypeN paramN)
+    ...
+    function body
+    ...
+end
+</code></pre>
+<p>函数的主体是一个或多个语句或表达式，最后一个表达式的值将会作为函数的返回值。示例：</p>
+<pre><code class="language-js">函数 浮点数 两点距离 (整数 x1, 整数 y1, 整数 x2, 整数 y2)
+    让 a = (x2 - x1) ^ 2
+    让 b = (y2 - y1) ^ 2
+    平方根 (a + b)
+以上
+</code></pre>
+<pre><code class="language-js">function Float distance (Float x1, Float y1, Float x2, Float y2)
+    let a = (x2 - x1) ^ 2
+    let b = (y2 - y1) ^ 2
+    sqrt (a + b)
+end
+</code></pre>
+<p>最后一行的 <code>平方根</code> 函数的结果将会作为函数的返回值。当然也可以加上 <code>return</code> 关键字，在函数主体最后一行的 <code>return</code> 关键字实际上在运行时会直接忽略。</p>
+<h4 id="无返回值函数"><a class="header" href="#无返回值函数">无返回值函数</a></h4>
+<!--
+定义函数时，如果省略了返回值的数据类型：
+
+* 对于普通定义的函数，会自动被认为返回值类型为 `结果<基元, 基元>`（`Result<Unit, Unit>`）（别名 `空型`，`Void`），如果 `返回`（`return`）关键字后面不加任何值，则会自动被认为是 `返回 好(空值)`（`return Ok(void)`），其中 `空值` 值等同于空元组 `()`。
+* 对于匿名函数，会根据上下文环境自动推导，推导过程是先查找所处的环境所需要的数据类型，如果无从推导则由返回值来决定。
+-->
+<p>当一个函数无返回值时，可以使用数据类型 <code>空元型</code>（<code>Unit</code>）表示，空元型数据只有一个值 <code>空元</code>（<code>Empty</code>）。</p>
+<p>比如</p>
+<pre><code class="language-js">函数 空元型 测试(字符串 a， 字符串 b)
+  书写行(`a: {a}, b: {b}`)
+以上
+</code></pre>
+<pre><code class="language-js">function Unit test(String a, String b)
+  writeLine(`a: {a}, b: {b}`)
+end
+</code></pre>
+<p>函数的签名是：</p>
+<p><code>Unit &lt;- functionName (param1, param2, ...)</code></p>
+<blockquote>
+<p>定义函数时，可以直接省略返回数据类型，解析器会为函数定义自动添加 <code>Unit</code> 类型作为返回值类型，<code>return</code> 语句也被自动解析为 <code>return Empty</code> 。</p>
+</blockquote>
+<p>示例：</p>
+<pre><code class="language-js">函数 测试(字符串 a， 字符串 b)
+  书写行(`a: {a}, b: {b}`)
+以上
+</code></pre>
+<pre><code class="language-js">function test(String a, String b)
+  writeLine(`a: {a}, b: {b}`)
+end
+</code></pre>
+<p>注意函数的签名仍然不变：</p>
+<p><code>Unit &lt;- functionName (param1, param2, ...)</code></p>
+<h4 id="简写形式"><a class="header" href="#简写形式">简写形式</a></h4>
+<p>如果函数的主体是一个表达式，则可以把函数的定义写成一行：</p>
+<ul>
+<li><code>函数 返回值的数据类型 函数名称 (参数类型1 参数名称1, ..., 参数类型n 参数名称n) = 表达式</code></li>
+<li><code>function DataType functionName (DataType1 param1, ..., DataTypeN paramN) = expression</code></li>
+</ul>
+<p>示例：</p>
+<ul>
+<li><code>函数 整数 加十分 (整数 a) = a + 10</code></li>
+<li><code>function Int addTen (Int a) = a + 10</code></li>
+</ul>
+<p>表达式不一定要求在一行内写完，只要是一个合法的表达式均可， 比较长的表达式也是可以换行的，示例：</p>
+<pre><code class="language-js">函数 浮点数 距离 (整数 x1, 整数 y1, 整数 x2, 整数 y2) =
+    平方根 (
+        (x2 - x1) ^ 2 +
+        (y2 - y1) ^ 2)
+</code></pre>
+<pre><code class="language-js">function Float distance (Int x1, Int y1, Int x2, Int y2) =
+    sqrt (
+        (x2 - x1) ^ 2 +
+        (y2 - y1) ^ 2)
+</code></pre>
+<p>上例当中的 <code>=</code> 符号、<code>(</code> 符号， <code>+</code> 符号后面均表示语句尚未结束。</p>
+<h3 id="函数别名"><a class="header" href="#函数别名">函数别名</a></h3>
+<p>可以为一个函数设置另一个名称，使用 <code>别名</code>（<code>alias</code>） 关键字定义函数的别名，语法如下：</p>
+<ul>
+<li><code>别名 新函数名称 = 原函数名称</code></li>
+<li><code>alias newName = originalFunctionName</code></li>
+</ul>
+<p>示例：</p>
+<ul>
+<li><code>别名 &quot;+&quot; = 加</code></li>
+<li><code>alias &quot;+&quot; = add</code></li>
+</ul>
+<p>如果函数名称包含有符号，需要将函数名称使用双引号包围起来。</p>
+<ul>
+<li>别名对一个函数的所有重载均起效。即别名只跟函数的名称有关，跟函数的签名无关；</li>
+<li>一般别名的定义跟原函数的定义在同一个作用域里。比如在某个模块里定义的函数，其别名也应该在这个模块里定义；在某个特性里定义的函数，其别名也应该在该特性里定义。</li>
+</ul>
+<h3 id="匿名函数"><a class="header" href="#匿名函数">匿名函数</a></h3>
+<p>使用 <code>匿名函数</code>（<code>fn</code>） 关键字可以定义一个匿名函数，匿名函数没有名称，通常在一个函数内部定义及使用，或者作为参数传给另一个（高阶）函数。</p>
+<p>定义匿名函数的语法：</p>
+<pre><code class="language-js">让 变量名称 =
+    匿名函数 返回值的数据类型 (参数类型1 参数名称1, ..., 参数类型N 参数名称N)
+        ...
+        # 函数主体
+        ...
+    以上
+</code></pre>
+<pre><code class="language-js">let variable =
+    fn DataType (DataType1 param1, ..., DataTypeN paramN)
+        ...
+        # function body
+        ...
+    end
+</code></pre>
+<p>跟标准函数的定义一样，如果函数的主体是一个表达式，则可以把匿名函数的定义写成一行：</p>
+<ul>
+<li><code>让 变量名称 = 匿名函数 返回值的数据类型 (参数类型1 参数名称1, ..., 参数类型N 参数名称N) = 表达式</code></li>
+<li><code>let variable = fn DataType (DataType1 param1, ..., DataTypeN paramN) = expression</code></li>
+</ul>
+<p>示例：</p>
+<pre><code class="language-js">让 乘加 = 匿名函数 整数 (整数 a, 整数 x, 整数 b) = a * x + b
+让 a = 乘加 (2, 3, 4)
+</code></pre>
+<pre><code class="language-js">let mulAdd = fn Int (Int a, Int x, Int b) = a * x + b
+let a = mulAdd (2, 3, 4)
+</code></pre>
+<p>XiaoXuan 支持定义完立即调用，因为括号的结合顺序是从左到右，所以会先对第一对括号求值，如果返回值类型是函数，则将第二对括号的内容作为参数，调用该匿名函数。示例：</p>
+<ul>
+<li><code>让 a = (匿名函数 整数 (整数 a) = a * 2) (4)</code></li>
+<li><code>let a = (fn Int (Int a) = a * 2) (4)</code></li>
+</ul>
+<p>如果一个匿名函数作为参数传给另一个函数，因为参数的类型包含了函数签名的信息，即类型推导能推导出匿名函数的返回值的数据类型及各个参数的数据类型，则可以省略书写返回值的数据类型以及各参数的数据类型。</p>
+<p>示例：</p>
+<pre><code class="language-js">function pick(List&lt;Int&gt; items, F f) where
+    F = Boolean &lt;- (Int)
+    ...
+end
+
+let numbers = [1, 2, 3, 4, 5]
+let fav = pick(numbers, fn (i) = i &gt; 3 )
+</code></pre>
+<p>上例中的 <code>fn (i) = i &gt; 3</code> 匿名函数省略了返回值数据类型，也省略了参数的数据类型。</p>
+<h3 id="匿名函数捕获变量值闭包"><a class="header" href="#匿名函数捕获变量值闭包">匿名函数捕获变量值（闭包）</a></h3>
+<p>如果一个匿名函数的主体引用了匿名函数之外的变量，则变量的值会被捕获，即使匿名函数离开了其被定义的作用域，该被捕获的值仍然有效。示例：</p>
+<pre><code class="language-js">函数 F 增长(整数 i) 其中
+    F = 整数 &lt;- (整数)
+
+    返回 匿名函数 (整数 x) = i + x
+以上
+
+让 f1 = 增长 (10)  # 函数 f1 绑定了值为 10 的变量 i
+让 f2 = 增长 (20)  # 函数 f2 绑定了值为 20 的变量 i
+
+书写行 (f1 (2)) # 输出 12
+书写行 (f2 (2)) # 输出 22
+</code></pre>
+<pre><code class="language-js">function F inc(Int i) where
+    F = Int &lt;- (Int)
+
+    return fn (x) i + x
+end
+
+let f1 = inc (10)  # `f1` binds the variable i with value 10
+let f2 = inc (20)  # `f2` binds the variable i with value 10
+
+writeLine (f1 (2)) # output 12
+writeLine (f2 (2)) # output 22
+</code></pre>
+<p>在支持可变变量的编程语言里，f1 和 f2 里引用了一个共同的变量 i，假如变量 i 的值（或者 i 的成员的值）被 f1 改变了，则该改变也会反映到 f2 所绑定的变量 i 里，有时这种改变并不是预想的，因此引起错误。示例：</p>
+<pre><code class="language-JavaScript">function inc() {
+    let fns = [];
+    let step = 0;
+    for(let i=0; i&lt;10; i++) {
+        step +=1;
+        let fn = x =&gt; x + step;
+        fns.push(fn);
+    }
+
+    # fns 里包含 10 个匿名函数，其绑定的 step 的值都是 10，
+    # 而不是 1 到 10。
+
+    for(let fn of fns) {
+        console.log(fn(5)); # 都输出 15
+    }
+
+    # 下面是修正版
+    let ffs = [];
+    for(let i=0; i&lt;10; i++) {
+        let step = i; # 复制 i 值到变量 step
+        let fn = x =&gt; x + i;
+        ffs.push(fn);
+    }
+
+    for(let ff of ffs) {
+        console.log(ff(5)); # 依次输出 5,6,7,8, ..., 15
+    }
+}
+</code></pre>
+<p>在 JavaScript 环境里，当匿名函数使用自身之外的变量时，变量（不是变量的值，而是变量本身，或者说标识符本身）会被该匿名函数所捕获，如果匿名函数被返回并被传递到其他地方，该捕获仍然存在，即该匿名函数能够一直访问到该变量的最新的值。</p>
+<p>示例：</p>
+<pre><code class="language-JavaScript">function makeCounter() {
+    let n = 1;
+    return [
+        () =&gt; n = n + 1,
+        () =&gt; n = n - 1,
+        () =&gt; n
+    ]
+}
+
+# makeCounter 函数返回一个数组，数组有三个匿名函数，
+# 一个递增，一个递减，一个返回当前值
+
+let [inc, dec, get] = makeCounter();
+inc();  # 返回 2
+inc();  # 返回 3
+get();  # 返回 3
+dec();  # 返回 2
+dec();  # 返回 1
+</code></pre>
+<p>在 JavaScript 环境里，每个函数被执行时都有两个指针，一个指向父词法环境（即调用者 caller 的词法环境） ，一个指向当前的词法环境（即 callee 自己的词法环境），匿名函数也不例外。当匿名函数被当作返回值跳出所在的函数时，函数尚未被执行，所以没有自己的词法环境。但因为匿名函数有对其所在的环境的引用（即存在上述的第一个指针），所以所在的函数的词法环境不会被回收，会一直被保持者，直到匿名函数被回收为止。</p>
+<p>参考《javascript info》的 &quot;作用域与闭包&quot; 一章:
+https://zh.javascript.info/closure#step-4-fan-hui-han-shu</p>
+<p>XiaoXuan 的变量值是不可变的，因此在匿名函数里引用的外部变量时，仅仅引用了一份该变量的值（对于复制类型的值，则是复制），匿名函数被当作返回值跳出所在的函数之后，如果所在的函数已经执行完毕，则它的词法环境可以放心被回收，XiaoXuan 的垃圾回收效率会更高一些。</p>
+<h3 id="简化形式的匿名函数"><a class="header" href="#简化形式的匿名函数">简化形式的匿名函数</a></h3>
+<p>正如前两节所说，如果一个匿名函数在一个函数签名确定的上下文环境里（比如作为一个参数传给另一个函数），那么匿名函数可以省略书写返回值数据类型以及参数的数据类型。在这种情况下，XiaoXuan 支持一种简化形式的匿名函数格式。语法是使用符号 <code>=&gt;</code> 分隔参数和函数主体部分，如果参数的只有一个，则连参数的括号都可以省略。</p>
+<p>简化形式的匿名函数也可以称为 &quot;箭头函数&quot;。</p>
+<p>示例：</p>
+<pre><code class="language-js"># 假设函数签名为： Int &lt;- (Int)
+匿名函数 Int (Int x) = x + 10 # 标准版匿名函数
+匿名函数 (x) = x + 10         # 省略数据类型的匿名函数
+x =&gt; x + 10                  # 简化版匿名函数
+
+# 假设函数签名为：Int &lt;- (Int, Int)
+匿名函数 Int (Int x, Int y) = sqrt(x^2 + y^2) # 标准版匿名函数
+匿名函数 (x, y) = sqrt(x^2 + y^2)             # 省略数据类型的匿名函数
+(x,y) =&gt; sqrt(x^2 + y^2)                     # 简化版匿名函数
+</code></pre>
+<pre><code class="language-js"># function signature: Int &lt;- (Int)
+fn Int (Int x) = x + 10 # standard anonymous function
+fn (x) = x + 10         # standard anonymous function without data types
+x =&gt; x + 10               # simplified anonymous function
+
+# function signature：Int &lt;- (Int, Int)
+fn Int (Int x, Int y) = sqrt(x^2 + y^2) # standard anonymous function
+fn (x, y) = sqrt(x^2 + y^2)             # standard anonymous function without data types
+(x, y) =&gt; x^2 + y^2                    # simplified anonymous function
+</code></pre>
+<p>下面是一个实际的例子：</p>
+<pre><code class="language-js">让 s = [1, 2, 3, 4, 5, 6];
+让 翻倍s = s.映射(x =&gt; x * 2)
+</code></pre>
+<pre><code class="language-js">let s = [1, 2, 3, 4, 5, 6];
+let double_s = s.map(x =&gt; x * 2)
+</code></pre>
+<p><code>映射</code>（<code>map</code>）的函数签名为 <code>List&lt;E&gt; map&lt;T, E=T&gt;(List&lt;T&gt;, E &lt;- (T))</code>，其中第 2 个参数接受一个函数，该函数的作用是从一个数 <code>T</code> 转换成另外一个数 <code>E</code>，它是一个转换函数，<code>map</code> 函数的作用就是将一列数根据你的需要转换得另外一列数。比如你的转换函数是将传入的整数乘于 2,那么输入 <code>[1,2,3]</code> 经过 <code>map</code> 转换得出 <code>[2,4,6]</code>。</p>
+<p>上例中，变量 s 的数据类型是 <code>列表&lt;整数&gt;</code>（<code>List&lt;Int&gt;</code>）, 由类型推导出 <code>map</code> 函数个类型参数是 <code>List&lt;Int&gt; map(List&lt;Int&gt;, Int &lt;- (Int))</code>，其中转换函数的签名为：</p>
+<ul>
+<li><code>整数 &lt;- (整数)</code></li>
+<li><code>Int &lt;- (Int)</code></li>
+</ul>
+<p>因此我们需要可以构造一个符合这个签名的匿名函数：</p>
+<ul>
+<li><code>匿名函数 整数 (整数 n) = n * 2</code></li>
+<li><code>fn Int (Int n) = n * 2</code></li>
+</ul>
+<p>这个匿名函数的定义可以省略数据类型：</p>
+<ul>
+<li><code>匿名函数 (n) = n * 2</code></li>
+<li><code>fn (n) = n * 2</code></li>
+</ul>
+<p>进一步简化该匿名函数：</p>
+<ul>
+<li><code>x =&gt; x * 2</code></li>
+</ul>
+<p>跟标准的匿名函数一样，简化版匿名函数也是支持多行的，只要在冒号 <code>:</code> 后面写上表示语句块的 <code>开始</code>（<code>begin</code>），然后写多行函数体，再以 <code>以上</code>（<code>end</code>）关键字表示结束，示例：</p>
+<pre><code class="language-js">让 翻倍s = s.映射(x =&gt;
+    开始
+        x * 2
+    以上)
+</code></pre>
+<pre><code class="language-js">let double_s = s.map(x =&gt;
+    begin
+        x * 2
+    end)
+</code></pre>
+<h3 id="返回-关键字"><a class="header" href="#返回-关键字"><code>返回</code> 关键字</a></h3>
+<p><code>返回</code>（<code>return</code>） 关键字用于立即退出当前的函数，可以带着一个返回值。</p>
+<p>示例：</p>
+<pre><code class="language-js">函数 整数 处理(整数 a)
+    ...
+    如果 ... 那么 返回 123
+    ...
+以上
+</code></pre>
+<p>当程序执行到 <code>返回</code> 语句时，不管当时正在执行到函数主体的哪条语句，都会立即返回一个值给调用者，并且放弃执行 <code>返回</code> 语句之后的语句。</p>
+<h4 id="省略-返回-关键字"><a class="header" href="#省略-返回-关键字">省略 <code>返回</code> 关键字</a></h4>
+<p>因为函数的最后一个表达式的值会自动成为函数的返回值，所以如果 <code>返回</code> 关键子位于函数的最后一行，则可以省略这个关键字。</p>
+<h4 id="匿名函数当中的-返回-关键字"><a class="header" href="#匿名函数当中的-返回-关键字">匿名函数当中的 <code>返回</code> 关键字</a></h4>
+<p>如果 <code>返回</code> 关键字位于匿名函数，包括简写版匿名函数 <code>:</code>，则它仅仅退出当前的匿名函数，而不会退出外部的函数。</p>
+<p>示例：</p>
+<pre><code class="language-js">函数 整数 处理(整数 a)
+    ...
+    让 整数 b = 匿名函数(整数 c)
+        ...
+        如果 ... 那么 返回 456
+        ...
+    以上
+    ...
+以上
+</code></pre>
+<p>上例当中的 <code>返回</code> 仅仅将 <code>456</code> 返回给变量 <code>b</code>，而不是返回给函数 <code>处理</code> 的调用者。</p>
+<h4 id="流程控制语句当中的-返回-关键字"><a class="header" href="#流程控制语句当中的-返回-关键字">流程控制语句当中的 <code>返回</code> 关键字</a></h4>
+<p>在诸如 <code>如果</code>，<code>分支</code>，<code>选择</code>，<code>条件</code>， <code>遍历</code> 等等语句里，<code>返回</code>（<code>退出</code>）关键字都是直接退出语句所在的函数。</p>
+<h4 id="尾部调用"><a class="header" href="#尾部调用">尾部调用</a></h4>
+<p>如果一个函数主体的最后一行是调用函数自己，则称之为 &quot;尾部调用&quot;。XiaoXuan 运行环境会对尾部调用进行优化，不创建调用栈，防止堆栈溢出。</p>
+<p>示例：</p>
+<pre><code class="language-js">01  函数 整数 累加(整数 i)
+02      让 内循环 = 匿名函数(整数 current, 整数 total)
+03          如果 current == 0 那么 返回 total
+04          让 s = total + current
+05          内循环 (current - 1, s)
+06      以上
+07
+08      返回 内循环(i ,0)
+09  以上
+10
+11  让 c = 累加(100)
+</code></pre>
+<p>上例中第 05 行调用了其所在的函数 &quot;内循环&quot;，且是最后一句，所以是尾部调用。</p>
+<p>注意尾部调用必须是<strong>单纯的</strong>调用函数自身（返回值可以是任意符合参数要求的值），且必须位于函数主体的<strong>最后一句</strong>。</p>
+<p>示例：</p>
+<pre><code class="language-js">01  函数 整数 累加(整数 i)
+02      让 内循环 = 匿名函数(整数 current, 整数 total)
+03          如果 current == 0 那么
+04              返回 total
+05          否则
+06              让 s = total + current
+07              内循环 (current - 1, s)
+08          以上
+09      以上
+</code></pre>
+<p>上面的代码跟上一个示例的语义是完全一样的，但 XiaoXuan 仅简单地依据是否最后一句来判断是否尾部调用，因为 07 行之后还有 <code>以上</code> 一句，所以被运行时认为不是尾部调用。</p>
+<h3 id="函数的重载"><a class="header" href="#函数的重载">函数的重载</a></h3>
+<p>可以定义两个或以上名称相同、返回值的数据类型相同，但参数列表不同的函数，这种情况称为函数的重载。函数重载一般是为了让调用者可以有选择地灵活调用函数。</p>
+<p>示例：</p>
+<pre><code class="language-js">01  函数 说 (字符串 name) = 书写行 (name)
+02  函数 说 (字符串 name, 字符串 sentence) = 格式化书写行 (&quot;{} 你好, {}&quot;, name, sentence)
+03
+04  说 (&quot;张三&quot;, &quot;吃饭了吗&quot;) # 调用 02 函数
+05  说 (&quot;张三&quot;) # 调用 01 函数
+</code></pre>
+<pre><code class="language-js">01  function say (String name) = writeLine (name)
+02  function say (String name, String sentence) = formatWriteLine (&quot;Hi {}, {}&quot;, name, sentence)
+03
+04  say (&quot;Foo&quot;, &quot;What's up&quot;) # call 02
+05  say (&quot;Foo&quot;) # call 01
+</code></pre>
+<ul>
+<li>函数重载要求参数列表必须<strong>不相同</strong>，可以是参数数量不相同，可以是参数的类型不相同，<!-- 可以是参数的模式不相同，--> 或者两者皆不相同。</li>
+<li>函数重载要求返回值数据类型必须<strong>相同</strong>，实际上，在同一个模块里不允许同名但不同返回值类型的函数。</li>
+</ul>
+<h4 id="跨模块重载不支持"><a class="header" href="#跨模块重载不支持">跨模块重载（::不支持）</a></h4>
+<p>函数重载也可以重载其他模块的函数，假设模块 &quot;a&quot; 有函数 &quot;Int calc(Int i)&quot;，则在模块 &quot;b&quot; 也能重载该函数，方法是先把模块 &quot;a&quot; 的目标函数导入到模块 &quot;b&quot;，然后在 &quot;b&quot; 的模块范围内定义一个参数不同的同名函数即可。</p>
+<p>示例：</p>
+<pre><code class="language-js">module b
+
+# import a function from another module
+import a.calc
+
+# overload the function
+function Int calc(Float i)
+    # ...
+end
+</code></pre>
+<h4 id="参数的默认值和可选参数"><a class="header" href="#参数的默认值和可选参数">参数的默认值和可选参数</a></h4>
+<p>函数的参数支持指定默认值，带有默认值的参数在调用时可以省略，所以这种参数也叫做 &quot;可选参数&quot;。相对地，位置参数也可以叫做 &quot;必选参数&quot;。</p>
+<p>一个函数的可选参数可以有零个或多个，但只能在排在必选参数之后，也就是可选参数必须排在参数列表的末尾。</p>
+<p>示例：</p>
+<pre><code class="language-js">function draw(Point p, Int width = 1, Color color = ColorConst::Black)
+</code></pre>
+<p>上面的后两个参数 <code>width</code> 和 <code>color</code> 即为可选参数。</p>
+<p>跟常量的定义一样，默认值只能是基本的数据或者是结构体、联合体的默认构造函数所产生的值。</p>
+<p>对于带有可选参数的函数，其签名的参数列表是所有参数。即无论是必选参数还是可选参数，都属于函数签名，且无视参数名和默认值。比如上例的函数其签名为：</p>
+<pre><code class="language-js">void &lt;- (Point, Int, Color)
+</code></pre>
+<blockquote>
+<p>可选参数只是函数调用的语法糖，当一个函数调用省略了某些参数的值时，运行时会从函数的定义里获取默认值，然后补齐缺少的参数值，再调用目标函数。</p>
+</blockquote>
+<h3 id="重载冲突"><a class="header" href="#重载冲突">重载冲突</a></h3>
+<p>函数重载要求参数的类型或者个数不同，这条规则同样适用于带有可选参数的函数。即在判断一个重载是否有冲突时，<strong>无视参数名称</strong>，仅依据参数的数据类型和顺序来判断。</p>
+<p>假设有如下两个函数重载：</p>
+<pre><code class="language-js">function test(Int a, String b, Int c = 88) = ...
+function test(Int a, String x = &quot;foo&quot;, Int y = 99) = ...
+</code></pre>
+<p>如果仅看必选参数部分，其函数签名似乎不存在冲突，如下：</p>
+<pre><code class="language-js">void &lt;- (Int a, String b)
+void &lt;- (Int a)
+</code></pre>
+<p>然而 XiaoXuan 的判断规则是无视是否可选参数、也无视参数名，所以它们的真正函数签名是存在冲突的，如下：</p>
+<pre><code class="language-js">void &lt;- (Int, String, Int)
+void &lt;- (Int, String, Int)
+</code></pre>
+<p>之所以如此判断，是因为 XiaoXuan 优先支持按位置传参，当一个函数调用仅使用位置传参时，显然它仅看参数的数据类型和顺序。</p>
+<p>具体的判断重载是否有冲突的步骤如下：</p>
+<ol>
+<li>将所有重载的可选参数去除；</li>
+<li>按照必选参数的数量从少到多排序；</li>
+<li>然后挑选必选参数最少的那个重载，扫描一遍是否存在签名一样（仅看参数的数据类型和顺序）的重载，存在则说明存在冲突，判断结束；</li>
+<li>逐个可选参数添加，每添加一个，都扫描一次是否存在签名一样的重载，存在则说明存在冲突，判断结束；</li>
+<li>当所有可选参数都添加并且确定无冲突时，排除此重载，即将此重载从判断列表中移除。然后重复第 3 到第 5 步。</li>
+<li>当所有的重载都不存在冲突时，则说明此函数的定义是语法正确的。</li>
+</ol>
+<!--
+如果一个函数存在重载，且重载当中存在可选参数，则必须保证各个重载不存在歧义的参数列表，否则会引起运行时异常。
+
+示例：
+
+```js
+function drawA(Point p)
+  ...
+end
+
+function drawA(Point p, Int width = 1)
+  # Invalid
+end
+
+function drawB(Point p, Color c)
+  ...
+end
+
+function drawB(Point p, Int width = 1, Color c = ColorConst::Black)
+  # Invalid
+end
+
+function drawC(Point p, Color c)
+  ...
+end
+
+function drawC(Point p, Int width = 1)
+  # OK
+end
+
+function drawD(Point p, Color c = ColorConst::Black)
+  ...
+end
+
+function drawC(Point p, Int width = 1)
+  # OK
+end
+```
+
+上面的 `drawA` 和 `drawB` 的第 2 个函数定义都会引起运行时异常，因为它的必选参数部分跟另外两个函数的数据类型相同，且可选参数会跟其他重载存在歧义。
+
+具体过程是，在语法解析之后，运行环境会把存在可选参数的函数当中的可选部分当作不存在，然后拿必选参数部分跟其他重载比较：
+
+1. 如果参数类型不一样，则认为是合法的重载，没进一步比较的必要；
+2. 如果参数类型一样，则拿取正在比较的两个函数的剩余部分参数（不分必选还是可选），只有有一个参数集合是空的，或者两个集合存在交集，都认为是非法重载。
+
+有这样的限制，主要是为了消除歧义，在调用之前调用者就已经（通过静态分析）可以确认它真正调用的是哪个重载。
+-->
+<p>需注意的：</p>
+<ul>
+<li>即使函数重载的定义不存在冲突，在调用时，如果调用语句使用了按参数名称传参，则仍然存在冲突的可能，详细见函数调用冲突章节；</li>
+<li>XiaoXuan 语句的函数调用优先匹配参数的数据类型和顺序，此时将无视参数的名称，这部分匹配完毕之后，再根据调用语句当中的名称参数跟函数定义当中剩余的参数进行名称匹配。</li>
+<li>为了方便静态分析和编译，同时也是为了降低语言实现的难度，XiaoXuan 语言<strong>不支持变长参数</strong>。</li>
+</ul>
+<!--
+### 函数的模式匹配（::不支持）
+
+函数的参数不仅仅用于引用或记录传入的参数值（类似赋值语句），同时还能作为模式匹配，即只有实参跟参数要求的模式相匹配时，该参数才会获取相应的值。示例：
+
+```js
+01  函数 显示余数 (Int a, Int 0) = 书写行 ("除数不能为零")
+02  函数 显示余数 (Int a, Int b) = 格式化书写行 ("余数为 {}", a `余` b)
+03
+04  显示余数 (5, 2) # 02 行函数被调用
+05  显示余数 (5, 0) # 01 行函数被调用
+```
+
+```js
+01  function showRemain (Int a, Int 0) = writeLine ("The divisor cannot be zero")
+02  function showRemain (Int a, Int b) = writeLine ("The remainder is {}", a `rem` b)
+03
+04  showRemain (5, 2) # 02 function is invoked
+05  showRemain (5, 0) # 01 function is invoked
+```
+
+运行环境会根据函数的定义顺序，对每个函数的参数列表进行匹配，只有匹配中的那个函数定义才会被执行。
+
+函数重载其实也是函数模式匹配的一种，对一个函数的匹配顺序是：
+
+1. 检查参数的个数；
+2. 检查每个参数的数据类型；
+3. 检查每个参数是否模式匹配。
+
+详细的模式匹配见 [08 模式](pattern-and-matching.md)
+-->
+<h3 id="分支函数"><a class="header" href="#分支函数">分支函数</a></h3>
+<p>可以在函数定义后面使用关键字 <code>分支</code>（<code>branch</code>）让函数根据不同的条件执行不同的主体，这种函数称为 &quot;分支函数&quot;。</p>
+<p>分支函数的关键字是 <code>分支</code>（<code>branch</code>），写在函数的参数列表，或者 <code>其中</code>（<code>where</code>）列表之后，也可以单独一行写。然后是一个或多个使用 <code>情况</code>（<code>case</code>） 关键字的条件分支。</p>
+<p>改写上一个示例如下：</p>
+<pre><code class="language-js">01  函数 显示余数 (Int a, Int b) 分支
+02      情况 b == 0: 书写行 (&quot;除数不能为零&quot;)
+03      情况 b &gt; a: 书写行 (&quot;除数比被除数还大&quot;)
+04      情况 b == a: 书写行 (&quot;没有余数&quot;)
+05      默认: 书写行 (&quot;余数为 {}&quot;, a `余` b)
+06  以上
+07
+08  显示余数 (5, 0) # 执行 02 行
+09  显示余数 (5, 6) # 执行 03 行
+10  显示余数 (5, 5) # 执行 04 行
+11  显示余数 (5, 2) # 执行 05 行
+</code></pre>
+<pre><code class="language-js">01  function showRemain (Int a, Int b) branch
+02      case b == 0: writeLine (&quot;The divisor cannot be zero&quot;)
+03      case b &gt; a: writeLine (&quot;divisor is larger than dividend&quot;)
+04      case b == a: writeLine (&quot;no remainder&quot;)
+05      default: writeLine (&quot;The remainder is {}&quot;, a `rem` b)
+06  end
+07
+11  showRemain (5, 0) # execute line 02
+10  showRemain (5, 6) # execute line 03
+08  showRemain (5, 5) # execute line 04
+09  showRemain (5, 2) # execute line 05
+</code></pre>
+<p>每一个分支情况后面都接着一个能返回逻辑值的表达式，当表达式返回 <code>真</code> 时，该分支会被执行。<code>分支</code> 语句的语法跟 <code>条件</code> 语句一样（<code>分支</code> 语句是 <code>条件</code> 语句的语法糖，如果 <code>分支</code> 里缺少 <code>默认</code> 分支，则运行时会自动添加一个抛出运行时异常的默认分支）。条件语句的详细用法请参见 <a href="control-flow.html">流程控制</a>。</p>
+<p>每一个分支都是独立的一个函数主体。如果函数主体是多行语句，则需要在语句 <code>情况</code>（<code>case</code>）关键字后面换行写。</p>
+<p>最后一个分支通常是不限任何条件的默认分支，如果没有默认分支，当所有的条件都不满足时，运行环境会抛出一个运行时错误。</p>
+<h4 id="函数的分支与数学的函数定义"><a class="header" href="#函数的分支与数学的函数定义">函数的分支与数学的函数定义</a></h4>
+<p>带分支语句的函数与数学的函数定义非常接近，考虑如下一个函数：</p>
+<pre><code class="language-js">function int check (Int x) branch
+    case x &gt;= 90: 1
+    case x &gt;= 80: 2
+    case x &gt;= 70: 3
+    case x &gt;= 60: 4
+    default: 5
+end
+</code></pre>
+<p>对应的数学函数：</p>
+<p>[
+check(x)=
+\begin{cases}
+1,  &amp; \text{if } x \geq 90\
+2,  &amp; \text{if } x \geq 80\
+3,  &amp; \text{if } x \geq 70\
+4,  &amp; \text{if } x \geq 60\
+5,  &amp; \text{otherwise}
+\end{cases}
+]</p>
+<h2 id="纯函数"><a class="header" href="#纯函数">纯函数</a></h2>
+<p>纯函数是指函数的返回值只跟输入的参数值有关，跟所在的上下文环境无关，而且只要输入参数值一样，总能得出一样的结果值。</p>
+<p>典型的纯函数如 <code>加</code>，<code>减</code> 等算术函数，运行环境提供了一系列纯函数，这些函数被标上 <code>@pure</code> 标注。</p>
+<p>需要注意纯函数必须有具有意义的输入参数和返回值，当用户定义的函数只调用纯函数时，它自身也会自动成为纯函数。</p>
+<p>XiaoXuan 运行环境能够对纯函数作优化处理，比如延迟执行、缓存结果、并行执行等。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="variables.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="collection.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="variables.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="collection.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>

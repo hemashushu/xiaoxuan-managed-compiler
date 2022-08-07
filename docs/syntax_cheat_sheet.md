@@ -67,7 +67,9 @@
     - [branch where 从属表达式](#branch-where-从属表达式)
     - [branch case where 从属表达式](#branch-case-where-从属表达式)
   - [for 表达式](#for-表达式)
+    - [省略局部变量初始化部分](#省略局部变量初始化部分)
     - [实现循环](#实现循环)
+    - [for 表达式的返回值](#for-表达式的返回值)
   - [each 表达式](#each-表达式)
   - [match 表达式 （模式匹配）](#match-表达式-模式匹配)
     - [match where 从属表达式](#match-where-从属表达式)
@@ -538,6 +540,17 @@ let Matrix m =
 ```js
 {name1: value1, name2: value2}
 ```
+
+当 key 的名称跟 value 的变量名称相同时，也可以省略 ": value" 部分，例如：
+
+```js
+let number = 123
+let username = "foo"
+let user1 = {number: number, username: username}
+let user2 = {number, username}
+```
+
+上例的后两句的作用是一样的，即在实例化映射表时，如果省略了 ": value" 部分，即只有 "name"，其实是表达式 "name: name" 的语法糖。
 
 使用跟访问列表索引的方式来访问映射表的元素：
 
@@ -1134,9 +1147,26 @@ for let i = (User{id}) {
 }
 ```
 
+#### 省略局部变量初始化部分
+
+for 表达式也可以省略局部变量初始化部分，直接写成
+
+`for {...}`
+
 #### 实现循环
 
 在 `for 表达式` 的语句块里面可以使用 `next` 关键字让变量的值更新并再次执行一次语句块，因此可以使用 `for let 表达式` 实现循环结构：
+
+```js
+for let i = 0 {
+    if i < 10 then {
+        ...
+        next i+1
+    }
+}
+```
+
+或者简写为：
 
 ```js
 for let i = 0 if i < 10 then {
@@ -1146,6 +1176,33 @@ for let i = 0 if i < 10 then {
 ```
 
 `next` 是一个特殊的表达式，`next` 表达式之后的程序不会被执行，所以自然无法接收它的返回值，一般来说，`next` 是传统意义上的 `语句` 而非 `表达式`。
+
+如果 for 表达式省略了局部变量初始化部分，`next` 后面也可以不加任何数值，比如：
+
+```js
+for {
+    if getValue() == 0 then {
+        next
+    }
+}
+```
+
+#### for 表达式的返回值
+
+for 表达式的表达式块里面最后一条非 `next` 表达式的值将会作为返回值。
+
+比如：
+
+```js
+let i = for let index = 0 {
+    let value = getValue(index)
+    if value == 0 then {
+        next index+1
+    }else {
+        index
+    }
+}
+```
 
 ### each 表达式
 

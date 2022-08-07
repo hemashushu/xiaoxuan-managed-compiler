@@ -1,0 +1,860 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>结构体和联合体 - The XiaoXuan Language Reference</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">介绍</a></li><li class="chapter-item expanded "><a href="data-types.html"><strong aria-hidden="true">1.</strong> 数据类型</a></li><li class="chapter-item expanded "><a href="variables.html"><strong aria-hidden="true">2.</strong> 变量</a></li><li class="chapter-item expanded "><a href="functions.html"><strong aria-hidden="true">3.</strong> 函数</a></li><li class="chapter-item expanded "><a href="collection.html"><strong aria-hidden="true">4.</strong> 数据容器</a></li><li class="chapter-item expanded "><a href="structs-and-unions.html" class="active"><strong aria-hidden="true">5.</strong> 结构体和联合体</a></li><li class="chapter-item expanded "><a href="control-flow.html"><strong aria-hidden="true">6.</strong> 流程控制</a></li><li class="chapter-item expanded "><a href="pattern.html"><strong aria-hidden="true">7.</strong> 模式</a></li><li class="chapter-item expanded "><a href="method-and-generic-and-trait.html"><strong aria-hidden="true">8.</strong> 方法、范型和特性</a></li><li class="chapter-item expanded "><a href="error-handing.html"><strong aria-hidden="true">9.</strong> 错误处理</a></li><li class="chapter-item expanded "><a href="chain.html"><strong aria-hidden="true">10.</strong> 链式调用</a></li><li class="chapter-item expanded "><a href="interface-and-components.html"><strong aria-hidden="true">11.</strong> 接口和元组件</a></li><li class="chapter-item expanded "><a href="package-and-modules.html"><strong aria-hidden="true">12.</strong> 包和模块</a></li><li class="chapter-item expanded "><a href="stream.html"><strong aria-hidden="true">13.</strong> 流</a></li><li class="chapter-item expanded "><a href="io.html"><strong aria-hidden="true">14.</strong> I/O</a></li><li class="chapter-item expanded "><a href="mutable.html"><strong aria-hidden="true">15.</strong> 可变性</a></li><li class="chapter-item expanded "><a href="parallel-and-concurrency.html"><strong aria-hidden="true">16.</strong> 并行和并发</a></li><li class="chapter-item expanded "><a href="annonations.html"><strong aria-hidden="true">17.</strong> 标注</a></li><li class="chapter-item expanded "><a href="unit-test.html"><strong aria-hidden="true">18.</strong> 单元测试</a></li><li class="chapter-item expanded "><a href="comments-and-documents.html"><strong aria-hidden="true">19.</strong> 注释和文档</a></li><li class="chapter-item expanded "><a href="cn-spec.html"><strong aria-hidden="true">20.</strong> 中文文法</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The XiaoXuan Language Reference</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="结构体和联合体"><a class="header" href="#结构体和联合体">结构体和联合体</a></h1>
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+<!-- code_chunk_output -->
+<ul>
+<li><a href="#%E7%BB%93%E6%9E%84%E4%BD%93%E5%92%8C%E8%81%94%E5%90%88%E4%BD%93">结构体和联合体</a>
+<ul>
+<li><a href="#%E7%BB%93%E6%9E%84%E4%BD%93">结构体</a>
+<ul>
+<li><a href="#%E5%AE%9E%E4%BE%8B%E5%8C%96%E7%BB%93%E6%9E%84%E4%BD%93">实例化结构体</a></li>
+<li><a href="#%E8%AE%BF%E9%97%AE%E7%BB%93%E6%9E%84%E4%BD%93%E6%88%90%E5%91%98%E7%9A%84%E5%80%BC">访问结构体成员的值</a></li>
+<li><a href="#%E6%9B%B4%E6%96%B0%E6%88%90%E5%91%98%E7%9A%84%E5%80%BC">更新成员的值</a></li>
+<li><a href="#%E6%95%B0%E6%8D%AE%E9%AA%8C%E8%AF%81%E7%BA%A6%E6%9D%9F">数据验证约束</a></li>
+<li><a href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0">自定义构造函数</a></li>
+<li><a href="#%E5%8C%BF%E5%90%8D%E6%88%90%E5%91%98%E7%BB%93%E6%9E%84%E4%BD%93">匿名成员结构体</a></li>
+<li><a href="#%E6%97%A0%E6%88%90%E5%91%98%E7%BB%93%E6%9E%84%E4%BD%93">无成员结构体</a></li>
+</ul>
+</li>
+<li><a href="#%E8%81%94%E5%90%88%E4%BD%93">联合体</a>
+<ul>
+<li><a href="#%E5%AE%9E%E4%BE%8B%E5%8C%96%E8%81%94%E5%90%88%E4%BD%93">实例化联合体</a></li>
+<li><a href="#%E8%AE%BF%E9%97%AE%E8%81%94%E5%90%88%E4%BD%93%E6%88%90%E5%91%98%E7%9A%84%E5%80%BC">访问联合体成员的值</a></li>
+</ul>
+</li>
+<li><a href="#%E5%85%83%E7%BB%84">元组</a>
+<ul>
+<li><a href="#%E5%85%83%E7%BB%84%E7%9A%84%E8%AE%BF%E9%97%AE">元组的访问</a></li>
+<li><a href="#%E6%B7%BB%E5%8A%A0%E5%85%83%E7%BB%84%E5%85%83%E7%B4%A0">添加元组元素</a></li>
+</ul>
+</li>
+<li><a href="#%E6%9E%9A%E4%B8%BE">枚举</a></li>
+<li><a href="#%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%86%85%E9%83%A8%E5%AE%9E%E7%8E%B0">数据类型的内部实现</a>
+<ul>
+<li><a href="#%E5%9F%BA%E6%9C%AC%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B">基本数据类型</a></li>
+<li><a href="#%E8%81%94%E5%90%88%E4%BD%93-1">联合体</a></li>
+<li><a href="#%E6%9E%9A%E4%B8%BE-1">枚举</a></li>
+<li><a href="#%E5%80%BC%E7%9A%84%E5%A4%8D%E5%88%B6">值的复制</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<!-- /code_chunk_output -->
+<p>结构体和联合体是用户自定义数据类型。</p>
+<p>XiaoXuan 各种数据类型之间没有继承关系。</p>
+<h2 id="结构体"><a class="header" href="#结构体">结构体</a></h2>
+<p>结构体的作用是将一堆相关的数据打包成为一个整体。结构体由基本数据类型，比如整数、字符串、逻辑等组成，当然结构体也能嵌套其他结构体和联合体。结构体的定义语法如下：</p>
+<pre><code class="language-js">结构体 名称
+    数据类型1 成员名称1
+    数据类型2 成员名称2
+    ...
+以上
+</code></pre>
+<pre><code class="language-js">struct Name
+    DataType1 memberName1
+    DataType2 memberName2
+    ...
+end
+</code></pre>
+<p>结构体的定义也可以写成一行的形式，只需把所有成员（member）用括号包围起来，然后使用逗号分隔各个成员即可，语法如下。</p>
+<pre><code class="language-js">结构体 名称(数据类型1 成员名称1, 数据类型2 成员名称2, ...)
+</code></pre>
+<pre><code class="language-js">struct Name(DataType1 memberName1, DataType2 memberName2, ...)
+</code></pre>
+<p>示例：</p>
+<pre><code class="language-js">结构体 用户
+    整数 id
+    字符串 name
+    逻辑 checked
+以上
+
+结构体 登录(用户 user, 时间 time)
+</code></pre>
+<pre><code class="language-js">struct User
+    Int id
+    String name
+    Boolean checked
+end
+
+struct Login(User user, Time time)
+</code></pre>
+<blockquote>
+<p>结构体的成员是有区分顺序的，即使成员的名称和类型相同，只要顺序不同，则结构体也不同。比如 <code>struct User(Int id, String name)</code> 跟 <code>struct User(String name, Int id)</code> 是不同的结构体，所以当重构代码时，如果调整了成员的顺序，则需要保证所有使用到该结构体的模块都要重新编译。</p>
+</blockquote>
+<blockquote>
+<p>结构体成员的数据类型只能是基本的数据类型、结构体、枚举、联合体等，不能是函数（函数签名）、特性、接口等。</p>
+</blockquote>
+<h3 id="实例化结构体"><a class="header" href="#实例化结构体">实例化结构体</a></h3>
+<p>:: TODO 尚未决定</p>
+<p>运行环境会自动为每一个结构体创建一个默认构造函数，函数的参数为全部成员。使用 <code>新建</code>（<code>new</code>） 关键字可以调用此构造函数以创建结构体的实例。</p>
+<p>示例：</p>
+<pre><code class="language-js"># 使用 new 关键字
+让 u1 = 新建 用户 (100, &quot;张三&quot;, true)
+让 u2 = 新建 用户 (id=101, name=&quot;李四&quot;, checked=false)
+
+# 原始函数调用
+让 u1 = 用户::新建 (100, &quot;张三&quot;, true)
+让 u2 = 用户::新建 (id=101, name=&quot;李四&quot;, checked=false)
+
+# 使用符号
+让 u1 = 用户!(100, &quot;张三&quot;, true)
+让 u1 = 用户!(101, &quot;李四&quot;, false)
+
+# 使用符号 # 方案 2
+让 u1 = 用户{100, &quot;张三&quot;, true}
+让 u1 = 用户{id: 101, name: &quot;李四&quot;, checked: false}
+</code></pre>
+<pre><code class="language-js">let u1 = new User (100, &quot;foo&quot;, true)
+let u2 = new User (id = 101, name = &quot;bar&quot;, checked = false)
+
+let u1 = User::new (100, &quot;foo&quot;, true)
+let u2 = User::new (id = 101, name = &quot;bar&quot;, checked = false)
+
+let u1 = User!(100, &quot;foo&quot;, true)
+let u1 = User{id: 101, name: &quot;bar&quot;, checked: false}
+</code></pre>
+<p>跟普通函数一样，构造函数也可以按参数名称调用。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 u1 = new 用户 (id=100, name=&quot;张三&quot;, checked=true)
+</code></pre>
+<p>需注意的是，混合按参数顺序和按参数名称调用时，必须先写完所有按顺序传参的值，才可以开始写按名称传参的值。</p>
+<h3 id="访问结构体成员的值"><a class="header" href="#访问结构体成员的值">访问结构体成员的值</a></h3>
+<p>使用 &quot;实例名称 + . + 成员名称&quot; 的格式可以访问结构体各个成员的值。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 编号 = u1.id
+让 姓名 = u1.name
+</code></pre>
+<pre><code class="language-js">let id = u1.id
+let name = u1.name
+</code></pre>
+<h3 id="更新成员的值"><a class="header" href="#更新成员的值">更新成员的值</a></h3>
+<p>因为 XiaoXuan 的值不可变性，所以没法直接为结构体的成员赋予新值，比如 <code>u1.name = &quot;John&quot;</code> 这语句是语法错误的，如果需要更新成员的值，只能新建一个结构体实例，然后把原结构体实例需要保留的值一一复制过来，示例：</p>
+<pre><code class="language-js">让 u3 = 用户(u1.id, &quot;王五&quot;, u1.checked)
+</code></pre>
+<pre><code class="language-js">let u3 = User(u1.id, &quot;John&quot;, u1.checked)
+</code></pre>
+<p>上面的代码的作用相当于将 <code>u1</code> 的 <code>name</code> 成员的值更新，然后将新实例存储到变量 <code>u3</code>。</p>
+<p>XiaoXuan 支持一种简化的更新结构体成员（即复制其他实例成员的值）的语法，调用构造函数时，使用按参数名称方式传入成员的新值，并使用 &quot;...&quot; 符号（即三个点）复制原实例成员的值。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 u3 = 用户(name=&quot;王五&quot;, ...u1)
+让 u4 = 用户(name=&quot;赵六&quot;, checked=false, ...u1)
+</code></pre>
+<pre><code class="language-js">let u3 = User(name=&quot;John&quot;, ...u1)
+let u4 = User(name=&quot;Smith&quot;, checked=false, ...u1)
+</code></pre>
+<h3 id="数据验证约束"><a class="header" href="#数据验证约束">数据验证约束</a></h3>
+<p>有时一个结构体的成员的值有一定的使用限制，比如表示有理数的结构体的分母不能为 0 等。可以在定义结构体时添加 <code>@验证</code>（<code>@validate</code>）标注用于约束成员的值。示例：</p>
+<pre><code class="language-js">@验证(id &gt; 0 :并且 name != &quot;&quot;)
+结构体 用户
+    整数 id
+    字符串 name
+    逻辑 checked
+以上
+</code></pre>
+<pre><code class="language-js">@validate(id &gt; 0 :and name != &quot;&quot;)
+struct User
+    Int id
+    String name
+    Boolean checked
+end
+</code></pre>
+<p>标注 <code>@验证</code> 的内容是一个能返回逻辑值的表达式，该表达式会被运行环境自动置入默认构造函数当中，在构造结构体实例时，如果该表达式返回 <code>假</code>，则会引起运行时异常，即实例构造失败。</p>
+<p>一个结构体可以有多个 <code>@验证</code> 标注，只要任何一个验证表达式返回 <code>假</code>，都会导致实例构造失败。</p>
+<p>标注 <code>@验证</code> 也可以标在结构体的成员之上，示例：</p>
+<pre><code class="language-js">结构体 用户
+    @验证(id &gt; 0)
+    整数 id
+
+    @验证(name != &quot;&quot;)
+    字符串 name
+
+    逻辑 checked
+以上
+</code></pre>
+<p>当标注 <code>@验证</code> 标在成员之上时，只能单独验证该成员的值。</p>
+<h3 id="自定义构造函数"><a class="header" href="#自定义构造函数">自定义构造函数</a></h3>
+<p>运行环境会自动为结构体创建一个默认构造函数，函数的参数为全部成员。可以为结构体添加一个或多个 <code>新建</code>（<code>new</code>）方法，只要这些方法的参数列表跟默认构造函数不同，且返回值为该结构体，则它们都会自动称为构造函数。当程序使用 <code>新建</code>（<code>new</code>）关键字实例化结构体时，会根据参数情况自动选择适当的构造函数。</p>
+<p>示例：</p>
+<pre><code class="language-js">实现 用户
+    函数 新建 (整数 id, 字符串 name) = 新建 用户(id, name, true)
+    函数 新建 (整数 id) = 用户(id, &quot;张三&quot;)
+以上
+</code></pre>
+<pre><code class="language-js">implement User
+    function new (Int id, String name) = new User (id, name, true)
+    function new (Int id) = User(id, &quot;张三&quot;)
+end
+</code></pre>
+<p>上面定义了两个自定义构造函数。其中第一个允许用户省略 <code>checked</code> 参数，函数的主体为调用默认的构造函数。第二个构造函数则允许用户省略 <code>name</code> 和 <code>checked</code> 参数。</p>
+<p>通过自定义构造函数，我们可以简化某些复杂的结构体的实例化过程。</p>
+<p>需要注意的是，默认构造函数是无法覆盖的，即我们无法添加一个签名跟默认构造函数一样的函数。即运行环境会自动为每个结构体生成类似下面的函数：</p>
+<pre><code class="language-js">实现 用户
+    函数 新建 (整数 id, 字符串 name, 逻辑 checked)
+        ...
+    以上
+以上
+</code></pre>
+<p>该函数会调用运行环境提供的内置方法以创建结构体实例。从中也可以看出，创建实例除了使用 <code>创建</code>（<code>new</code>） 关键字，其实也可以直接调用结构体的 <code>创建</code>（<code>new</code>）函数。示例：</p>
+<ul>
+<li>让 u1 = 用户.创建 (123, &quot;foo&quot;, true)</li>
+<li>let u1 = User.new (123, &quot;foo&quot;, true)</li>
+</ul>
+<h3 id="匿名成员结构体"><a class="header" href="#匿名成员结构体">匿名成员结构体</a></h3>
+<h3 id="无成员结构体"><a class="header" href="#无成员结构体">无成员结构体</a></h3>
+<h2 id="联合体"><a class="header" href="#联合体">联合体</a></h2>
+<p>联合体由一个或多个成员组成，每一个成员可以是一个结构体、一个元组、一个常量。</p>
+<p>虽然联合体可以有多个成员，但一个联合体实例的值只能是其中一个成员的值。</p>
+<p>需注意的是，联合体成员的定义必须在现场定义，而不能使用外部已定义的（比如不能使用外部定义的结构体）。联合体的定义语法是：</p>
+<pre><code class="language-js">01  联合体 名称
+02      成员名称1 (数据类型1 成员名称1, 数据类型2 成员名称2, ...)
+03      成员名称2 (数据类型1, 数据类型2, ...) // ::TODO 考虑不支持无成员名称的成员
+04      成员名称3
+05      ...
+06  以上
+</code></pre>
+<pre><code class="language-js">01  Union Name
+02      MemberName1 (DataType1 memberName1, DataType2 memberName2, ...)
+03      MemberName2 (DataType1, DataType2, ...) // ::TODO removed?
+04      MemberName3
+05      ...
+06  end
+</code></pre>
+<p>上面语句的 02 行定义了一个结构体类型的成员，03 行定义了一个元组类型的成员（::TODO 考虑不支持无成员名称的成员），04 行定义了一个常量，需注意的是这个常量并不需要指定其数值，这点跟其他面向对象语言当中的 &quot;枚举&quot; 类型有些类似。</p>
+<p>示例：</p>
+<pre><code class="language-js">联合体 作品
+    书籍(字符串 title, 字符串 isbn)
+    专辑(字符串 title, 字符串 artist)
+以上
+</code></pre>
+<pre><code class="language-js">union Work
+    Book(String title, String isbn)
+    Album(String title, String artist)
+end
+</code></pre>
+<blockquote>
+<p>联合体的成员是有区分顺序的，即使成员的名称和类型相同，只要顺序不同，则联合体也不同。比如 <code>union One(...) Two(...)</code> 跟 <code>union Two(...) One(...)</code> 是不同的联合体，所以当重构代码时，如果调整了成员的顺序，则需要保证所有使用到该联合体的模块都要重新编译。</p>
+</blockquote>
+<h3 id="实例化联合体"><a class="header" href="#实例化联合体">实例化联合体</a></h3>
+<p>联合体的结构体类型和元组类型的成员的实例化跟正常的结构体和元组的实例化方法一样，至于常量，则不需实例化，直接当成常量使用即可。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 作品1 = 作品::书籍(&quot;从地球到月球&quot;, &quot;123456&quot;)
+让 作品2 = 作品::专辑(&quot;Fly Me to the Moon&quot;, &quot;foobar&quot;)
+</code></pre>
+<pre><code class="language-js">let work1 = Work::Book(&quot;从地球到月球&quot;, &quot;123456&quot;)
+let work2 = Work::Album(&quot;Fly Me to the Moon&quot;, &quot;foobar&quot;)
+</code></pre>
+<h3 id="访问联合体成员的值"><a class="header" href="#访问联合体成员的值">访问联合体成员的值</a></h3>
+<p>因为联合体实例只能存储其中一个成员的值，所以首先需要确定它的值是哪个成员，然后再读取其成员的值。XiaoXuan 只支持通过模式匹配来完成这个任务。示例：</p>
+<pre><code class="language-js">匹配 作品1
+    情况 书籍(title, isbn):
+        ...
+    情况 专辑(title, artist):
+        ...
+以上
+</code></pre>
+<pre><code class="language-js">match work1
+    case Book(title, isbn):
+        ...
+    case Album(title, artist):
+        ...
+end
+</code></pre>
+<p>如果有时只对其中一个成员的值感兴趣，也可以使用简化版的 <code>匹配</code> 语句 ———— <code>如果 让</code> 语句来完成，示例：</p>
+<pre><code class="language-js">如果 让 书籍(title, isbn) 匹配 作品1 那么
+    ...
+以上
+</code></pre>
+<pre><code class="language-js">if let Book(title, isbn) match work1 then
+    ...
+end
+</code></pre>
+<h3 id="内置的联合体"><a class="header" href="#内置的联合体">内置的联合体</a></h3>
+<ul>
+<li>Option<T></li>
+<li>Result&lt;T, E&gt;</li>
+<li>Either&lt;T, U&gt;</li>
+</ul>
+<h2 id="元组"><a class="header" href="#元组">元组</a></h2>
+<p><code>元组</code>（<code>Tuple</code>）<!-- 考虑取消这个特性  是 XiaoXuan 函数传参的底层原理，也就是说，传一组参数给一个函数，实际上是传了一个由一个或多个数值组成的元组给函数。一个函数有且只有一个参数和一个返回值。 --></p>
+<p>元组一般用于函数需要返回多个数值（却又不想单独创建一个专门的结构体）的情况，即使用元组把多个值包装成一个值然后返回。</p>
+<p>一个元组可以视为一个 <strong>匿名成员的结构体</strong>，即它由固定数量、顺序、数据类型的一个或多个成员组成。注意跟其他语言的元组不同，XiaoXuan 的元组并不是一种集合。</p>
+<p>元组的字面量的格式是：使用一对括号包围所有数据，数据之间使用逗号分隔。</p>
+<p>示例：</p>
+<pre><code class="language-js">(1, 2, 3)
+(1, &quot;hello&quot;, true, 3.14)
+</code></pre>
+<p>如果元组成员是表达式的返回值，则可以分行写，示例：</p>
+<pre><code class="language-js">(&quot;hello world&quot;,
+1+2*3,
+someFunction(1,2),
+)
+</code></pre>
+<p>元组最后一个成员后面可以添加逗号，也可以不添加。有些人习惯添加上逗号是为了让每一行看起来格式一致，同时当以后需要增加或者删除成员时，使用版本管理软件的比较（Diff）源码时，更加能准确被修改的行。</p>
+<p>元组的数据类型为元组各个成员的数据类型的组合，比如上面两个元组的数据类型分别是：</p>
+<ul>
+<li><code>(整数, 整数, 整数)</code></li>
+<li><code>(整数, 字符串, 逻辑, 浮点数)</code></li>
+</ul>
+<p>需注意，列表要求所有元素的数据类型必须相同，而元组的每个成员的数据类型都可以不同。</p>
+<blockquote>
+<p>元组无法使用函数构建。</p>
+</blockquote>
+<p>为了一致性，也存在单独一个成员的元组，其字面量是在第一个数值后面加上一个逗号。</p>
+<p>示例：</p>
+<ul>
+<li><code>(456, )</code></li>
+<li><code>(&quot;foo&quot;, )</code></li>
+</ul>
+<p>上面两个元组的数据类型分别是 <code>(整数)</code> 和 <code>(字符串)</code>。但作为函数的参数整体时，并不需要在后面加一个逗号，比如 <code>let a = sqrt(36)</code>，解析器会自动把 <code>(36)</code> 解析为元组。但在其他场合，这对括号仅仅被解析为 &quot;语句块&quot;，然后被求值，最后得一个整数 <code>36</code>。</p>
+<p>对于一个里面仅有一个数值（且没有逗号）的一对括号：</p>
+<ul>
+<li>如果写在函数的后面，它会被解析为元组。</li>
+<li>写在其他地方会被解析为语句块。</li>
+</ul>
+<!--
+::TODO 考虑取消
+
+另外还有空元组 `()`，它是 `Unit::Empty` 值的字面量。它用在几种场合：
+
+* 调用一个无参数的函数，比如 `doSomething()`
+* 当一个函数的参数数据类型为 `Unit` 时，可以传入 `Unit::Empty`，也可以传入 `()`，比如 `Result::Ok(())`；
+* 当一个函数的返回值类型为 `Unit` 时，返回语句可以写 `return Unit::Empty`，也可以写 `return ()`，甚至直接写成 `return`。
+-->
+<h3 id="元组的访问"><a class="header" href="#元组的访问">元组的访问</a></h3>
+<p>元组跟列表和映射表不同，它的成员既不能通过位置/索引来访问，也没法通过成员名称来访问，一般使用模式匹配或者模式解构来访问。</p>
+<p>示例，假设现有元组 <code>a</code>，其值为：</p>
+<p><code>让 a = (123, &quot;hello&quot;, true)</code></p>
+<p>可以使用如下语句获取它的三个成员的值：</p>
+<p><code>让 (a,b,c) = a</code></p>
+<p>三个变量 <code>a</code>, <code>b</code>, <code>c</code> 的值分别为 123, &quot;hello&quot; 和 true。</p>
+<p>除了模式匹配和模式解构，还可以通过 <!-- 运行环境自动为元组生成的成员名称来访问，成员名称的分别为 "_1"，"_2" 如此类推，即一个下划线加上成员的次序，-->
+<code>获取成员</code>（<code>getMember</code>）函数获取成员的值，向函数传入成员的次序即可读取相应的成员值，次序从数字 1 开始（而不是从 0 开始）。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 a = (123, &quot;hello&quot;, true)
+
+让 m1 = a.获取成员(1) # 123
+让 m2 = a.获取成员(2) # &quot;hello&quot;
+让 m3 = a.获取成员(3) # true
+</code></pre>
+<p>使用 <code>成员个数</code>（<code>memberCount</code>） 函数可以获取成员的个数。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 c = a.成员个数() # 3
+</code></pre>
+<!-- 考虑去除此特性
+需注意的是，在构造元组实例时，运行环境支持为成员值附带上名称。比如在调用函数时，可以按参数位置传参，也可以按参数名称传参，或者混合两种传参方式。但成员的名称仅仅用于构造元组实例，只是成员的一个附加的数据，XiaoXuan 没提供获取成员名称的方法，也没提供按元组成员名称访问成员的方法。
+
+示例：
+
+```js
+让 a = (1, 2, 3, 名称 = "hello", 形状 = "circle")
+
+让 m4 = a.获取成员(4) # "hello"
+让 m5 = a.获取成员(5) # "circle"
+```
+
+元组成员大致相当于如下的联合体：
+
+```js
+union TupleMember<T>
+    Value(Int index, T v)
+    ValueWithName(Int index, String name, T v)
+end
+```
+-->
+<h3 id="添加元组元素"><a class="header" href="#添加元组元素">添加元组元素</a></h3>
+<!-- 考虑取消此特性 -->
+<p>元组常用的只有构造和读取两种操作，一般很少需要修改元组的数据，不过<!-- XiaoXuan 还是提供了添加新成员到一个元组的头部的方法，用于构造一个新元组。--> 可以通过是使用一对圆括号和 &quot;...&quot; 符号（三个点号）的方法向元组头部添加成员。</p>
+<!--
+示例：
+
+```js
+让 a = (1, 2, 3)
+让 b1 = (99, ...a)
+让 b2 = (77, "foo", true, ...a)
+
+# b1 == (99, 1, 2, 3)
+# b2 == (77, "foo", true, 1, 2, 3)
+```
+
+这种语法对应的函数是 `元组::添加`（`Tuple::add`），它是一个系统函数，有且只有一个参数，可以接受任意类型的值，另外还有 `元组::追加`（`Tuple::append`） 系统函数用于向元组末尾添加成员。 -->
+<h2 id="枚举"><a class="header" href="#枚举">枚举</a></h2>
+<p>枚举跟全局常量相类似，不过枚举有以下几个特点：</p>
+<ul>
+<li>枚举的成员数量固定；</li>
+<li>枚举的成员的值无需指定，运行环境内部按照枚举成员的定义顺序自动分配从 <code>整数</code> 数值 <code>0</code> 开始分配数值；</li>
+<li>枚举是一种数据类型；</li>
+<li>枚举的值无法直接跟其他数据类型转换，也就是说无法从枚举值转为 <code>整数</code>，也无法直接从 <code>整数</code> 转成枚举值。</li>
+</ul>
+<p>示例：</p>
+<pre><code class="language-js">枚举 原色
+    红
+    绿
+    蓝
+以上
+
+让 a = 原色.蓝
+</code></pre>
+<pre><code class="language-js">enum PrimaryColor
+    Red
+    Green
+    Blue
+end
+
+let a = PrimaryColor.Blue
+</code></pre>
+<p>因为枚举是数据类型，所以枚举可以用在函数的参数上，用于某个参数只能从有限的几种值当中取其一的这种场合。示例：</p>
+<pre><code class="language-js">函数 设置背景色 (原色 c)
+    书写行 (c)
+以上
+
+# 调用函数
+设置背景色 (原色.红)
+</code></pre>
+<pre><code class="language-js">function setBackgroundColor (PrimaryColor c)
+    writeLine (c)
+end
+
+# call function
+setBackgroundColor (PrimaryColor.Red)
+</code></pre>
+<p>注意枚举值<strong>不能</strong>与其他数据类型的值相互转换，比如无法将整数转为上例中的 <code>原色</code> 的值（也无法将枚举的值转成整数）。</p>
+<p>例如下面的语句是错误的：</p>
+<pre><code class="language-js">设置背景色 (1)
+</code></pre>
+<pre><code class="language-js">setBackgroundColor (1)
+</code></pre>
+<blockquote>
+<p>枚举的成员是有区分顺序的，即使成员的名称相同，只要顺序不同，则枚举也不同。比如 <code>enum Red Blue</code> 跟 <code>enum Blue Red</code> 是不同的枚举，所以当重构代码时，如果调整了成员的顺序，则需要保证所有使用到该枚举的模块都要重新编译。</p>
+</blockquote>
+<!-- 考虑移除
+
+可以使用 @enumValue 标注指定枚举成员的具体值，不过一般没必要这样做，因为语言不提供读取成员内部值（一个整数）的方法。另外编译器不检查指定的成员值是否有重复，所以需要用户确保成员值是正确的。
+
+这个标注的作用是当一个枚举数据类型需要（通过 API 或者序列化）跟外部程序或者本地库（比如 C/C++/Rust 等语言所生成的库）进行内存级别的运算时才有实际意义。比如基本数据类型 `逻辑`（`Boolean`）的定义如下：
+
+```js
+enum Boolean
+    @enumValue(0)
+    False
+
+    @enumValue(1)
+    True
+end
+```
+-->
+<h2 id="类型的内部实现"><a class="header" href="#类型的内部实现">类型的内部实现</a></h2>
+<p>XiaoXuan 的类型系统包括数据类型（简称类型）、函数类型（也叫做函数签名）两种。</p>
+<p>注意数据类型的检查位于编译阶段，在 IR 层面及在运行过程中均不作数据类型检查。也就是说 XiaoXuan 是静态数据类型编译型语言。</p>
+<h3 id="数据类型"><a class="header" href="#数据类型">数据类型</a></h3>
+<p>在运行环境内部，所有数据类型（包括结构体、联合体、元组、枚举）本质上都是结构体，程序使用到的所有结构体都会登记在一个 <code>数据类型记录表</code> 里。这个记录表是一个有序表，一般有以下几个部分组成：</p>
+<ol>
+<li>成员表。成员表是一个有序数组，可以使用下标访问成员。
+数据的每一个元素由两个数据组成：
+<ul>
+<li>数据类型编号。</li>
+<li>成员名称</li>
+</ul>
+</li>
+</ol>
+<p>成员表的第一条记录（即编号 0）是一个空数组。</p>
+<ol start="2">
+<li>信息表
+<ul>
+<li>members 成员表编号。如果当前数据类型没有成员（即空结构体）或者是虚拟机基本数据类型，则该字段值为 0。</li>
+<li>category 数据类型的类别，可能的值有：
+<ul>
+<li>结构体，即一般结构体</li>
+<li>联合体结构体</li>
+<li>联合体成员结构体</li>
+<li>枚举结构体</li>
+<li>元组</li>
+<li>基本数据类型</li>
+</ul>
+</li>
+<li>name 数据类型名称，比如 &quot;Int64&quot;，注意一个数据类型可以定义别名，所以存在多个类型指向同一个成员表的情况；</li>
+<li>namePath 所在的名称空间，比如 &quot;core&quot;；</li>
+<li>fullName 包括命名空间路径和名称的全称，比如 &quot;core::Int64&quot;；</li>
+<li>parent 联合体结构体指针。仅当当前类型为联合体成员结构体时这个字段值才有意义，除此之外该字段值为 0。</li>
+</ul>
+</li>
+</ol>
+<p>信息表的第一条记录（即编号 0）是一个空元组。</p>
+<p>可以使用宏 typeOf(...) 获取一个数据类型的详细信息，宏返回一个 <code>Type</code> 结构体，该结构体的定义如下：</p>
+<pre><code class="language-js">struct Type
+    // Option&lt;Array&lt;Member&gt;&gt; members
+    TypeCategory typeCategory
+    String name
+    String namePath
+    // String fullName
+    Option&lt;Type&gt; parent
+end
+
+enum TypeCategory
+    Struct
+    Union
+    UnionMember
+    Enum
+    Tuple
+    Primitive
+end
+</code></pre>
+<p>可以通过 <code>Type::getMembers</code> 方法获取类型的成员列表。</p>
+<pre><code class="language-js">struct Member
+    Type type
+    String name
+end
+</code></pre>
+<h4 id="基本数据类型的实现"><a class="header" href="#基本数据类型的实现">基本数据类型的实现</a></h4>
+<p>XiaoXuan 的基本数据类型（比如整数、实数）在标准库里定义为结构体，所以在运行环境内部的 <code>数据类型记录表</code> 里也有其相关记录。</p>
+<p>下面是标准库里对于 <code>Int32</code> 类型的定义：</p>
+<pre><code class="language-js">@compileTypeCategory(TypeCategory::Primitive)
+@compileTypeNative(type=&quot;i32&quot;) // 编译指令，用户不可使用
+struct Int32
+    // empty
+end
+</code></pre>
+<p>上面的 <code>@compileTypeNative</code> 标记用于告诉编译器，当一个基本数据类型的变量在编译成 IR 时会被解析为虚拟机基本数据类型，其类型信息将会被丢弃。也就是说对于基本数据类型的变量值，在运算过程中其值是存储在寄存器即栈当中，当遇到 <code>typeOf</code> 一个基本数据类型时，编译器实际上会把它翻译成一个内部的函数 <code>typeByNumber</code> 直接从类型记录表里读取类型信息。</p>
+<h4 id="一般结构体的实例的实现"><a class="header" href="#一般结构体的实例的实现">一般结构体的实例的实现</a></h4>
+<p>一个结构体变量储存的是一个指向该结构体数据（一个内部结构体）的指针，该内部结构体的信息如下：</p>
+<ul>
+<li>type
+数据类型编号，也就是目标数据类型在 <code>数据类型记录表</code> 的索引值；</li>
+<li>value_ref
+<ul>
+<li>当数据类型是虚拟机基本数组类型时，该值是一个指向实际值的指针。</li>
+<li>当数据类型是一个结构体时，该值是一个指向结构体各成员情况的指针。</li>
+</ul>
+</li>
+</ul>
+<p>结构体成员是一个数组，数组的每个成员跟上面结构体一样，该数组如下：</p>
+<p>[{type, value_ref}, {type, value_ref}, ...]</p>
+<blockquote>
+<p>跟一个基本数据类型的变量的情况不同，如果一个结构体的成员是基本数据类型，其值也是保存在堆（heap）里。</p>
+</blockquote>
+<h4 id="联合体的实现"><a class="header" href="#联合体的实现">联合体的实现</a></h4>
+<p>联合体使用两次结构体实现，即联合体本身会被解析为一个结构体</p>
+<p>假设有如下一个联合体：</p>
+<pre><code class="language-js">union Option
+    Some(Int value)
+    None
+end
+</code></pre>
+<p>编译器会自动生成如下结构体及其常量值：</p>
+<pre><code class="language-js">namespace std
+    @compileTypeCategory(TypeCategory::Union)
+    @derive(std::trait::Union)
+    struct Option
+        WordWidth memberNumber
+        WordWidth memberAddr
+    end
+
+    namespace Option
+        // 构造结构体型成员
+        function Parent::Option new(WordWidth memberNumber, WordWidth memberAddr)
+            // native
+        end
+
+        // 构造常量型成员
+        function Parent::Option new(WordWidth memberNumber)
+            // native
+        end
+
+        @compileTypeCategory(TypeCategory::UnionMember)
+        @compileTypeParent(&quot;std::Option&quot;)
+        @compileMemberNumber(0)
+        struct Some
+            Int value
+        end
+
+        // 构造成员 None
+        @compileTypeCategory(TypeCategory::UnionMember)
+        @compileTypeParent(&quot;std::Option&quot;)
+        @compileMemberNumber(1)
+        const None = new(1)
+
+        // 构造成员 Some
+        function Parent::Option Some(Int value)
+            let some = Current::Some::new(value)
+            let addr = Pointer(some)
+            new(0, addr)
+        end
+
+        function equal(Parent::Option left, Parent::Option right)
+            // 自动生成
+            // 先比较 memberNumber
+            // memberNumber 相同时再逐个 member 比较，伪代码如下：
+            // if left.memberNumber == right.memberNumber then
+            //      switch left.memberNumber
+            //          case 0:
+            //              Current::Some::equal(*left.memberAddress, *right.memberAddress)
+            //          case 1:
+            //              1
+            //      end
+            // else
+            //      false
+            // end
+
+        end
+
+        namespace Some
+            // 构造成员 Some 的实际函数
+            function Parent::Some new(Int value)
+                // native
+            end
+
+            function equal(Parent::Some left, Parent::Some right)
+                // 自动生成
+            end
+        end
+    end
+end
+</code></pre>
+<h4 id="枚举的实现"><a class="header" href="#枚举的实现">枚举的实现</a></h4>
+<p>枚举也是使用结构体实现。</p>
+<p>假设有如下一个枚举：</p>
+<pre><code class="language-js">enum Color
+    Red
+    Green
+    Blue
+end
+</code></pre>
+<p>编译器会自动生成如下结构体及其常量值：</p>
+<pre><code class="language-js">@compileTypeCategory(TypeCategory::Enum)
+@derive(std::trait::Enum)
+struct Color
+    Int Value
+end
+
+namespace Color
+    const Color Red = Color::new(0)
+    const Color Green = Color::new(1)
+    const Color Blue = Color::new(2)
+end
+</code></pre>
+<h4 id="元组的实现"><a class="header" href="#元组的实现">元组的实现</a></h4>
+<p>::TODO</p>
+<h3 id="值的复制"><a class="header" href="#值的复制">值的复制</a></h3>
+<p>XiaoXuan 默认使用数据的引用计数来实现资源/垃圾回收。变量是一个指向存放在堆中的数据的指针，当将一个变量赋值给另外一个变量，以及作为参数传递给一个函数时，该变量所指向的数据的引用数便增加一个；当变量离开其作用范围时引用数则减少一个。当数据的引用数减少到 0 时，运行时就会回收这个数据资源。</p>
+<p>但有些数据类型是不使用引用计数来管理的，这些数据直接在栈里参与计算，如果被赋值给另外一个变量，则直接复制一份。这些数据类型有：</p>
+<ul>
+<li>基本数据类型：整数、自然数、实数、逻辑、字符；</li>
+<li>枚举</li>
+</ul>
+<p>它们具有 <code>复制</code> 特性。</p>
+<h3 id="函数签名"><a class="header" href="#函数签名">函数签名</a></h3>
+<p>::TODO</p>
+<p>函数的签名由返回值（一个数据类型）和一个参数列表（一个元组数据类型）组成，函数的名称、各参数的名称都不属于函数签名的一部分，函数签名本身也是一种数据类型，也会登记在运行环境的 <code>数据类型记录表</code> 里，函数签名的第一个成员是返回值的数据类型，第二个成员是参数列表（元组数据类型）。</p>
+<blockquote>
+<p>函数的泛型、参数默认值（可选参数）、模式表达式等信息，在翻译成 IR 时已经会被丢弃（源码与 IR 码的映射信息存储在其他地方，不在 IR 代码里）。</p>
+</blockquote>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="collection.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="control-flow.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="collection.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="control-flow.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>

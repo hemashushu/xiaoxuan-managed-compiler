@@ -1,0 +1,1156 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>模式 - The XiaoXuan Language Reference</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">介绍</a></li><li class="chapter-item expanded "><a href="data-types.html"><strong aria-hidden="true">1.</strong> 数据类型</a></li><li class="chapter-item expanded "><a href="variables.html"><strong aria-hidden="true">2.</strong> 变量</a></li><li class="chapter-item expanded "><a href="functions.html"><strong aria-hidden="true">3.</strong> 函数</a></li><li class="chapter-item expanded "><a href="collection.html"><strong aria-hidden="true">4.</strong> 数据容器</a></li><li class="chapter-item expanded "><a href="structs-and-unions.html"><strong aria-hidden="true">5.</strong> 结构体和联合体</a></li><li class="chapter-item expanded "><a href="control-flow.html"><strong aria-hidden="true">6.</strong> 流程控制</a></li><li class="chapter-item expanded "><a href="pattern.html" class="active"><strong aria-hidden="true">7.</strong> 模式</a></li><li class="chapter-item expanded "><a href="method-and-generic-and-trait.html"><strong aria-hidden="true">8.</strong> 方法、范型和特性</a></li><li class="chapter-item expanded "><a href="error-handing.html"><strong aria-hidden="true">9.</strong> 错误处理</a></li><li class="chapter-item expanded "><a href="chain.html"><strong aria-hidden="true">10.</strong> 链式调用</a></li><li class="chapter-item expanded "><a href="interface-and-components.html"><strong aria-hidden="true">11.</strong> 接口和元组件</a></li><li class="chapter-item expanded "><a href="package-and-modules.html"><strong aria-hidden="true">12.</strong> 包和模块</a></li><li class="chapter-item expanded "><a href="stream.html"><strong aria-hidden="true">13.</strong> 流</a></li><li class="chapter-item expanded "><a href="io.html"><strong aria-hidden="true">14.</strong> I/O</a></li><li class="chapter-item expanded "><a href="mutable.html"><strong aria-hidden="true">15.</strong> 可变性</a></li><li class="chapter-item expanded "><a href="parallel-and-concurrency.html"><strong aria-hidden="true">16.</strong> 并行和并发</a></li><li class="chapter-item expanded "><a href="annonations.html"><strong aria-hidden="true">17.</strong> 标注</a></li><li class="chapter-item expanded "><a href="unit-test.html"><strong aria-hidden="true">18.</strong> 单元测试</a></li><li class="chapter-item expanded "><a href="comments-and-documents.html"><strong aria-hidden="true">19.</strong> 注释和文档</a></li><li class="chapter-item expanded "><a href="cn-spec.html"><strong aria-hidden="true">20.</strong> 中文文法</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The XiaoXuan Language Reference</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="模式匹配和模式解构"><a class="header" href="#模式匹配和模式解构">模式匹配和模式解构</a></h1>
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+<!-- code_chunk_output -->
+<ul>
+<li><a href="#%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D%E5%92%8C%E6%A8%A1%E5%BC%8F%E8%A7%A3%E6%9E%84">模式匹配和模式解构</a>
+<ul>
+<li><a href="#%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D">模式匹配</a>
+<ul>
+<li><a href="#%E5%8C%B9%E9%85%8Dmatch%E8%AF%AD%E5%8F%A5"><code>匹配</code>（<code>match</code>）语句</a>
+<ul>
+<li><a href="#%E6%A8%A1%E5%BC%8F%E8%A1%A8%E8%BE%BE%E5%BC%8F">模式表达式</a>
+<ul>
+<li><a href="#%E4%BD%9C%E7%94%A8%E5%9F%9F%E5%86%85%E5%AD%98%E5%9C%A8%E5%90%8C%E5%90%8D%E5%8F%98%E9%87%8F">作用域内存在同名变量</a></li>
+<li><a href="#%E6%A8%A1%E5%BC%8F%E8%A1%A8%E8%BE%BE%E5%BC%8F%E5%AD%98%E5%9C%A8%E5%90%8C%E5%90%8D%E5%8F%98%E9%87%8F">模式表达式存在同名变量</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E8%B5%8B%E5%80%BC%E8%AF%AD%E5%8F%A5%E7%9A%84%E6%A8%A1%E5%BC%8F%E8%A7%A3%E6%9E%84todo-%E5%BE%85%E4%BF%AE%E6%94%B9">赋值语句的模式解构(::TODO 待修改)</a>
+<ul>
+<li><a href="#%E8%AE%A9-%E8%AF%AD%E5%8F%A5%E7%9A%84%E8%BF%94%E5%9B%9E%E5%80%BC"><code>让</code> 语句的返回值</a></li>
+</ul>
+</li>
+<li><a href="#%E5%A6%82%E6%9E%9C-%E8%AE%A9%E5%8C%B9%E9%85%8D-%E8%AF%AD%E5%8F%A5"><code>如果 让...匹配</code> 语句</a></li>
+<li><a href="#%E5%88%97%E8%A1%A8%E7%9A%84%E8%A7%A3%E6%9E%84%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81%E9%9C%80%E6%94%B9%E6%88%90-match-%E8%AF%AD%E5%8F%A5">列表的解构（示例代码需改成 match 语句）</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E6%A8%A1%E5%BC%8F%E8%A7%A3%E6%9E%84%E8%AE%BF%E9%97%AE%E5%88%97%E8%A1%A8%E7%9A%84%E5%85%83%E7%B4%A0duplicated">使用模式解构访问列表的元素(::DUPLICATED??)</a></li>
+<li><a href="#%E6%98%A0%E5%B0%84%E8%A1%A8%E7%9A%84%E8%A7%A3%E6%9E%84%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81%E9%9C%80%E6%94%B9%E6%88%90-match-%E8%AF%AD%E5%8F%A5">映射表的解构（示例代码需改成 match 语句）</a></li>
+<li><a href="#%E5%85%83%E7%BB%84%E7%9A%84%E8%A7%A3%E6%9E%84%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81%E9%9C%80%E6%94%B9%E6%88%90-match-%E8%AF%AD%E5%8F%A5">元组的解构（示例代码需改成 match 语句）</a></li>
+<li><a href="#%E7%BB%93%E6%9E%84%E4%BD%93%E7%9A%84%E8%A7%A3%E6%9E%84%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81%E9%9C%80%E6%94%B9%E6%88%90-match-%E8%AF%AD%E5%8F%A5">结构体的解构（示例代码需改成 match 语句）</a>
+<ul>
+<li><a href="#%E7%BB%93%E6%9E%84%E4%BD%93%E5%8C%B9%E9%85%8D%E5%86%85%E5%AE%B9%E8%B7%9F%E4%B8%8A%E4%B8%80%E6%AE%B5%E9%87%8D%E5%A4%8D%E5%BE%85%E7%BC%96%E8%BE%91">结构体匹配(::内容跟上一段重复，待编辑)</a></li>
+<li><a href="#%E8%81%94%E5%90%88%E4%BD%93%E5%8C%B9%E9%85%8D">联合体匹配</a></li>
+<li><a href="#%E9%83%A8%E5%88%86%E5%8C%B9%E9%85%8D">部分匹配</a></li>
+<li><a href="#%E5%B8%A6%E6%9D%A1%E4%BB%B6%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D">带条件的模式匹配</a></li>
+<li><a href="#%E5%B8%A6%E6%95%B0%E6%8D%AE%E8%A7%A3%E6%9E%90%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D">带数据解析的模式匹配</a></li>
+<li><a href="#%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D">正则表达式模式匹配</a></li>
+<li><a href="#%E6%A8%A1%E6%9D%BF%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D">模板字符串模式匹配</a></li>
+<li><a href="#%E8%8C%83%E5%9B%B4%E5%8C%B9%E9%85%8D">范围匹配</a></li>
+<li><a href="#%E5%8C%B9%E9%85%8D%E6%97%B6%E4%BF%9D%E7%95%99%E5%8E%9F%E5%A7%8B%E5%80%BC">匹配时保留原始值</a></li>
+</ul>
+</li>
+<li><a href="#%E5%B5%8C%E5%A5%97%E5%8C%B9%E9%85%8D">嵌套匹配</a></li>
+<li><a href="#%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D%E5%87%BD%E6%95%B0-new">模式匹配函数 (NEW)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<!-- /code_chunk_output -->
+<h2 id="模式匹配"><a class="header" href="#模式匹配">模式匹配</a></h2>
+<p>模式匹配用于判断目标数据是否跟指定的数据模式相匹配，模式匹配发生于：</p>
+<ol>
+<li><code>匹配</code> 语句的 <code>情况</code> 关键字后面；</li>
+<li><code>条件</code> 语句的 <code>情况</code> 关键字后面的 <code>让</code> 表达式；</li>
+<li><code>分支</code> 语句的 <code>情况</code> 关键字后面的 <code>让</code> 表达式；</li>
+<li><code>如果 让 ... 匹配</code> 语句；</li>
+<li>模式函数。</li>
+</ol>
+<p>模式匹配不单单用于判断是否匹配问题，同时也用于按照模式获取目标数据的值（通常把这种模式匹配称为 &quot;解构&quot;），或者 &quot;同时判断部分数据的是否匹配，同时获取部分数据的值&quot;。XiaoXuan 所有具有 &quot;赋值&quot; 性质的语句实际上都是模式匹配（解构），包括：</p>
+<ol>
+<li><code>让</code>（<code>let</code>）赋值语句</li>
+<li><code>现有 取自</code>（<code>for in</code>）循环语句 <!-- `遍历`（`iterate`）语句的 `到`（`to`）关键字之后、--></li>
+<li><code>现有 让</code>（<code>for let</code>）循环语句的 &quot;值初始化&quot; 以及 &quot;值更新&quot;</li>
+<li>函数的参数传值、</li>
+</ol>
+<h3 id="匹配match语句"><a class="header" href="#匹配match语句"><code>匹配</code>（<code>match</code>）语句</a></h3>
+<p><code>匹配</code> 语句会对 &quot;待检查的数据&quot; 的数据类型、结构、值等进行比较，只有完全匹配的分支才被执行。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 v = (&quot;foo&quot;,&quot;bar&quot;,&quot;foo&quot;)
+
+匹配 v
+    情况 (a,b,c):
+        &quot;成功，a 的值将会是 'foo', b 是 'bar', c 是 'foo'&quot;
+    情况 (&quot;foo&quot;, a, b):
+        &quot;成功，第一个元素是 'foo', a 的值将会是 'bar', b 是 'foo'&quot;
+    情况 (a,b,a):
+        &quot;成功，a 的值将会是 'foo', b 是 'bar', 第一个和第三个元素的值相同&quot;
+    情况 (a,...b):
+        &quot;成功，a 的值将会是 'foo', b 是 ('bar','foo')&quot;
+    情况 (a,_,_):
+        &quot;成功，a 的值将会是 'foo', 丢弃第二个和第三个元素的值&quot;
+    情况 (_,_,_):
+        &quot;成功，丢弃所有元素的值&quot;
+    情况 (a,a,b):
+        &quot;失败，第一个和第二个元素的值不相同&quot;
+    情况 (_,_):
+        &quot;失败，因为 v 有 3 个元素&quot;
+    默认:
+        &quot;总是成功&quot;
+end
+</code></pre>
+<pre><code class="language-js">let v = (&quot;foo&quot;,&quot;bar&quot;,&quot;foo&quot;)
+
+match v
+    case (a,b,c):
+        &quot;OK, the value of 'a' will be 'foo', 'b' is 'bar', 'c' is 'foo'&quot;
+    case (&quot;foo&quot;, a, b):
+        &quot;OK, the first element is 'foo', the value of 'a' will be 'bar', 'b' is 'foo'&quot;
+    case (a,b,a):
+        &quot;OK, the value of 'a' will be 'foo', 'b' is 'bar', the first and third elements have the same value&quot;
+    case (a,...b):
+        &quot;OK, the value of 'a' will be 'foo', 'b' is ('bar','foo')&quot;
+    case (a,_,_):
+        &quot;OK, the value of 'a' will be 'foo', discard the values of the second and third elements&quot;
+    case (_,_,_):
+        &quot;OK, descard the values of all elements&quot;
+    case (a,a,b):
+        &quot;Failed, The first and second elements do not have the same value&quot;
+    case (_,_):
+        &quot;Failed, because 'v' has 3 elements&quot;
+    default:
+        &quot;Always OK&quot;
+end
+</code></pre>
+<p>在上面示例代码中：</p>
+<ul>
+<li><code>匹配</code> 关键字后面的是待检查的数据</li>
+<li>每一个 <code>情况</code> 关键字后面的是一个模式表达式，如果其中一个模式表达式匹配成功，则执行其分支的语句，然后跳出匹配语句。</li>
+<li><code>默认</code> 关键字后面的是当上面的所有模式表达式都不匹配时，则执行默认部分的语句。</li>
+<li>如果没有 <code>默认</code> 分支，且所有模式表达式都不匹配，则运行环境会抛出运行时异常。</li>
+<li>匹配语句会返回匹配中的分支的语句（或表达式）的值。</li>
+</ul>
+<blockquote>
+<p><code>模式</code> 语句是 <code>条件</code> 语句的语法糖。</p>
+</blockquote>
+<h4 id="模式表达式"><a class="header" href="#模式表达式">模式表达式</a></h4>
+<p>模式表达式由字面量（包括列表的中括号、元组的括号、映射表的花括号）、常量及变量等组成。</p>
+<p>其中字面量和常量用于跟 &quot;待检查的数据&quot; 作相等比较，而变量则作为占位符，当匹配成功时（即字面量和常量相等、结构相同、元素或成员个数相同），变量则会捕获其所对应的数值。</p>
+<h5 id="作用域内存在同名变量"><a class="header" href="#作用域内存在同名变量">作用域内存在同名变量</a></h5>
+<p>如果模式表达式当中存在其 <code>匹配</code> 语句所在的作用域同名的变量名，因为 XiaoXuan 语言不允许在作用域内存在同名变量，所以这条模式表达式会引起语法错误。<!-- 模式表达式当中的变量会覆盖外面的变量，新变量的作用域包括该分支的代码。--></p>
+<p>示例：</p>
+<pre><code class="language-js">让 i = 123
+让 v = (77,88)
+匹配 v
+    情况 (i, j):
+        // 上面一行会引起语法错误，因为在作用域内已经存在名称为 `i` 的变量
+以上
+</code></pre>
+<pre><code class="language-js">let i = 123
+let v = (77,88)
+match v
+    case (i, j):
+        // syntax error,
+end
+</code></pre>
+<h5 id="模式表达式存在同名变量"><a class="header" href="#模式表达式存在同名变量">模式表达式存在同名变量</a></h5>
+<p>如有匹配式中存在两个或以上同名变量，则第一个会被赋值，第二个及之后的会当成常量来比较。示例：</p>
+<pre><code class="language-js">让 v = (11, 22, 22, 11)
+匹配 v
+    情况 (a, a, b, b):
+        书写行 (&quot;匹配失败&quot;)
+    情况 (a, b, b, a):
+        书写行 (&quot;匹配成功，变量 a 的值将会是 11, b 是 22&quot;)
+以上
+</code></pre>
+<pre><code class="language-js">let v = (11, 22, 22, 11)
+match v
+    case (a, a, b, b):
+        writeLine (&quot;Failed&quot;)
+    case (a, b, b, a):
+        writeLine (&quot;Ok, the value of 'a' will be 11, 'b' is 22&quot;)
+end
+</code></pre>
+<p>上面例子中，当运行时检查第一个模式匹配表达式时，首先检查数据类型通过（都是元组），然后检查成员数量通过（都是 4），然后发现第一个成员是一个变量 <code>a</code>，则赋值 <code>11</code> 给它，然后发现表达式第二个成员还是变量，且名字是已经出现过的 <code>a</code>，这时就会取出 <code>a</code> 的值（也就是 <code>11</code>）跟实际数据（即 <code>22</code>）作相等比较，发现不通过，所以该表达式匹配失败。</p>
+<!--
+## 赋值语句（模式解构）
+示例，现有如下数据：
+
+```js
+让 v1 = (123, 456)
+让 v2 = (77, 88)
+让 vv = [v1, v2]
+```
+
+赋值语句解构：
+
+```js
+让 (a, b) = v1
+```
+
+遍历语句解构：
+
+```js
+遍历 vv 到 (a, b)
+    ...
+以上
+```
+
+`现有` 循环语句解构：
+
+```js
+现有 让 (a,b) = v1 如果 a>0 :并且 b>0 那么
+    ...
+    让 i = ...
+    让 j = ...
+    重复 (i,j)
+以上
+```
+-->
+<h3 id="赋值语句的模式解构todo-待修改"><a class="header" href="#赋值语句的模式解构todo-待修改">赋值语句的模式解构(::TODO 待修改)</a></h3>
+<p>XiaoXuan 的赋值语句实质是模式解构，比如 <code>让 4 = 4</code> 语句是合法的（并且返回字面量 4）。当赋值语句的左边是一个单纯的变量时，因为变量能匹配任何值，所以其作用就是单纯的 &quot;赋值&quot;。当赋值语句左边不是一个单纯的变量时，则发生模式匹配。</p>
+<p>需要注意的是，因为缺少 <code>匹配</code> 语句的 <code>默认</code> 分支，如果赋值语句的模式不匹配，会直接引起运行时异常。</p>
+<p>示例：</p>
+<pre><code class="language-js">union User
+    Student(String name)
+    Teacher(String name)
+end
+
+let s = new User.Student(&quot;foo&quot;)
+let Teacher t1 = s
+let Teacher (name) = s
+</code></pre>
+<p>上面代码最后两行都会引起运行时异常，第一行很容易理解，跟很多编程语言一样，变量的类型不一致是不能赋值的，但 XiaoXuan 并不是简单地根据数据类型来判断，而是通过模式匹配来判断的。第二行则是标准的模式匹配失败。</p>
+<p>再举一个数据类型匹配，但模式匹配失败的示例：</p>
+<pre><code class="language-js">让 (a, b, b, a) = (1, 2, 3, 4)
+</code></pre>
+<p>上面的赋值语句（模式解构）虽然左右两边的数据类型一致（都是元组），但因为模式不匹配，所以会引起运行时异常。</p>
+<!-- 模式解构可以应用于列表、映射表、结构体、元组等数据，但**无法解构**联合体，因为联合体的值是其多个成员的其中一个，只能通过模式匹配先匹配类型再解构，即只能使用 `匹配` 语句或者使用 `如果 让` 语句来获取其中的值。-->
+<h4 id="赋值语句的模式解构语句的返回值"><a class="header" href="#赋值语句的模式解构语句的返回值">赋值语句的模式解构语句的返回值</a></h4>
+<p>模式结构语句在成功匹配时，语句的返回值是成功解构后的值，而匹配失败时，则抛出运行时异异常。</p>
+<p>示例：</p>
+<pre><code>let v1 = (let a = 123)
+let v2 = (let User(name) = new User(&quot;foo&quot;))
+let v3 = (let User(99, name) = new User(99, &quot;foo&quot;))
+let v4 = (let User u expand (id, name) = new User(88, &quot;bar&quot;))
+</code></pre>
+<p>以上的 4 个变量的值分别为：</p>
+<ul>
+<li>一个整数，值为 <code>123</code></li>
+<li>一个字符串， 值为 <code>&quot;foo&quot;</code></li>
+<li>一个元组，值为 <code>(99, &quot;foo&quot;)</code></li>
+<li>一个嵌套的元组 <code>(User, (Int, String))</code>，值为 <code>(User(88, &quot;bar&quot;), (88, &quot;bar&quot;))</code></li>
+</ul>
+<h3 id="如果-让匹配-语句"><a class="header" href="#如果-让匹配-语句"><code>如果 让...匹配</code> 语句</a></h3>
+<p>有时可能仅仅为了匹配一种模式，这时可以使用 <code>如果 让...匹配</code>（<code>if let...match</code>） 语句，而无必要使用完整的 <code>匹配</code> 语句。</p>
+<p>示例：</p>
+<pre><code>让 v = (123, 456)
+如果 让 (a, b) 匹配 v 那么
+    格式化书写行 (&quot;a 是: {}, b 是: {}&quot;, a, b)
+以上
+
+如果 让 (123, b) 匹配 v 那么
+    格式化书写行 (&quot;a 是 123&quot;)
+以上
+</code></pre>
+<pre><code>let v = (123, 456)
+if let (a, b) match v then
+    writeLineFormat (&quot;a is: {}, b is: {}&quot;, a, b)
+end
+
+if let (123, b) match v then
+    writeLineFormat (&quot;a is 123&quot;)
+end
+</code></pre>
+<p>在 <code>让</code> 关键字和 <code>匹配</code> 关键字之间除了可以是一个模式匹配表达式，也可以加入上面 <code>匹配</code> 语句当中提到的 <code>解析</code>、<code>展开</code> 和 <code>正则匹配</code> 等关键字。示例：</p>
+<pre><code class="language-js">如果 让 解析 User(id, name) 匹配 v 那么 ...
+如果 让 u 展开 解析 User(id, name) 匹配 v 那么 ...
+
+如果 让 正则匹配 &quot;^(.+)@(.+)$&quot; [email, name, domain] 匹配 v 那么 ...
+如果 让 u 展开 正则匹配 &quot;^(.+)@(.+)$&quot; [email, name, domain] 匹配 v 那么 ...
+</code></pre>
+<p><code>让...匹配</code> 表达式返回的是一个 <code>逻辑</code>（<code>Boolean</code>）类型的数值，所以有时还可以跟其他条件一起组合成更为复杂的条件语句。比如：</p>
+<pre><code class="language-js">if let (id, name) match user1 :and id &gt; 100 then
+    ...
+end
+</code></pre>
+<blockquote>
+<p><code>让...匹配</code> 表达式不能单独写成一条语句，因为这样很容易因为忘记判断其返回值而使用模式匹配表达式里的变量值，所以语法上规定  <code>让...匹配</code> 表达式只能写在 <code>如果</code> 语句、<code>分支</code> 语句、<code>条件</code> 语句里。</p>
+</blockquote>
+<h3 id="列表的解构示例代码需改成-match-语句"><a class="header" href="#列表的解构示例代码需改成-match-语句">列表的解构（示例代码需改成 match 语句）</a></h3>
+<p>示例：</p>
+<pre><code class="language-js"># 第一个 == 1, 第二个 == 2, 剩余 == [3,4,5,6]
+让 [第一个, 第二个, ...剩余] = [1,2,3,4,5,6]
+
+# 丢弃第一个和第二个元素的值， 第三个 == 3
+让 [_, _, 第三个] = [1,2,3,4,5]
+
+# 解构一个二维列表
+# 第一个 == 1, 第二个 == 2, 第三个 == 3
+让 [[第一个, 第二个], [第三个, _]] = [[1,2],[3,4],[5,6]]
+
+# 使用索引来解构（::不支持）
+# 注意索引从 1 开始，而不是从 0 开始
+# x == 1, y == 6
+让 [1:x, 6:y] = [1,2,3,4,5,6]
+</code></pre>
+<pre><code class="language-js"># first == 1, second == 2, rest == [3,4,5,6]
+let [first, second, ...rest] = [1,2,3,4,5,6]
+
+# drop the first and the second element value, third == 3
+let [_, _, third] = [1,2,3,4,5]
+
+# deconstructing a two-dimensional list
+# first == 1, second ==2, third == 3
+let [[first, second], [third, _]] = [[1,2],[3,4],[5,6]]
+
+# Deconstructing using indexes (::not supported)
+# Note that indexes start at 1, not 0
+# x == 1, y == 6
+let [1:x, 6:y] = [1,2,3,4,5,6]
+</code></pre>
+<p>在上例中：</p>
+<ul>
+<li>其中的 <code>...</code> 符号（三个点号）表示获取列表当中剩余的其他元素；</li>
+<li>其中的 <code>_</code> 符号（下划线）表示仅匹配位置，丢弃其值。</li>
+</ul>
+<h3 id="使用模式解构访问列表的元素duplicated"><a class="header" href="#使用模式解构访问列表的元素duplicated">使用模式解构访问列表的元素(::DUPLICATED??)</a></h3>
+<p>使用模式解构来获取列表的元素比使用函数的更加简单直观，示例：</p>
+<pre><code class="language-js">让 a = [1,2,3,4,5]
+
+# 获取第 1 个元素并赋值给变量 i，此时 i == 1
+让 [i] = a
+
+# 获取第 1 和第 2 个元素分别赋值给变量 i 和变量 j，此时 i == 1, j == 2
+让 [i, j] = a
+
+# 获取第 1 和第 2 个元素，第 1 个元素的值丢弃，第 2 个元素的值赋值给 i，此时 i = 2
+让 [_, i] = a
+
+# 获取第 1 个以及剩余的元素，第 1 个元素赋值给变量 i，
+# 剩余的元素（是一个列表）赋值给变量 j，此时变量 j == [2, 3, 4, 5]。
+让 [i, ...j] = a
+
+# 获取第 1 和第 2 个以及剩余的元素，前两个元素分别赋值给变量 i 和 j，
+# 剩余的元素（是一个列表）赋值给变量 k，此时变量 k == [3, 4, 5]
+让 [i, j, ...k] = a
+</code></pre>
+<p>需注意的是<strong>剩余</strong>关键字 <code>...</code> （即三个点，同 &quot;展开&quot; 关键字）只能出现在中括号的末尾，诸如 <code>let [i, ...j, k]</code> 语句是有语法错误的。</p>
+<h3 id="映射表的解构示例代码需改成-match-语句"><a class="header" href="#映射表的解构示例代码需改成-match-语句">映射表的解构（示例代码需改成 match 语句）</a></h3>
+<p>示例：</p>
+<pre><code class="language-js">让 名称 = {&quot;姓&quot;: &quot;张&quot;, &quot;名&quot;: &quot;三&quot;, &quot;辈&quot;: &quot;伯&quot;};
+
+# a == &quot;张&quot;, b == &quot;三&quot;
+let {&quot;姓&quot;: a, &quot;名&quot;: b} = 名称
+</code></pre>
+<pre><code class="language-js">let name = {&quot;firstName&quot;: &quot;foo&quot;, &quot;lastName&quot;: &quot;bar&quot;, &quot;middleName&quot;: &quot;D&quot;};
+
+# a == &quot;foo&quot;, b == &quot;bar&quot;
+let {&quot;firstName&quot;: a, &quot;lastName&quot;: b} = name
+</code></pre>
+<p>如果映射表的 key 是字符串，也可以省略其双引号，这样会得到跟 key 名称一样的变量。</p>
+<p>示例：</p>
+<pre><code class="language-js"># 姓 == &quot;张&quot;, 名 == &quot;三&quot;
+让 {姓, 名} = name
+</code></pre>
+<pre><code class="language-js"># firstName == &quot;foo&quot;, lastName == &quot;bar&quot;
+let {firstName, lastName} = name
+</code></pre>
+<h3 id="元组的解构示例代码需改成-match-语句"><a class="header" href="#元组的解构示例代码需改成-match-语句">元组的解构（示例代码需改成 match 语句）</a></h3>
+<p>示例：</p>
+<pre><code class="language-js">让 v = (123, &quot;foo&quot;, true)
+
+# a == 123
+让 (a) = v
+
+# a == 123, b == &quot;foo&quot;, c == true
+让 (a, b, c) = v
+
+# a == true
+让 (_, _, a) = v
+</code></pre>
+<pre><code class="language-js">let v = (123, &quot;foo&quot;, true)
+
+# a == 123
+let (a) = v
+
+# a == 123, b == &quot;foo&quot;, c == true
+let (a, b, c) = v
+
+# a == true
+let (_, _, a) = v
+</code></pre>
+<p>在上例中，其中的 <code>_</code> 符号（下划线）表示仅匹配位置，丢弃其值。</p>
+<p>嵌套的元组也能解构，示例：</p>
+<pre><code class="language-js">let t = (&quot;foo&quot;, (&quot;abc&quot;,&quot;xyz&quot;), &quot;bar&quot;)
+
+# a == &quot;abc&quot;, b == &quot;xyz&quot;
+let (_,(a, b),_) = t
+</code></pre>
+<h3 id="结构体的解构示例代码需改成-match-语句"><a class="header" href="#结构体的解构示例代码需改成-match-语句">结构体的解构（示例代码需改成 match 语句）</a></h3>
+<p>结构体的解构必须使用其<strong>默认构造函数</strong>的各成员的顺序获取各个成员的值。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 u = 用户(1, &quot;foo&quot;, 99)
+
+# id == 1
+让 User (id) = u
+
+# id == 1, name == &quot;foo&quot;
+让 User (id, name) = u
+
+# id == 1, name == &quot;foo&quot;, score == 99
+让 User (id, name, score) = u
+
+# score == 99
+让 User (_, _, score) = u
+</code></pre>
+<pre><code class="language-js">let u = User(1, &quot;foo&quot;, 99)
+
+# id == 1
+let User (id) = u
+
+# id == 1, name == &quot;foo&quot;
+let User (id, name) = u
+
+# id == 1, name == &quot;foo&quot;, score == 99
+let User (id, name, score) = u
+
+# score == 99
+let User (_, _, score) = u
+</code></pre>
+<p>在上例中，其中的 <code>_</code> 符号（下划线）表示仅匹配位置，丢弃其值。</p>
+<p>联合体的结构体类型成员的解构方法跟结构体的解构一样。</p>
+<p>注意，结构体的解构也可以按成员的名称来解构（假如成员有名称的话），示例：</p>
+<pre><code class="language-js">让 User(id=a, name=b) = u
+</code></pre>
+<p>当一个结构体的成员数量比较多，且只需很少的部分成员的值时，按成员名称来解构（而不是按参数顺序来解构）能简便很多。</p>
+<h4 id="结构体匹配内容跟上一段重复待编辑"><a class="header" href="#结构体匹配内容跟上一段重复待编辑">结构体匹配(::内容跟上一段重复，待编辑)</a></h4>
+<p>结构体的匹配表达式一般为：按照该结构体的默认构造函数的成员的出现顺序，列出字面量、常量或者变量的组合，比如上例中的 <code>case Book(title, isbn)</code> 就是将 <code>Book</code> 的两个成员按顺序列出。</p>
+<p>另外一种格式是，按照成员的名称列出字面量、常量或者变量，示例：</p>
+<pre><code class="language-js">match v
+    case Book(title=&quot;foo&quot;, isbn=&quot;123&quot;):
+        ...
+    case Book(title=&quot;bar&quot;, isbn=x):
+        ...
+end
+</code></pre>
+<p>跟调用普通函数的情况类似，可以混合按参数顺序和按参数名称书写结构体的匹配表达式，但必须先写完所有按顺序的参数，才可以开始写按名称的参数。</p>
+<p>如果匹配表达式里的成员名称和变量名一样，也可以省略书写成员名称。</p>
+<p><code>case Book(title, isbn)</code></p>
+<p>等同于：</p>
+<p><code>case Book(title=title, isbn=isbn)</code></p>
+<h4 id="联合体匹配"><a class="header" href="#联合体匹配">联合体匹配</a></h4>
+<p>在匹配一个模式表达式时，运行环境在编译截断会事先检查被匹配的数据和匹配表达式的数据类型是否一致，如果不一致则不通过编译。</p>
+<p>但联合体因为可以有多个成员（为常量或者结构体），所以在运行时，首先会对子类型进行匹配，类型一致之后再对值进行匹配。</p>
+<p>比如有一个联合体：</p>
+<pre><code class="language-js">union Work
+    Book(String title, String isbn)
+    Album(String title, String artist)
+end
+</code></pre>
+<p>模式匹配语句如下：</p>
+<pre><code class="language-js">01  match v
+02      case Book (title, isbn):
+03          writeLineFormat (&quot;Book title: {}, ISBN: {}&quot;, title, isbn)
+04      case Album (title, artist):
+05          writeLineFormat (&quot;Album title: {}, artist: {}&quot;, title, artist)
+06  end
+</code></pre>
+<p>当变量 <code>v</code> 的值为 <code>Book</code> 的实例，02 行会被匹配中，如果值为 <code>Album</code> 的实例，则 04 行会被匹配中。</p>
+<h4 id="部分匹配"><a class="header" href="#部分匹配">部分匹配</a></h4>
+<p>对于一个复合结构的数据（比如列表、映射表、结构体、联合体的成员），模式表达式中的对结构的要求是不可反驳的，即 &quot;实际数据的结构和组成&quot; 跟 &quot;模式匹配表达式要求的&quot; 必须严格地一一对应。</p>
+<p>也就是说匹配一个复合结构的数据时，表达式必须把全部成员和元素都列出才能匹配成功。如果不想全员列出（比如有时只需要当中的部分数据），可以使用 “...” 符号（三个点号）表示省略余下成员或元素，即此部分匹配是可选的（换句话说，也就是能匹配 0 或者多项）。比如：</p>
+<ul>
+<li>
+<p><code>case [first, second, ...remains]</code>
+表示匹配具有两个或两个以上元素的列表，且从第三个开始的元素的值存储在 <code>remains</code> 列表中，这个列表有可能是空列表。</p>
+</li>
+<li>
+<p><code>case {id, name, ...remains}</code>
+表示匹配具有 &quot;id&quot; 和 &quot;name&quot; 两个 key 的映射表，且把其他 key 及值存储在 <code>remains</code> 映射表中，这个映射表有可能是空的。</p>
+</li>
+<li>
+<p><code>case User(id, name, ...remains)</code>
+表示匹配数据类型为 <code>User</code>，且具有 &quot;id&quot; 和 &quot;name&quot; 两个成员的结构体（或者联合体当中名称为 <code>User</code> 的结构体类型成员），结构体的其他成员的值会被存储到 <code>remains</code> 元组中，这个元组有可能是空元组。</p>
+</li>
+<li>
+<p><code>case User(id = x, name = y, ...remains)</code>
+表示匹配数据类型为 <code>User</code>，且具有 &quot;id&quot; 和 &quot;name&quot; 两个成员的结构体，这两个成员的值分别存储在变量 <code>x</code> 和 <code>y</code>，结构体的其他成员的值会被存储到 <code>remains</code> 元组中，这个元组有可能是空元组。</p>
+</li>
+<li>
+<p><code>case (one, two, ...remains)</code>
+表示匹配具有两个或两个以上成员的元组，且从第三个开始的成员的值存储在 <code>remains</code> 元组中，这个元组有可能是空元组。</p>
+</li>
+</ul>
+<p>注意，如果对其余的数据不感兴趣（即上面示例当中的 <code>remains</code> 变量所存储的数据），也可以把 <code>remains</code> 变量名更改为 <code>_</code>（下划线符号），即 <code>..._</code> 表示丢弃其匹配所得的数据。为了简洁起见，甚至可以把 <code>_</code> 符号也省略，只保留 <code>...</code> 符号即可。比如 <code>case [first, second, ...]</code>。</p>
+<h4 id="带条件的模式匹配"><a class="header" href="#带条件的模式匹配">带条件的模式匹配</a></h4>
+<p>可以在模式匹配表达式后面加上 <code>如果</code> 条件语句，用于提供额外的匹配条件（也叫 &quot;守卫&quot; &quot;Guard&quot;），</p>
+<p>(:: 考虑使用 <code>要求/仅当</code>（<code>require/when</code>）关键字替换 <code>如果</code> 关键字）</p>
+<p>示例：</p>
+<pre><code class="language-js">匹配 v
+    情况 (x,y,z) 如果 x &gt; 10: # 仅当后面的条件表达式返回 `真` 时该分支才被匹配中。
+       ...
+以上
+</code></pre>
+<pre><code class="language-js">match v
+   case (x,y,z) if x &gt; 10:
+       ...
+end
+</code></pre>
+<p><code>如果</code> 条件语句能够使用其作用域已存在的变量，包括写在匹配表达式里的变量。</p>
+<h4 id="带数据解析的模式匹配"><a class="header" href="#带数据解析的模式匹配">带数据解析的模式匹配</a></h4>
+<p>有时用于 &quot;被匹配的数据&quot; 并不是最终所需的数据，可能需要经过一定的转换后才是所需的数据。模式匹配支持同时 &quot;转换&quot; 和 &quot;匹配&quot;。</p>
+<p>示例：</p>
+<p>假设原始数据是 <code>String</code> 类型，既可以解析为 <code>Email</code> 类型，也能解析为 <code>Phone</code>，<code>Email</code> 和 <code>Phone</code> 是联合体 <code>SocialId</code> 的两个成员：</p>
+<pre><code class="language-js">联合体 社交帐号
+    电子邮箱(字符串 name, 字符串 domain)
+    电话(字符串 countryCode, 字符串 number)
+end
+
+实现 解析器&lt;电子邮箱, 字符串&gt; 到 电子邮箱
+    函数 可选&lt;电子邮箱&gt; 解析(字符串 s)
+        匹配 正则(&quot;^(.+)@(.+)$&quot;).查找(s)
+            情况 有([_, name, domain]): 有(电子邮箱(name, domain))
+            情况 无: 无
+        以上
+    以上
+以上
+
+实现 解析器&lt;电话, 字符串&gt; 到 电话
+    函数 可选&lt;电话&gt; 解析(字符串 s)
+        匹配 正则(&quot;^(\\+\\d+)-(\\d+)$&quot;).查找(s)
+            情况 有([_, countryCode, number]): 有(电话(countryCode, number))
+            情况 无: 无
+        以上
+    以上
+以上
+</code></pre>
+<pre><code class="language-js">Union SocialId
+    Email(String name, String domain)
+    Phone(String countryCode, String number)
+end
+
+implement Parser&lt;Email, String&gt; to Email
+    function Option&lt;Email&gt; parse(String s)
+        match Regex(&quot;^(.+)@(.+)$&quot;).find(s)
+            case Some([_, name, domain]): Some(Email(name, domain))
+            case None: None
+        end
+    end
+end
+
+implement Parser&lt;Phone, String&gt; to Phone
+    function Option&lt;Phone&gt; parse(String s)
+        match Regex(&quot;^(\\+\\d+)-(\\d+)$&quot;).find(s)
+            case Some([_, countryCode, number]): Some(Phone(countryCode, number))
+            case None: None
+        end
+    end
+end
+</code></pre>
+<p>下面是测试代码：</p>
+<pre><code class="language-js"># a == None
+let a = Parser&lt;Email, String&gt;.parse(&quot;foobar&quot;)
+
+# b == Some(Email(&quot;foo&quot;, &quot;bar&quot;))
+let b = Parser&lt;Email, String&gt;.parse(&quot;foo@bar&quot;)
+
+# c == None
+let c = Parser&lt;Phone, String&gt;.parse(&quot;123&quot;)
+
+# d == Some(Phone(&quot;+86&quot;, &quot;123456&quot;))
+let d = Parser&lt;Phone, String&gt;.parse(&quot;+86-123456&quot;)
+</code></pre>
+<p>如果需要在 <code>匹配</code> 语句当中先对数据进行解析再匹配，则需要模式匹配表达式之前（或者说，在 <code>情况</code> 关键字之后）加上 <code>解析</code> 关键字。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 s = &quot;foo@bar&quot;
+
+# 注意变量 's' 是字符串类型，而
+# 模式匹配表达式的分别是 Email 和 Phone 类型
+
+匹配 s
+    情况 解析 Email email
+        书写行(&quot;一个电子邮箱&quot;)
+    情况 解析 Phone phone:
+        书写行(&quot;一个电话号码&quot;)
+    默认:
+        书写行(&quot;未检测到&quot;)
+以上
+
+// 或者在解析的同时进行解构
+
+匹配 s
+    情况 解析 Email (name, domain):
+        书写行(&quot;一个电子邮箱&quot;)
+    情况 解析 Phone (countryCode, number):
+        书写行(&quot;一个电话号码&quot;)
+    默认:
+        书写行(&quot;未检测到&quot;)
+以上
+</code></pre>
+<pre><code class="language-js">let s = &quot;foo@bar&quot;
+
+# Note that the variable 's' is a String, while
+# the data type in the matching pattern expression are Email and Phone.
+
+match s
+    case parse Email email:
+        writeLine(&quot;It's an Email address&quot;)
+    case parse Phone phone:
+        writeLine(&quot;It's a phone number&quot;)
+    default:
+        writeLine(&quot;Not detected&quot;)
+end
+
+match s
+    case parse Email (name, domain):
+        writeLine(&quot;It's an Email address&quot;)
+    case parse Phone (countryCode, number):
+        writeLine(&quot;It's a phone number&quot;)
+    default:
+        writeLine(&quot;Not detected&quot;)
+end
+</code></pre>
+<p>如果模式匹配发生在函数的参数，则 <code>解析</code> 关键字加在模式表达式之前，比如：</p>
+<pre><code class="language-js">模式函数 测试 (解析 电子邮箱 email, 解析 电话 phone)
+    ...
+以上
+
+// 或者
+
+模式函数 测试 (解析 电子邮箱 (name, domain), 解析 电话 (countryCode, number))
+    ...
+以上
+</code></pre>
+<pre><code class="language-js">pattern function test (parse Email email, parse Phone phone)
+    ...
+end
+
+// or
+
+pattern function test (parse Email (name, domain), parse Phone (countryCode, number))
+    ...
+end
+</code></pre>
+<p>标准库里的很多基本类型都有从字符串转换到其类型的 <code>parse</code> 方法，比如 <code>Int::parse(String)</code>，<code>Boolean::parse(String)</code>, <code>Real::parse(String)</code>，其实它们都实现了 <code>parse</code> 特性，所以当然也就可以使用模式匹配的 <code>parse</code> 转换兼匹配的便利了，比如：</p>
+<pre><code class="language-js">let tokens = // [...]
+let symbols = tokens.map(s =&gt;
+    match s
+        case parse Int i:
+            Symbol::Int(i)
+        case parse Boolean b:
+            Symbol::Boolean(b)
+        case parse Real r:
+            Symbol::Real(r)
+        default:
+            Symbol::Unknown
+    end
+)
+</code></pre>
+<h4 id="正则表达式模式匹配"><a class="header" href="#正则表达式模式匹配">正则表达式模式匹配</a></h4>
+<p>正则函数 <code>正则(expression).查找(String)</code>（<code>Regex(expression).find(String)</code>） 成功时返回的是一个被 <code>可选</code>（<code>Option</code>）联合体的成员 <code>有</code>(<code>Some</code>) 封装的列表，列表的第一个元素是匹配中的内容（字符串），从第二个元素开始是各个匹配组的值。find 函数失败时返回的是 <code>无</code>（<code>None</code>）。</p>
+<p>示例：</p>
+<p>假设一个简单的 Email 地址正则表达式为 &quot;^(.+)@(.+)$&quot;：</p>
+<pre><code class="language-js">让 s = &quot;foo@domain&quot;
+让 ss = 正则(&quot;^(.+)@(.+)$&quot;).查找(s)
+</code></pre>
+<p>则 <code>ss</code> 的值为 <code>Some([&quot;foo@domain&quot;, &quot;foo&quot;, &quot;domain&quot;])</code>。</p>
+<p>可以把正则函数 <code>查找</code> 的结果结合模式匹配：</p>
+<pre><code class="language-js">匹配 ss
+    情况 有([_, name, domain]):
+        格式化书写行(&quot;名称是: {}, 域名是: {}&quot;, name, domain)
+    默认:
+        书写行(&quot;未侦测到电子邮箱&quot;)
+以上
+</code></pre>
+<pre><code class="language-js">match ss
+    case Some([_, name, domain]):
+        writeLineFormat(&quot;Name is: {}, domain is: {}&quot;, name, domain)
+    default:
+        writeLine(&quot;No Email address detected&quot;)
+end
+</code></pre>
+<p>因为这种匹配情况比较常见，所以模式匹配支持同时 &quot;正则匹配&quot; 和 &quot;模式匹配&quot;，跟 <code>解析</code> 关键字类似，只需把模式表达式换成正则表达式，然后在表达式前面加上 <code>正则匹配</code> 关键字。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 s = &quot;foo@domain&quot;
+
+匹配 s
+    情况 正则匹配 /^(.+)@(.+)$/ [email, name, domain]:
+        格式化书写行(&quot;是一个电子邮箱: {}&quot;, email)
+    情况 正则匹配 /^(\\+\\d+)-(\\d+)$/ [phone, countryCode, number]:
+        格式化书写行(&quot;是一个电话号码: {}&quot;, phone)
+    默认:
+        书写行(&quot;未侦测到&quot;)
+以上
+</code></pre>
+<pre><code class="language-js">let s = &quot;foo@domain&quot;
+
+match s
+    case regular /^(.+)@(.+)$/ [email, name, domain]:
+        writeLineFormat(&quot;It's Email: {}&quot;, email)
+    case regular /^(\\w+):\/\/(.+)$/ [phone, countryCode, number]:
+        writeLineFormat(&quot;It's phone number: {}&quot;, phone)
+    default:
+        writeLine(&quot;Not detected&quot;)
+end
+</code></pre>
+<p>需要注意的是，使用正则匹配的模式匹配时，&quot;被检查的数据&quot; 必须是字符串类型。</p>
+<!-- 如果需要指定正则匹配的参数，则使用 `(pattern_expression, option_value_or_list)` 元组代替正则表达式字符串。-->
+<p><code>regular</code> 后面也能接受一个正则实例，使用正则构造函数 <code>Regex::new(String, Options)</code> 或者使用正则字面量 <code>/String/</code> 均可构建正则对象。</p>
+<p>示例：</p>
+<pre><code class="language-js">match s
+    case regular Regex::new(&quot;[a-z]+&quot;, RegularConst.ignoreCase) [name]:
+        ...
+    case regular /[0-9]+/ [number]:
+        ...
+end
+</code></pre>
+<h4 id="模板字符串模式匹配"><a class="header" href="#模板字符串模式匹配">模板字符串模式匹配</a></h4>
+<p>模板字符串模式匹配是 <code>正则匹配</code> 的简化版。</p>
+<p>示例：</p>
+<pre><code class="language-js">匹配 s
+    情况 模板匹配 `/user/{userName:\w+}`:
+        格式化书写行(&quot;Get user {}&quot;, userName)
+    情况 模板匹配 `/user/{userName:\w+}/post/{postId:\d+}`:
+        格式化书写行(&quot;Get post {}&quot;, postId)
+end
+</code></pre>
+<pre><code class="language-js">match s
+    case template `/user/{userName:\w+}`:
+        writeLineFormat(&quot;Get user {}&quot;, userName)
+    case template `/user/{userName:\w+}/post/{postId:\d+}`:
+        writeLineFormat(&quot;Get post {}&quot;, postId)
+end
+</code></pre>
+<p>其中的 <code>template ...</code> 会被解析为 <code>regular ...</code>，而模板字符串里面的占位符 <code>{...}</code> 是正则表达式以及其捕获值所存储的变量名，如果省略正则表达式部分，默认正则表达式是 <code>(.+)</code>。上面的代码会被解析为：</p>
+<pre><code class="language-js">match s
+    case regular /\/user\/(\w+)/ [userName]:
+        ...
+    case regular /\/user\/(\w+)\/post\/(\d+)/ [userName, postId]:
+        ...
+end
+</code></pre>
+<h4 id="范围匹配"><a class="header" href="#范围匹配">范围匹配</a></h4>
+<pre><code class="language-js">匹配 i
+    情况 位于 1..2:
+        ...
+</code></pre>
+<pre><code class="language-js">match i
+    case in 1..2:
+        ...
+</code></pre>
+<pre><code class="language-js">match c
+    case in 'a'..'f':
+        ...
+</code></pre>
+<p>关键字 <code>范围匹配</code> 后面可以是一个 <code>Range</code>、一个 <code>List</code> 对象，只要是一个拥有 <code>Exist</code> 特性的对象都可以。比如：</p>
+<pre><code class="language-js">匹配 i
+    情况 位于 数列::新建(1, 100):
+        ...
+</code></pre>
+<p>匹配时会使用被匹配的值传入目标对象的 <code>exist</code> 方法，如果方法返回 <code>true</code>，则该匹配式成立。</p>
+<h4 id="匹配时保留原始值"><a class="header" href="#匹配时保留原始值">匹配时保留原始值</a></h4>
+<p>当匹配一个复合结构的数据时，写在匹配表达式里的变量获取的是原始数据的某个部分，如果想获取完整的原始数据，可以在模式表达式之前加上一个 <code>展开</code>（<code>expand</code>）关键字。</p>
+<p>示例：</p>
+<pre><code class="language-js">让 v = 通过ID获取用户(123)
+匹配 v
+    情况 用户 u 展开 (id, name):
+        格式化书写行(&quot;id: {}, 名称: {}&quot;, id, name)
+        格式化书写行(&quot;{:?}&quot;, u)
+以上
+</code></pre>
+<pre><code class="language-js">let v = getUserById(123)
+match v
+    case User u expand (id, name):
+        writeLineFormat(&quot;id: {}, name: {}&quot;, id, name)
+        writeLineFormat(&quot;{:?}&quot;, u)
+end
+</code></pre>
+<p>显然变量 <code>u</code> 的值就是被匹配变量 <code>v</code> 的值，初看起来 <code>展开</code> 没什么用途，但在 <code>赋值</code> 性质的匹配场合里却非常有意义，比如模式匹配发生在函数的参数，则 <code>展开</code> 关键字加在模式表达式之前，比如：</p>
+<pre><code class="language-js">函数 测试 (User u 展开 (id, name))
+    ...
+以上
+</code></pre>
+<pre><code class="language-js">function test (User u expand (id, name))
+    ...
+end
+</code></pre>
+<p>关键字 <code>展开</code> 也可以写在 <code>解析</code> 匹配里，比如：</p>
+<pre><code class="language-js">匹配 v
+    情况 解析 用户 u 展开 (id, name):
+        ...
+以上
+</code></pre>
+<pre><code class="language-js">match v
+    case parse User u expand (id, name):
+        ...
+end
+</code></pre>
+<pre><code class="language-js">函数 测试 (解析 User u 展开 (id, name))
+    ...
+以上
+</code></pre>
+<pre><code class="language-js">function test (parse User u expand (id, name))
+    ...
+end
+</code></pre>
+<p>关键字 <code>展开</code> 也可以写在 <code>正则匹配</code>、<code>模板匹配</code> 里，比如：</p>
+<pre><code class="language-js">case regular /^(.+)@(.+)$/ resultList expand [email, name, domain]: // ...
+case template `/user/{userName:\w+}` resultList: // ...
+</code></pre>
+<p>因为 <code>正则匹配</code>、<code>模板匹配</code> 的结果都是字符串数组，所以变量 <code>resultList</code> 也是一个字符串数组，而不是一个元组或者映射表。</p>
+<h3 id="嵌套匹配"><a class="header" href="#嵌套匹配">嵌套匹配</a></h3>
+<p>可以匹配多层次数据：</p>
+<pre><code class="language-js">match a
+    case User(name, addr: {city, street}, id):
+        ...
+</code></pre>
+<p><code>regular， in</code> 等关键字也可以用于嵌套内的变量值。</p>
+<pre><code class="language-js">match a
+    case User(name, score in 60..100):
+        # got `name` and `score`
+    case User(name regular /^foo/, score):
+        # got `name` and `score`
+</code></pre>
+<h3 id="模式匹配函数-new"><a class="header" href="#模式匹配函数-new">模式匹配函数 (NEW)</a></h3>
+<p>如果有一组函数的签名完全一样，即参数列表的参数数量和类型和顺序都一样，且这些函数 <!--加上了标注 `@模式`（`@pattern`）--> 定义语句前添加了 <code>模式</code>（<code>pattern</code>）关键字，则这组函数被称为 <code>模式匹配函数</code>。</p>
+<p>普通函数（相对于模式函数来说）的每个参数只能是 <strong>单独的一个变量</strong>，而模式函数在定义参数时，就可以写上模式匹配表达式，通常用这个方法来在接收参数的同时 &quot;解构&quot; 其中的值（比如解构一个结构体、解构一个元组等）。</p>
+<p>示例：</p>
+<pre><code class="language-js">pattern function check(List&lt;Int&gt; [])
+    writeLine(&quot;empty&quot;)
+end
+
+pattern function check(List&lt;Int&gt; [1,2])
+    writeLine(&quot;there are two expected elements&quot;)
+end
+
+pattern function check(List&lt;Int&gt; [a,b])
+    writeLine(`there are two elements {a} and {b}`)
+end
+
+pattern function check(List&lt;Int&gt; list)
+    writeLine(&quot;a list&quot;)
+end
+</code></pre>
+<p>模式函数会被运行环境自动解析为带有模式匹配的分支函数，即上面的代码等同于：</p>
+<pre><code class="language-js">function check(List&lt;Int&gt; p) branch
+    case let [] match p:
+        begin
+            writeLine(&quot;empty&quot;)
+        end
+    case let [1, 2] match p:
+        begin
+            writeLine(&quot;there are two expected elements&quot;)
+        end
+    case let [a, b] match p:
+        begin
+            writeLine(`there are two elements {a} and {b}`)
+        end
+    case let list match p:
+        begin
+            writeLine(&quot;a list&quot;)
+        end
+    end
+end
+</code></pre>
+<p>需要注意，模式匹配函数的各子函数（第一个子函数可以省略）上面的 <code>@模式</code>（<code>@pattern</code>） 标注是必须的，否则运行环境会认为你重复定义了函数，并且会引起运行时错误以阻止运行。</p>
+<p>当然模式匹配函数的各子函数里仍然能够使用条件分支，并且在该子函数的条件分支都不满足时，会自动跳到下一个个体，而不是（像分支函数那样）直接出错。也就是说在模式匹配函数里的子函数里的分支是该分支的一道防线（也叫函数守卫、Guard）。</p>
+<p>(::TODO)
+（::考虑在 pattern 函数里不再支持分支，而是增加 <code>要求</code>（<code>require</code>）关键字。）</p>
+<p>示例：</p>
+<pre><code class="language-js">function check(List&lt;Int&gt; [])
+    writeLine(&quot;empty&quot;)
+end
+
+@pattern
+function check(List&lt;Int&gt; [a,b]) branch
+    case a &gt; b:
+        writeLine(&quot;a &gt; b&quot;)
+    case a &lt; b:
+        writeLine(&quot;a &lt; b&quot;)
+end
+
+@pattern
+function check(List&lt;Int&gt; list)
+    writeLine(&quot;a list&quot;)
+end
+</code></pre>
+<p>会被运行环境解析为：</p>
+<pre><code class="language-js">function check(List&lt;Int&gt; p) branch
+    case let [] match p:
+        begin
+            writeLine(&quot;empty&quot;)
+        end
+    case let [a, b] match p and passed where
+        begin
+            let (passed, value) = condition
+                case a &gt; b:
+                    let r = begin
+                        writeLine(&quot;a &gt; b&quot;)
+                    end
+                    (true, r)
+                case a &lt; b:
+                    let r = begin
+                        writeLine(&quot;a &lt; b&quot;)
+                    end
+                    (true, r)
+                end
+        end:
+        value
+    case let list match p:
+        begin
+            writeLine(&quot;a list&quot;)
+        end
+    end
+end
+</code></pre>
+<p>注意如果在某个子函数的分支里存在 <code>默认</code>（<code>default</code>） 语句块，则显然一旦该子函数被匹配中，就不会因为分支条件不满足而跳到下一个子函数（因为 <code>默认</code> 语句块无条件接受了所有条件）。</p>
+<p>示例：</p>
+<pre><code class="language-js">function check(List&lt;Int&gt; [])
+    writeLine(&quot;empty&quot;)
+end
+
+function check(List&lt;Int&gt; [a,b]) branch
+    case a &gt; b:
+        writeLine(&quot;a &gt; b&quot;)
+    case a &lt; b:
+        writeLine(&quot;a &lt; b&quot;)
+    default:
+        writeLine(&quot;equals&quot;)
+end
+
+function check(List&lt;Int&gt; list)
+    writeLine(&quot;a list&quot;)
+end
+</code></pre>
+<p>会被运行环境解析为：</p>
+<pre><code class="language-js">function check(List&lt;Int&gt; p) branch
+    case let [] match p:
+        begin
+            writeLine(&quot;empty&quot;)
+        end
+    case let [a, b] match p:
+        begin
+            condition
+                case a &gt; b:
+                    begin
+                        writeLine(&quot;a &gt; b&quot;)
+                    end
+                case a &lt; b:
+                    begin
+                        writeLine(&quot;a &lt; b&quot;)
+                    end
+                case a &lt; b:
+                    begin
+                        writeLine(&quot;equals&quot;)
+                    end
+            end
+        end
+    case let list match p:
+        begin
+            writeLine(&quot;a list&quot;)
+        end
+    end
+end
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="control-flow.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="method-and-generic-and-trait.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="control-flow.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="method-and-generic-and-trait.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>
